@@ -31,8 +31,8 @@ Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save 
 **Windows:**
 
 ```powershell
-git clone https://github.com/yourusername/PiTimeLapse-Lab.git
-cd PiTimeLapse-Lab
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd Raspberry-Pi-TimeLapse-Studio
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
@@ -41,8 +41,8 @@ pip install -r requirements.txt
 **macOS / Linux / Raspberry Pi:**
 
 ```bash
-git clone https://github.com/yourusername/PiTimeLapse-Lab.git
-cd PiTimeLapse-Lab
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd Raspberry-Pi-TimeLapse-Studio
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

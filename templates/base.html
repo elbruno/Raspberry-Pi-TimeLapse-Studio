@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PiTimeLapse Lab{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}">🎬 PiTimeLapse Lab</a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a></li>
+            <li><a href="{{ url_for('gallery') }}" {% if request.endpoint == 'gallery' %}class="active"{% endif %}>Gallery</a></li>
+            <li><a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a></li>
+        </ul>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}">
+            {{ message }}
+            <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>PiTimeLapse Lab - Learn Python & Raspberry Pi through fun projects!</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

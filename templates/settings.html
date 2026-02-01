@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - PiTimeLapse Lab{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <h1>⚙️ Settings</h1>
+    
+    {% if is_running %}
+    <div class="card warning-card">
+        <p>⚠️ <strong>A time-lapse is currently running.</strong></p>
+        <p>Stop it before changing settings.</p>
+    </div>
+    {% endif %}
+    
+    <form action="{{ url_for('save_settings') }}" method="POST" class="settings-form">
+        
+        <!-- Camera Settings -->
+        <div class="card settings-section">
+            <h2>📷 Camera Settings</h2>
+            
+            <div class="form-group">
+                <label for="camera_mode">Camera Mode</label>
+                <select name="camera_mode" id="camera_mode" {% if is_running %}disabled{% endif %}>
+                    <option value="opencv" {% if config.camera_mode == 'opencv' %}selected{% endif %}>
+                        OpenCV (USB Webcam)
+                    </option>
+                    <option value="picamera2" {% if config.camera_mode == 'picamera2' %}selected{% endif %}>
+                        PiCamera2 (Raspberry Pi Camera)
+                    </option>
+                </select>
+                <span class="help-text">
+                    OpenCV works with most USB webcams. PiCamera2 is for the official Raspberry Pi Camera Module.
+                </span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="resolution_width">Width (pixels)</label>
+                    <input type="number" name="resolution_width" id="resolution_width"
+                           value="{{ config.resolution_width }}" min="1" max="4096"
+                           {% if is_running %}disabled{% endif %}>
+                </div>
+                <div class="form-group">
+                    <label for="resolution_height">Height (pixels)</label>
+                    <input type="number" name="resolution_height" id="resolution_height"
+                           value="{{ config.resolution_height }}" min="1" max="4096"
+                           {% if is_running %}disabled{% endif %}>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Capture Settings -->
+        <div class="card settings-section">
+            <h2>⏱️ Capture Settings</h2>
+            
+            <div class="form-group">
+                <label for="interval_seconds">Interval (seconds)</label>
+                <input type="number" name="interval_seconds" id="interval_seconds"
+                       value="{{ config.interval_seconds }}" min="1" max="86400"
+                       {% if is_running %}disabled{% endif %}>
+                <span class="help-text">
+                    How many seconds to wait between each photo. Minimum is 1 second.
+                </span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start_delay_seconds">Start Delay (seconds)</label>
+                    <input type="number" name="start_delay_seconds" id="start_delay_seconds"
+                           value="{{ config.start_delay_seconds }}" min="0"
+                           {% if is_running %}disabled{% endif %}>
+                    <span class="help-text">Wait before first capture</span>
+                </div>
+                <div class="form-group">
+                    <label for="duration_limit_seconds">Duration Limit (seconds)</label>
+                    <input type="number" name="duration_limit_seconds" id="duration_limit_seconds"
+                           value="{{ config.duration_limit_seconds }}" min="0"
+                           {% if is_running %}disabled{% endif %}>
+                    <span class="help-text">0 = run until stopped</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Output Settings -->
+        <div class="card settings-section">
+            <h2>📁 Output Settings</h2>
+            
+            <div class="form-group">
+                <label for="output_dir">Output Directory</label>
+                <input type="text" name="output_dir" id="output_dir"
+                       value="{{ config.output_dir }}"
+                       {% if is_running %}disabled{% endif %}>
+                <span class="help-text">
+                    Where to save captured images. Can be relative (./data) or absolute (/home/pi/timelapse).
+                </span>
+            </div>
+            
+            <div class="form-group">
+                <label for="image_format">Image Format</label>
+                <select name="image_format" id="image_format" {% if is_running %}disabled{% endif %}>
+                    <option value="jpg" {% if config.image_format == 'jpg' %}selected{% endif %}>JPG (smaller files)</option>
+                    <option value="png" {% if config.image_format == 'png' %}selected{% endif %}>PNG (higher quality)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="overlay_timestamp" 
+                           {% if config.overlay_timestamp %}checked{% endif %}
+                           {% if is_running %}disabled{% endif %}>
+                    Add timestamp overlay to images
+                </label>
+                <span class="help-text">
+                    Burns the date/time into each image.
+                </span>
+            </div>
+        </div>
+        
+        <!-- Web Server Settings -->
+        <div class="card settings-section">
+            <h2>🌐 Web Server Settings</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="web_host">Host</label>
+                    <input type="text" name="web_host" id="web_host"
+                           value="{{ config.web_host }}"
+                           {% if is_running %}disabled{% endif %}>
+                    <span class="help-text">0.0.0.0 = all network interfaces</span>
+                </div>
+                <div class="form-group">
+                    <label for="web_port">Port</label>
+                    <input type="number" name="web_port" id="web_port"
+                           value="{{ config.web_port }}" min="1" max="65535"
+                           {% if is_running %}disabled{% endif %}>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced Settings -->
+        <div class="card settings-section">
+            <h2>🔧 Advanced Settings</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="retention_days">Retention (days)</label>
+                    <input type="number" name="retention_days" id="retention_days"
+                           value="{{ config.retention_days }}" min="0"
+                           {% if is_running %}disabled{% endif %}>
+                    <span class="help-text">Auto-delete old sessions (0 = never)</span>
+                </div>
+                <div class="form-group">
+                    <label for="max_storage_mb">Max Storage (MB)</label>
+                    <input type="number" name="max_storage_mb" id="max_storage_mb"
+                           value="{{ config.max_storage_mb }}" min="0"
+                           {% if is_running %}disabled{% endif %}>
+                    <span class="help-text">Stop when limit reached (0 = unlimited)</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="log_level">Log Level</label>
+                <select name="log_level" id="log_level" {% if is_running %}disabled{% endif %}>
+                    <option value="DEBUG" {% if config.log_level == 'DEBUG' %}selected{% endif %}>DEBUG (most detail)</option>
+                    <option value="INFO" {% if config.log_level == 'INFO' %}selected{% endif %}>INFO (recommended)</option>
+                    <option value="WARNING" {% if config.log_level == 'WARNING' %}selected{% endif %}>WARNING</option>
+                    <option value="ERROR" {% if config.log_level == 'ERROR' %}selected{% endif %}>ERROR (least detail)</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-large" {% if is_running %}disabled{% endif %}>
+                💾 Save Settings
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

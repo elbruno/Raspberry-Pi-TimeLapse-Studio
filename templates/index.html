@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - PiTimeLapse Lab{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>📸 Dashboard</h1>
+    
+    <!-- Status Card -->
+    <div class="card status-card {% if status.is_running %}status-running{% else %}status-stopped{% endif %}">
+        <div class="status-header">
+            <span class="status-indicator {% if status.is_running %}running{% else %}stopped{% endif %}"></span>
+            <h2>{% if status.is_running %}Time-lapse Running{% else %}Ready to Start{% endif %}</h2>
+        </div>
+        
+        {% if status.is_running and session %}
+        <div class="status-details">
+            <div class="stat">
+                <span class="stat-label">Session ID</span>
+                <span class="stat-value">{{ session.id }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Photos Captured</span>
+                <span class="stat-value" id="total-photos">{{ status.total_photos }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Last Capture</span>
+                <span class="stat-value" id="last-capture">
+                    {% if status.last_capture_time %}
+                    {{ status.last_capture_time.strftime('%H:%M:%S') }}
+                    {% else %}
+                    Waiting...
+                    {% endif %}
+                </span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Next Capture</span>
+                <span class="stat-value" id="next-capture">
+                    {% if status.next_capture_time %}
+                    {{ status.next_capture_time.strftime('%H:%M:%S') }}
+                    {% else %}
+                    --
+                    {% endif %}
+                </span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Interval</span>
+                <span class="stat-value">{{ session.interval_seconds }}s</span>
+            </div>
+            {% if status.total_errors > 0 %}
+            <div class="stat stat-error">
+                <span class="stat-label">Errors</span>
+                <span class="stat-value">{{ status.total_errors }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Control Buttons -->
+        <div class="control-buttons">
+            {% if status.is_running %}
+            <button id="stop-btn" class="btn btn-danger btn-large" onclick="stopTimelapse()">
+                ⏹️ Stop Time-lapse
+            </button>
+            {% else %}
+            <button id="start-btn" class="btn btn-success btn-large" onclick="startTimelapse()">
+                ▶️ Start Time-lapse
+            </button>
+            {% endif %}
+        </div>
+        
+        <div id="message" class="message"></div>
+    </div>
+    
+    <!-- Quick Info Cards -->
+    <div class="info-cards">
+        <div class="card info-card">
+            <h3>📷 Camera</h3>
+            <p class="info-value">{{ config.camera_mode }}</p>
+            <p class="info-desc">
+                {% if status.camera_available %}
+                ✅ Available
+                {% else %}
+                ❌ Not available
+                {% endif %}
+            </p>
+        </div>
+        
+        <div class="card info-card">
+            <h3>⏱️ Interval</h3>
+            <p class="info-value">{{ config.interval_seconds }}s</p>
+            <p class="info-desc">Between captures</p>
+        </div>
+        
+        <div class="card info-card">
+            <h3>📁 Output</h3>
+            <p class="info-value">{{ config.output_dir }}</p>
+            <p class="info-desc">Storage folder</p>
+        </div>
+        
+        <div class="card info-card">
+            <h3>🖼️ Resolution</h3>
+            <p class="info-value">{{ config.resolution_width }}×{{ config.resolution_height }}</p>
+            <p class="info-desc">{{ config.image_format | upper }}</p>
+        </div>
+    </div>
+    
+    {% if status.last_error %}
+    <div class="card error-card">
+        <h3>⚠️ Last Error</h3>
+        <p>{{ status.last_error }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Start the time-lapse
+function startTimelapse() {
+    const btn = document.getElementById('start-btn');
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
+    
+    fetch('/api/start', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            showMessage(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                // Reload page to update status
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = '▶️ Start Time-lapse';
+            }
+        })
+        .catch(error => {
+            showMessage('Error: ' + error, 'error');
+            btn.disabled = false;
+            btn.textContent = '▶️ Start Time-lapse';
+        });
+}
+
+// Stop the time-lapse
+function stopTimelapse() {
+    const btn = document.getElementById('stop-btn');
+    btn.disabled = true;
+    btn.textContent = 'Stopping...';
+    
+    fetch('/api/stop', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            showMessage(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = '⏹️ Stop Time-lapse';
+            }
+        })
+        .catch(error => {
+            showMessage('Error: ' + error, 'error');
+            btn.disabled = false;
+            btn.textContent = '⏹️ Stop Time-lapse';
+        });
+}
+
+// Show a message
+function showMessage(text, type) {
+    const msgDiv = document.getElementById('message');
+    msgDiv.textContent = text;
+    msgDiv.className = 'message message-' + type;
+}
+
+{% if status.is_running %}
+// Auto-refresh status every 5 seconds when running
+setInterval(() => {
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-photos').textContent = data.total_photos;
+            if (data.last_capture_time) {
+                const time = new Date(data.last_capture_time);
+                document.getElementById('last-capture').textContent = 
+                    time.toLocaleTimeString();
+            }
+            if (data.next_capture_time) {
+                const time = new Date(data.next_capture_time);
+                document.getElementById('next-capture').textContent = 
+                    time.toLocaleTimeString();
+            }
+            // Reload if stopped
+            if (!data.is_running) {
+                location.reload();
+            }
+        });
+}, 5000);
+{% endif %}
+</script>
+{% endblock %}

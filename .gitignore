@@ -3,6 +3,20 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# =============================================================================
+# PiTimeLapse Lab Specific
+# =============================================================================
+
+# Data directory - where captured images are stored
+data/
+
+# Log files
+logs/
+*.log
+
+# Session ZIP files
+*.zip
+
 # C extensions
 *.so
 

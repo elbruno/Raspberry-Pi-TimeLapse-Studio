@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - PiTimeLapse Lab{% endblock %}
+
+{% block content %}
+<div class="gallery-page">
+    <h1>🖼️ Gallery</h1>
+    
+    <!-- Session Selector -->
+    {% if sessions %}
+    <div class="card session-selector">
+        <label for="session-select">Select Session:</label>
+        <select id="session-select" onchange="changeSession(this.value)">
+            {% for s in sessions %}
+            <option value="{{ s.id }}" {% if s.id == selected_session_id %}selected{% endif %}>
+                {{ s.id }} ({{ s.total_photos }} photos)
+            </option>
+            {% endfor %}
+        </select>
+        
+        {% if current_session %}
+        <a href="{{ url_for('download_session', session_id=current_session.id) }}" class="btn btn-secondary">
+            📥 Download ZIP
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if current_session %}
+    <!-- Session Info -->
+    <div class="card session-info">
+        <h3>Session Details</h3>
+        <div class="session-stats">
+            <span><strong>Started:</strong> {{ current_session.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            <span><strong>Photos:</strong> {{ current_session.total_photos }}</span>
+            <span><strong>Interval:</strong> {{ current_session.interval_seconds }}s</span>
+            {% if current_session.end_time %}
+            <span><strong>Ended:</strong> {{ current_session.end_time.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            {% else %}
+            <span class="active-badge">🟢 Active</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Image Gallery -->
+    {% if images %}
+    <div class="gallery-grid">
+        {% for img in images %}
+        <div class="gallery-item">
+            <a href="{{ url_for('serve_image', session_id=selected_session_id, filename=img.name) }}" 
+               target="_blank">
+                <img src="{{ url_for('serve_image', session_id=selected_session_id, filename=img.name) }}"
+                     alt="{{ img.name }}"
+                     loading="lazy">
+            </a>
+            <div class="image-info">
+                <span class="image-name">{{ img.name }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card empty-state">
+        <p>📷 No images captured yet.</p>
+        <p>Start a time-lapse from the <a href="{{ url_for('index') }}">Dashboard</a> to begin capturing!</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function changeSession(sessionId) {
+    window.location.href = '{{ url_for("gallery") }}?session=' + sessionId;
+}
+</script>
+{% endblock %}

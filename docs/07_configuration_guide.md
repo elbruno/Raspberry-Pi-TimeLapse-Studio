@@ -7,6 +7,7 @@ Complete guide to configuring PiTimeLapse Lab. All settings are in `config.yaml`
 ```yaml
 # Camera Settings
 camera_mode: "opencv"        # "opencv" or "picamera2"
+camera_index: 0              # Which OpenCV camera to use (0 = first)
 resolution_width: 1280       # Image width in pixels
 resolution_height: 720       # Image height in pixels
 
@@ -73,6 +74,22 @@ The size of captured images in pixels.
 ```yaml
 resolution_width: 1920
 resolution_height: 1080
+```
+
+### `camera_index`
+
+Selects which camera OpenCV should use. This is helpful when your USB camera
+appears as `/dev/video1` or higher on Raspberry Pi or Linux.
+
+- `0` = first camera (default)
+- `1` = second camera, etc.
+
+**Only used when** `camera_mode: "opencv"`.
+
+**Example:**
+
+```yaml
+camera_index: 1
 ```
 
 ---
@@ -231,6 +248,7 @@ output_dir: "./data"
 
 ```yaml
 camera_mode: "opencv"
+camera_index: 0
 web_host: "0.0.0.0"
 output_dir: "./data"
 ```
@@ -279,7 +297,8 @@ You can override config values with environment variables:
 
 ```bash
 # Linux/macOS
-export PITIMELAPSE_PORT=8080
+export PITIMELAPSE_WEB_PORT=8080
+export PITIMELAPSE_CAMERA_INDEX=1
 python main.py
 
 # Windows PowerShell

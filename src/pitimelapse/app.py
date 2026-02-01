@@ -170,6 +170,7 @@ def save_settings():
         # Create new config from form data
         new_config = AppConfig(
             camera_mode=request.form.get("camera_mode", "opencv"),
+            camera_index=int(request.form.get("camera_index", 0)),
             resolution_width=int(request.form.get("resolution_width", 1280)),
             resolution_height=int(request.form.get("resolution_height", 720)),
             interval_seconds=int(request.form.get("interval_seconds", 10)),

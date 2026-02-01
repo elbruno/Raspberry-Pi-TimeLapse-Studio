@@ -28,6 +28,7 @@ class TestAppConfig:
         config = AppConfig()
         
         assert config.camera_mode == "opencv"
+        assert config.camera_index == 0
         assert config.interval_seconds == 10
         assert config.resolution_width == 1280
         assert config.resolution_height == 720
@@ -51,6 +52,20 @@ class TestAppConfig:
         
         assert len(errors) == 1
         assert "camera_mode" in errors[0]
+
+    def test_validate_invalid_camera_index(self):
+        """Test that invalid camera_index is caught."""
+        config = AppConfig(camera_index=-1)
+        errors = config.validate()
+
+        assert len(errors) == 1
+        assert "camera_index" in errors[0]
+
+        config = AppConfig(camera_index="one")
+        errors = config.validate()
+
+        assert len(errors) == 1
+        assert "camera_index" in errors[0]
     
     def test_validate_invalid_interval(self):
         """Test that interval less than 1 is caught."""
@@ -109,17 +124,19 @@ class TestAppConfig:
     
     def test_to_dict(self):
         """Test conversion to dictionary."""
-        config = AppConfig(camera_mode="picamera2", interval_seconds=30)
+        config = AppConfig(camera_mode="picamera2", interval_seconds=30, camera_index=2)
         config_dict = config.to_dict()
         
         assert config_dict["camera_mode"] == "picamera2"
         assert config_dict["interval_seconds"] == 30
+        assert config_dict["camera_index"] == 2
         assert "output_dir" in config_dict
     
     def test_from_dict(self):
         """Test creation from dictionary."""
         data = {
             "camera_mode": "picamera2",
+            "camera_index": 1,
             "interval_seconds": 30,
             "resolution_width": 1920,
         }
@@ -127,6 +144,7 @@ class TestAppConfig:
         config = AppConfig.from_dict(data)
         
         assert config.camera_mode == "picamera2"
+        assert config.camera_index == 1
         assert config.interval_seconds == 30
         assert config.resolution_width == 1920
         # Other values should be defaults
@@ -158,6 +176,7 @@ class TestConfigLoadSave:
             # Create and save config
             original_config = AppConfig(
                 camera_mode="picamera2",
+                camera_index=3,
                 interval_seconds=60,
                 resolution_width=1920,
                 resolution_height=1080,
@@ -169,6 +188,7 @@ class TestConfigLoadSave:
             loaded_config = load_config(config_path)
             
             assert loaded_config.camera_mode == "picamera2"
+            assert loaded_config.camera_index == 3
             assert loaded_config.interval_seconds == 60
             assert loaded_config.resolution_width == 1920
             assert loaded_config.resolution_height == 1080

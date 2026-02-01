@@ -450,21 +450,22 @@ sudo usermod -aG video $USER
 
 **Step 6: Try different camera indices**
 
-Some systems use `/dev/video1` or higher instead of `/dev/video0`. In the code, you can change this by modifying `camera_index` in `camera_opencv.py`:
+Some systems use `/dev/video1` or higher instead of `/dev/video0`.
+Set the camera index in your configuration or the web Settings page:
 
-```python
-camera = OpenCVCamera(camera_index=1)  # Try camera 1
+```yaml
+camera_mode: "opencv"
+camera_index: 1
 ```
 
-Or if you created a wrapper, update the config to pass the camera index.
+You can also change this in the web UI under Settings → Camera Settings.
 
 ### Multiple Cameras Connected
 
 If you have multiple cameras, you can specify which one to use by:
 
 1. Finding which index is yours with the test script above
-2. Modifying the camera_opencv.py file's `camera_index` parameter
-3. Or adding a config option (if implementing this feature)
+2. Setting `camera_index` in `config.yaml` or the web Settings page
 
 ### Camera Opens But Can't Capture
 

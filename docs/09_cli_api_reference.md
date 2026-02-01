@@ -87,7 +87,7 @@ Checking output directory:
 |-------|----------|
 | `opencv-python-headless is not installed` | Run: `pip install opencv-python-headless` |
 | `picamera2 is not installed` | Run: `sudo apt install python3-picamera2` |
-| `Cannot open camera` | Check camera connection, restart app, or try different camera index |
+| `Cannot open camera` | Check camera connection, restart app, or set `camera_index` in config |
 | `No write permission to output directory` | Check directory permissions with `ls -la data` |
 
 **Exit codes:**

@@ -47,6 +47,7 @@ class AppConfig:
     # Camera Settings
     # ---------------
     camera_mode: str = "opencv"  # "picamera2" or "opencv"
+    camera_index: int = 0  # Which OpenCV camera to use (0 = first camera)
     resolution_width: int = 1280  # Image width in pixels
     resolution_height: int = 720  # Image height in pixels
     
@@ -88,6 +89,16 @@ class AppConfig:
         if self.camera_mode not in valid_modes:
             errors.append(
                 f"camera_mode must be one of {valid_modes}, got '{self.camera_mode}'"
+            )
+
+        # Validate camera_index
+        if not isinstance(self.camera_index, int):
+            errors.append(
+                f"camera_index must be an integer, got '{self.camera_index}'"
+            )
+        elif self.camera_index < 0:
+            errors.append(
+                f"camera_index must be 0 or higher, got {self.camera_index}"
             )
         
         # Validate interval (must be positive)
@@ -229,6 +240,7 @@ def _apply_env_overrides(config: AppConfig) -> AppConfig:
     # (env_var_name, config_attr_name, type_converter)
     overrides = [
         ("PITIMELAPSE_CAMERA_MODE", "camera_mode", str),
+        ("PITIMELAPSE_CAMERA_INDEX", "camera_index", int),
         ("PITIMELAPSE_OUTPUT_DIR", "output_dir", str),
         ("PITIMELAPSE_WEB_HOST", "web_host", str),
         ("PITIMELAPSE_WEB_PORT", "web_port", int),

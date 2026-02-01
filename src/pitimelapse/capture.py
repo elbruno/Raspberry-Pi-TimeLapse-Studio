@@ -235,7 +235,7 @@ class CaptureScheduler:
                 self.camera = PiCamera2Camera()
             else:
                 from .camera_opencv import OpenCVCamera
-                self.camera = OpenCVCamera()
+                self.camera = OpenCVCamera(camera_index=self.config.camera_index)
             
             # Check if the camera library is available
             if not self.camera.is_available():

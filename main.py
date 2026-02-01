@@ -179,6 +179,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print("✅ All checks passed! Configuration is ready.\n")
             print("Current settings:")
             print(f"  Camera mode: {config.camera_mode}")
+            if config.camera_mode == "opencv":
+                print(f"  Camera index: {config.camera_index}")
             print(f"  Resolution: {config.resolution_width}x{config.resolution_height}")
             print(f"  Interval: {config.interval_seconds} seconds")
             print(f"  Output: {config.output_dir}")
@@ -249,7 +251,7 @@ def _check_camera(config: AppConfig) -> list:
         if config.camera_mode == "opencv":
             from pitimelapse.camera_opencv import OpenCVCamera
             
-            camera = OpenCVCamera()
+            camera = OpenCVCamera(camera_index=config.camera_index)
             
             if not camera.is_available():
                 return ["OpenCV (cv2) is not available"]

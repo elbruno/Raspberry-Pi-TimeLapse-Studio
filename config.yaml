@@ -11,6 +11,10 @@
 #   - "picamera2" : Use the official Raspberry Pi Camera Module (Raspberry Pi only, for advanced users)
 camera_mode: "opencv"
 
+# Which camera index to use for OpenCV (0 = first camera, 1 = second, etc.)
+# Only applies when camera_mode is "opencv"
+camera_index: 0
+
 # Image resolution (width x height in pixels)
 # Common sizes:
 #   - 1920 x 1080 : Full HD (larger files)

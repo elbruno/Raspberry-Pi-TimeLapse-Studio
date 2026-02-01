@@ -737,8 +737,8 @@ The application prints logs to the console. Look for error messages.
 ### Run Tests
 
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
+# Install dependencies (includes test tools)
+pip install -r requirements.txt
 
 # Run tests
 pytest -v

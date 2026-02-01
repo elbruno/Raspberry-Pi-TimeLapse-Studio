@@ -25,3 +25,25 @@ Pillow>=10.0.0
 # 1. It only works on Raspberry Pi
 # 2. It should be installed via apt: sudo apt install python3-picamera2
 # 3. We gracefully handle its absence in the code
+
+# =============================================
+# Development & Testing Dependencies
+# =============================================
+
+# Testing framework
+pytest>=7.4.0
+
+# Code coverage reporting
+pytest-cov>=4.1.0
+
+# Code formatting (optional but recommended)
+black>=23.0.0
+
+# Linting (optional but recommended)
+flake8>=6.1.0
+
+# Type checking (optional)
+mypy>=1.5.0
+
+# HTTP testing client
+requests>=2.31.0

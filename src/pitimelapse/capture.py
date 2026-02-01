@@ -81,6 +81,10 @@ class CaptureScheduler:
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
         
+        # Latest frame cache for live preview
+        self._latest_frame: Optional[bytes] = None
+        self._latest_frame_lock = threading.Lock()
+        
         # Callback for status updates (used by web UI)
         self._status_callback: Optional[Callable[[Status], None]] = None
     
@@ -221,6 +225,16 @@ class CaptureScheduler:
     def get_current_session(self) -> Optional[Session]:
         """Get the current session (if running)."""
         return self.current_session
+    
+    def get_latest_frame(self) -> Optional[bytes]:
+        """
+        Get the latest captured frame as JPEG bytes.
+        
+        Returns:
+            JPEG bytes of the latest frame, or None if no frame captured yet.
+        """
+        with self._latest_frame_lock:
+            return self._latest_frame
     
     def _open_camera(self) -> bool:
         """
@@ -385,6 +399,14 @@ class CaptureScheduler:
                 self.current_session.total_photos = photo_number
                 self.status.total_photos = photo_number
                 self.status.last_capture_time = datetime.now()
+                
+                # Cache the latest frame for live preview
+                try:
+                    _, jpeg_bytes = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    with self._latest_frame_lock:
+                        self._latest_frame = jpeg_bytes.tobytes()
+                except Exception as e:
+                    logger.warning(f"Could not cache latest frame: {e}")
                 
                 # Save session metadata
                 self.storage.save_session_metadata(self.current_session)

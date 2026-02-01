@@ -56,6 +56,32 @@
                         %}>
                 </div>
             </div>
+
+            <!-- Camera Preview Section -->
+            <div class="form-group">
+                <label>Camera Preview</label>
+                <div class="camera-preview-container">
+                    <div id="preview-area" class="preview-area">
+                        <img id="test-frame" src="" alt="Camera preview"
+                            style="display: none; max-width: 100%; border-radius: 8px;">
+                        <div id="preview-placeholder" class="preview-placeholder">
+                            <p>📷 Click "Test Camera" to capture a preview frame</p>
+                        </div>
+                        <div id="preview-loading" class="preview-loading" style="display: none;">
+                            <p>⏳ Capturing...</p>
+                        </div>
+                        <div id="preview-error" class="preview-error" style="display: none;">
+                            <p id="preview-error-text"></p>
+                        </div>
+                    </div>
+                    <button type="button" id="test-camera-btn" class="btn btn-secondary" onclick="testCamera()">
+                        📸 Test Camera
+                    </button>
+                </div>
+                <span class="help-text">
+                    Capture a test frame to verify camera settings are correct.
+                </span>
+            </div>
         </div>
 
         <!-- Capture Settings -->
@@ -182,4 +208,52 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function testCamera() {
+        const btn = document.getElementById('test-camera-btn');
+        const img = document.getElementById('test-frame');
+        const placeholder = document.getElementById('preview-placeholder');
+        const loading = document.getElementById('preview-loading');
+        const errorDiv = document.getElementById('preview-error');
+        const errorText = document.getElementById('preview-error-text');
+
+        // Show loading state
+        btn.disabled = true;
+        btn.textContent = '⏳ Capturing...';
+        placeholder.style.display = 'none';
+        img.style.display = 'none';
+        errorDiv.style.display = 'none';
+        loading.style.display = 'block';
+
+        fetch('/api/test-camera')
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                // Try to get error message from JSON response
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to capture');
+                });
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                img.onload = () => URL.revokeObjectURL(url);
+                img.src = url;
+                img.style.display = 'block';
+                loading.style.display = 'none';
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorText.textContent = '❌ ' + error.message;
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '📸 Test Camera';
+            });
+    }
+</script>
 {% endblock %}

@@ -220,13 +220,38 @@ def serve_image(session_id: str, filename: str):
     Serve an image file.
     
     This route allows the gallery to display images.
+    Resolves session folder from metadata to handle output_dir changes.
     """
-    if not config:
+    if not config or not storage:
         return "Not configured", 500
     
-    image_path = Path(config.output_dir) / session_id / filename
+    # First try to find session in storage metadata (handles output_dir changes)
+    sessions = storage.list_sessions()
+    session_folder = None
+    for s in sessions:
+        if s.id == session_id:
+            session_folder = s.output_folder
+            break
+    
+    # Fallback to current config output_dir if session not found in metadata
+    if not session_folder:
+        session_folder = str(Path(config.output_dir) / session_id)
+    
+    image_path = Path(session_folder) / filename
+    
+    # Validate path is within session folder (prevent directory traversal)
+    try:
+        image_path = image_path.resolve()
+        session_path = Path(session_folder).resolve()
+        if not str(image_path).startswith(str(session_path)):
+            logger.warning(f"Directory traversal attempt: {filename}")
+            return "Invalid path", 400
+    except Exception as e:
+        logger.error(f"Path resolution error: {e}")
+        return "Invalid path", 400
     
     if not image_path.exists():
+        logger.warning(f"Image not found: {image_path}")
         return "Image not found", 404
     
     return send_file(str(image_path))
@@ -238,11 +263,24 @@ def download_session(session_id: str):
     Download a session as a ZIP file.
     
     Creates a ZIP archive of all images in the session.
+    Resolves session folder from metadata to handle output_dir changes.
     """
     if not storage:
         return "Storage not available", 500
     
-    zip_path = storage.create_session_zip(session_id)
+    # Find session folder from metadata
+    sessions = storage.list_sessions()
+    session_folder = None
+    for s in sessions:
+        if s.id == session_id:
+            session_folder = s.output_folder
+            break
+    
+    if not session_folder or not Path(session_folder).exists():
+        flash("Session folder not found", "error")
+        return redirect(url_for("gallery"))
+    
+    zip_path = storage.create_session_zip(session_id, session_folder)
     
     if not zip_path:
         flash("Failed to create ZIP file", "error")
@@ -253,6 +291,31 @@ def download_session(session_id: str):
         as_attachment=True,
         download_name=f"{session_id}.zip",
     )
+
+
+@app.route("/delete/<session_id>", methods=["POST"])
+def delete_session_route(session_id: str):
+    """
+    Delete a session and all its images.
+    
+    Requires POST request to prevent accidental deletion.
+    """
+    if not storage:
+        return jsonify({"success": False, "message": "Storage not available"}), 500
+    
+    # Check if this session is currently active
+    if scheduler and scheduler.get_status().is_running:
+        current_session = scheduler.get_current_session()
+        if current_session and current_session.id == session_id:
+            return jsonify({"success": False, "message": "Cannot delete active session. Stop the time-lapse first."}), 400
+    
+    # Delete the session
+    success = storage.delete_session(session_id)
+    
+    if success:
+        return jsonify({"success": True, "message": f"Session {session_id} deleted successfully"})
+    else:
+        return jsonify({"success": False, "message": "Failed to delete session"}), 500
 
 
 # =============================================================================
@@ -446,6 +509,90 @@ def api_storage():
         "max_mb": config.max_storage_mb if config else 0,
         "session_count": len(sessions),
     })
+
+
+@app.route("/api/latest-frame")
+def api_latest_frame():
+    """
+    GET /api/latest-frame
+    
+    Returns the latest captured frame as JPEG image.
+    Used for live preview on the dashboard.
+    
+    Response:
+        - JPEG image bytes with Content-Type: image/jpeg
+        - 404 if no frame captured yet
+    """
+    if not scheduler:
+        return "Scheduler not initialized", 500
+    
+    frame_bytes = scheduler.get_latest_frame()
+    if not frame_bytes:
+        return "No frame captured yet", 404
+    
+    from flask import Response
+    return Response(frame_bytes, mimetype='image/jpeg')
+
+
+@app.route("/api/test-camera")
+def api_test_camera():
+    """
+    GET /api/test-camera
+    
+    Captures a single test frame from the camera.
+    Used for camera preview on the settings page.
+    
+    Response:
+        - JPEG image bytes with Content-Type: image/jpeg
+        - 500 with error message if camera unavailable
+    """
+    if not config:
+        return jsonify({"error": "Not configured"}), 500
+    
+    # Check if time-lapse is running - don't interfere with active capture
+    if scheduler and scheduler.get_status().is_running:
+        # Return latest frame from active session if available
+        frame_bytes = scheduler.get_latest_frame()
+        if frame_bytes:
+            from flask import Response
+            return Response(frame_bytes, mimetype='image/jpeg')
+        return jsonify({"error": "Camera in use by active time-lapse"}), 409
+    
+    try:
+        # Open camera temporarily
+        if config.camera_mode == "picamera2":
+            from .camera_picamera2 import PiCamera2Camera
+            camera = PiCamera2Camera()
+        else:
+            from .camera_opencv import OpenCVCamera
+            camera = OpenCVCamera(camera_index=config.camera_index)
+        
+        if not camera.is_available():
+            return jsonify({"error": f"Camera library not available for mode: {config.camera_mode}"}), 500
+        
+        if not camera.open(config.resolution_width, config.resolution_height):
+            return jsonify({"error": "Could not open camera"}), 500
+        
+        try:
+            # Capture a frame
+            frame = camera.capture()
+            if frame is None:
+                return jsonify({"error": "Failed to capture frame"}), 500
+            
+            # Encode as JPEG
+            try:
+                import cv2
+                _, jpeg_bytes = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                from flask import Response
+                return Response(jpeg_bytes.tobytes(), mimetype='image/jpeg')
+            except ImportError:
+                return jsonify({"error": "OpenCV not available for encoding"}), 500
+        finally:
+            camera.close()
+            
+    except Exception as e:
+        logger.exception("Error testing camera")
+        return jsonify({"error": str(e)}), 500
 
 
 # =============================================================================

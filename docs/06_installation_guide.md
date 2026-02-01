@@ -395,7 +395,12 @@ source venv/bin/activate
 
 # Install Python dependencies
 pip install -r requirements.txt
+
+# If you get PEP 668 errors about externally-managed environments, use:
+pip install --break-system-packages -r requirements.txt
 ```
+
+**Important:** If the last command fails due to a "externally-managed-environment" error, use the `--break-system-packages` flag. This is safe for development environments and is necessary on some Raspberry Pi OS versions.
 
 ### Step 8: Configure the Application
 

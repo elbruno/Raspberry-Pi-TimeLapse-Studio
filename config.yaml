@@ -16,8 +16,8 @@ camera_mode: "opencv"
 #   - 1920 x 1080 : Full HD (larger files)
 #   - 1280 x 720  : HD (recommended)
 #   - 640 x 480   : Low resolution (smaller files, faster)
-resolution_width: 1280
-resolution_height: 720
+resolution_width: 640
+resolution_height: 480
 
 # ============================================================================
 # CAPTURE SETTINGS

@@ -5,8 +5,7 @@ Solutions for common issues on all platforms.
 ## Quick Diagnosis
 
 | Symptom | Likely Cause | Jump to |
-|---------|-------------|---------|
-| "Camera not found" | Camera not connected or wrong mode | [Camera Issues](#camera-issues) |
+|---------|-------------|---------|| "OpenCV not installed" / "Camera library not available" | Missing opencv-python-headless | [OpenCV Not Installed](#no-module-named-cv2--opencv-cv2-is-not-installed) || "Camera not found" | Camera not connected or wrong mode | [Camera Issues](#camera-issues) |
 | "Port already in use" | Another app using port 8000 | [Port Issues](#port-issues) |
 | "Permission denied" | Missing permissions | [Permission Issues](#permission-issues) |
 | "Module not found" | Virtual environment not activated | [Import Errors](#import-errors) |
@@ -418,13 +417,36 @@ ModuleNotFoundError: No module named 'flask'
    pip install -r requirements.txt
    ```
 
-### "No module named 'cv2'"
+### "No module named 'cv2'" / "OpenCV (cv2) is not installed"
+
+**Symptoms:**
+
+```
+WARNING - OpenCV (cv2) is not installed. Install it with: pip install opencv-python-headless
+ERROR - Camera library not available for mode: opencv
+```
 
 **Solution:**
 
+OpenCV is required when using USB cameras (`camera_mode: "opencv"`). Install it with:
+
 ```bash
-pip install opencv-python
+# Activate your virtual environment first
+source venv/bin/activate
+
+# Install OpenCV headless (no GUI dependencies)
+pip install opencv-python-headless
+
+# If you get PEP 668 errors about externally-managed environment:
+pip install --break-system-packages opencv-python-headless
 ```
+
+**Why headless?** The headless version is smaller and works better on Raspberry Pi and servers where you won't display GUI windows.
+
+**After installation:**
+
+- Verify it's installed: `python -c "import cv2; print(cv2.__version__)"`
+- Restart your application
 
 ### Virtual Environment Not Working
 

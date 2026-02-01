@@ -2,10 +2,35 @@
 
 Solutions for common issues on all platforms.
 
+## 🚀 Getting Started with Troubleshooting
+
+### Start Here: Run the Validation Command
+
+Before diving into specific issues, run the built-in validation tool:
+
+```bash
+python main.py validate
+```
+
+This command checks:
+- ✅ Configuration file validity
+- ✅ Required packages installation
+- ✅ Camera availability and accessibility  
+- ✅ Output directory permissions
+
+**It will tell you exactly what's wrong and how to fix it!**
+
+If `validate` passes, your setup is correct. If it shows errors, follow the specific fixes below.
+
+---
+
 ## Quick Diagnosis
 
 | Symptom | Likely Cause | Jump to |
-|---------|-------------|---------|| "OpenCV not installed" / "Camera library not available" | Missing opencv-python-headless | [OpenCV Not Installed](#no-module-named-cv2--opencv-cv2-is-not-installed) || "Camera not found" | Camera not connected or wrong mode | [Camera Issues](#camera-issues) |
+|---------|-------------|---------|
+| `python main.py validate` fails | Configuration, packages, or camera issue | [Use validate output](#getting-started-with-troubleshooting) |
+| "OpenCV not installed" | Missing opencv-python-headless | [OpenCV Not Installed](#no-module-named-cv2--opencv-cv2-is-not-installed) |
+| "Camera not found" | Camera not connected or wrong mode | [Camera Issues](#camera-issues) |
 | "Port already in use" | Another app using port 8000 | [Port Issues](#port-issues) |
 | "Permission denied" | Missing permissions | [Permission Issues](#permission-issues) |
 | "Module not found" | Virtual environment not activated | [Import Errors](#import-errors) |

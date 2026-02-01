@@ -48,13 +48,29 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Run
+### 2. Validate Your Setup
+
+Before running, verify everything is configured correctly:
+
+```bash
+python main.py validate
+```
+
+This checks:
+- ✅ Configuration file
+- ✅ Required packages
+- ✅ Camera availability
+- ✅ Directory permissions
+
+If it shows any errors, the troubleshooting guide will help!
+
+### 3. Run
 
 ```bash
 python main.py
 ```
 
-### 3. Open Browser
+### 4. Open Browser
 
 Go to `http://localhost:8000` and start your first time-lapse!
 

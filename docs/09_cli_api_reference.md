@@ -28,23 +28,72 @@ python main.py --debug
 
 #### `python main.py validate`
 
-Validate configuration file without starting the server.
+Validate configuration and check system requirements.
+
+This command performs comprehensive checks including:
+- Configuration file syntax and settings
+- Required Python packages installation
+- Camera availability and accessibility
+- Output directory write permissions
 
 ```bash
 python main.py validate
 ```
 
-**Output examples:**
+**Output examples - All OK:**
 
 ```
-✅ Configuration is valid
+Validating configuration and system requirements...
+
+Checking required packages:
+  ✅ All required packages are installed
+
+Checking camera availability:
+  ✅ Camera is available and accessible
+
+Checking output directory:
+  ✅ Output directory is valid: ./data
+
+✅ All checks passed! Configuration is ready.
+
+Current settings:
+  Camera mode: opencv
+  Resolution: 1280x720
+  Interval: 10 seconds
+  Output: ./data
+  Web server: 0.0.0.0:8000
 ```
 
+**Output examples - With issues:**
+
 ```
-❌ Configuration errors:
-  - interval_seconds must be at least 1
-  - Invalid camera_mode: webcam
+Validating configuration and system requirements...
+
+Checking required packages:
+  ✅ All required packages are installed
+
+Checking camera availability:
+  ❌ Cannot open camera. Check that the camera is connected and not in use by another application.
+
+Checking output directory:
+  ✅ Output directory is valid: ./data
+
+❌ Found 1 issue(s). Please fix them before running.
 ```
+
+**Common issues and solutions:**
+
+| Error | Solution |
+|-------|----------|
+| `opencv-python-headless is not installed` | Run: `pip install opencv-python-headless` |
+| `picamera2 is not installed` | Run: `sudo apt install python3-picamera2` |
+| `Cannot open camera` | Check camera connection, restart app, or try different camera index |
+| `No write permission to output directory` | Check directory permissions with `ls -la data` |
+
+**Exit codes:**
+
+- `0` - All checks passed
+- `1` - One or more checks failed
 
 #### `python main.py sessions`
 

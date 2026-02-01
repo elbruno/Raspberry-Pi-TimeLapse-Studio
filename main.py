@@ -115,34 +115,227 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """
-    Validate the configuration file.
+    Validate the configuration file and check system requirements.
     
-    Checks if all settings are valid and shows any errors.
+    Checks if:
+    - Configuration file is valid
+    - Required packages are installed
+    - Camera is accessible
+    - Output directory is writable
     """
-    print("Validating configuration...")
+    print("Validating configuration and system requirements...\n")
     
     try:
         config = load_config()
         errors = config.validate()
         
         if errors:
-            print("\n❌ Configuration errors found:\n")
+            print("❌ Configuration errors found:\n")
             for error in errors:
                 print(f"  - {error}")
+            print()
+        
+        # Check required packages
+        print("Checking required packages:")
+        package_errors = _check_packages(config)
+        if package_errors:
+            errors.extend(package_errors)
+            for error in package_errors:
+                print(f"  ❌ {error}")
+        else:
+            print("  ✅ All required packages are installed")
+        
+        print()
+        
+        # Check camera availability
+        print("Checking camera availability:")
+        camera_errors = _check_camera(config)
+        if camera_errors:
+            errors.extend(camera_errors)
+            for error in camera_errors:
+                print(f"  ❌ {error}")
+        else:
+            print("  ✅ Camera is available and accessible")
+        
+        print()
+        
+        # Check output directory
+        print("Checking output directory:")
+        storage_errors = _check_storage(config)
+        if storage_errors:
+            errors.extend(storage_errors)
+            for error in storage_errors:
+                print(f"  ❌ {error}")
+        else:
+            print(f"  ✅ Output directory is valid: {config.output_dir}")
+        
+        print()
+        
+        # Summary
+        if errors:
+            print(f"❌ Found {len(errors)} issue(s). Please fix them before running.\n")
             return 1
         else:
-            print("\n✅ Configuration is valid!\n")
+            print("✅ All checks passed! Configuration is ready.\n")
             print("Current settings:")
             print(f"  Camera mode: {config.camera_mode}")
             print(f"  Resolution: {config.resolution_width}x{config.resolution_height}")
             print(f"  Interval: {config.interval_seconds} seconds")
             print(f"  Output: {config.output_dir}")
             print(f"  Web server: {config.web_host}:{config.web_port}")
+            print()
             return 0
             
     except Exception as e:
         print(f"\n❌ Error loading configuration: {e}")
         return 1
+
+
+def _check_packages(config: AppConfig) -> list:
+    """
+    Check if required Python packages are installed.
+    
+    Returns:
+        List of error messages (empty if all packages OK)
+    """
+    errors = []
+    
+    # Check Flask (always required)
+    try:
+        import flask
+    except ImportError:
+        errors.append("Flask is not installed")
+    
+    # Check PyYAML (always required)
+    try:
+        import yaml
+    except ImportError:
+        errors.append("PyYAML is not installed")
+    
+    # Check Pillow (always required for overlays)
+    try:
+        import PIL
+    except ImportError:
+        errors.append("Pillow is not installed")
+    
+    # Check camera-specific packages
+    if config.camera_mode == "opencv":
+        try:
+            import cv2
+        except ImportError:
+            errors.append("opencv-python-headless is not installed (required for camera_mode: opencv)")
+    
+    elif config.camera_mode == "picamera2":
+        try:
+            import picamera2
+        except ImportError:
+            errors.append(
+                "picamera2 is not installed. Install with: sudo apt install python3-picamera2"
+            )
+    
+    return errors
+
+
+def _check_camera(config: AppConfig) -> list:
+    """
+    Check if camera is available and accessible.
+    
+    Returns:
+        List of error messages (empty if camera OK)
+    """
+    errors = []
+    
+    try:
+        if config.camera_mode == "opencv":
+            from pitimelapse.camera_opencv import OpenCVCamera
+            
+            camera = OpenCVCamera()
+            
+            if not camera.is_available():
+                return ["OpenCV (cv2) is not available"]
+            
+            # Try to open the camera
+            if not camera.open(
+                width=config.resolution_width,
+                height=config.resolution_height,
+            ):
+                return ["Cannot open camera. Check that the camera is connected and not in use by another application."]
+            
+            # Try to capture a test frame
+            frame = camera.capture()
+            camera.close()
+            
+            if frame is None:
+                return ["Camera opened but failed to capture a test frame."]
+        
+        elif config.camera_mode == "picamera2":
+            try:
+                from pitimelapse.camera_picamera2 import PiCamera2Camera
+                
+                camera = PiCamera2Camera()
+                
+                if not camera.is_available():
+                    return ["picamera2 is not available. Check that it's installed with: sudo apt install python3-picamera2"]
+                
+                # Try to open the camera
+                if not camera.open(
+                    width=config.resolution_width,
+                    height=config.resolution_height,
+                ):
+                    return ["Cannot open Pi Camera. Check that the camera ribbon is connected and enabled."]
+                
+                # Try to capture a test frame
+                frame = camera.capture()
+                camera.close()
+                
+                if frame is None:
+                    return ["Pi Camera opened but failed to capture a test frame."]
+            
+            except Exception as e:
+                return [f"Error testing Pi Camera: {e}"]
+        
+    except Exception as e:
+        errors.append(f"Error checking camera: {e}")
+    
+    return errors
+
+
+def _check_storage(config: AppConfig) -> list:
+    """
+    Check if output directory exists and is writable.
+    
+    Returns:
+        List of error messages (empty if storage OK)
+    """
+    errors = []
+    
+    try:
+        # Create storage manager
+        storage = StorageManager(config.output_dir)
+        
+        # Check if we can create a directory
+        import tempfile
+        import shutil
+        
+        test_dir = os.path.join(config.output_dir, ".test_write")
+        
+        try:
+            os.makedirs(test_dir, exist_ok=True)
+            # Try to write a test file
+            test_file = os.path.join(test_dir, "test.txt")
+            with open(test_file, "w") as f:
+                f.write("test")
+            os.remove(test_file)
+            shutil.rmtree(test_dir, ignore_errors=True)
+        except PermissionError:
+            errors.append(f"No write permission to output directory: {config.output_dir}")
+        except Exception as e:
+            errors.append(f"Cannot write to output directory: {e}")
+    
+    except Exception as e:
+        errors.append(f"Error checking storage: {e}")
+    
+    return errors
 
 
 def cmd_sessions(args: argparse.Namespace) -> int:
@@ -257,7 +450,10 @@ Examples:
     )
     
     # 'validate' command
-    subparsers.add_parser("validate", help="Validate configuration file")
+    subparsers.add_parser(
+        "validate",
+        help="Validate configuration and check system requirements (packages, camera, permissions)"
+    )
     
     # 'sessions' command
     subparsers.add_parser("sessions", help="List all sessions")

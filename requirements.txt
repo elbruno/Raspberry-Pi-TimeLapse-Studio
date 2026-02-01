@@ -1,0 +1,27 @@
+# PiTimeLapse Lab - Python Dependencies
+# ======================================
+#
+# Install these with: pip install -r requirements.txt
+#
+# These are the packages needed to run the application.
+
+# Web framework - makes it easy to build web applications
+Flask>=2.3.0
+
+# YAML configuration file support
+PyYAML>=6.0
+
+# Load environment variables from .env files
+python-dotenv>=1.0.0
+
+# OpenCV for camera capture (headless version for servers)
+# This works on regular computers and Raspberry Pi with USB webcams
+opencv-python-headless>=4.8.0
+
+# Image processing library (used for overlays)
+Pillow>=10.0.0
+
+# Note: picamera2 is NOT listed here because:
+# 1. It only works on Raspberry Pi
+# 2. It should be installed via apt: sudo apt install python3-picamera2
+# 3. We gracefully handle its absence in the code

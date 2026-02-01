@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Error - PiTimeLapse Lab{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="card">
+        <h1>😕 Oops!</h1>
+        <p class="error-message">{{ error }}</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

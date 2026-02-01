@@ -310,37 +310,164 @@ journalctl -u pitimelapse -n 100
 
 ## Camera Issues
 
-### Camera Test Script
+### No Camera Device Found / Can't Open Camera
 
-Create a test script to diagnose camera issues:
+**Symptoms:**
+
+```
+[ WARN:0@3.760] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[video4linux2,v4l2 @ 0x...] Not a video capture device.
+OpenCV(4.13.0) ... VIDEOIO/FFMPEG: Camera index out of range ... 'device_list->nb_devices' is 0
+pitimelapse.camera_opencv - WARNING - No camera device found at index 0.
+```
+
+This error means OpenCV can't find any camera device connected to your system.
+
+**Solutions:**
+
+**Step 1: Check if any camera device is connected**
+
+```bash
+# List all video devices on the system
+ls /dev/video*
+
+# You should see at least one device like /dev/video0
+# If you see nothing, no camera is connected
+```
+
+**Step 2: On Raspberry Pi with Pi Camera Module**
+
+If you have a Pi Camera Module (ribbon cable), you should NOT use `camera_mode: opencv`. Instead:
+
+1. Check if camera is detected:
+   ```bash
+   libcamera-hello --list-cameras
+   ```
+
+2. Update `config.yaml`:
+   ```yaml
+   camera_mode: "picamera2"
+   ```
+
+**Step 3: On any system with a USB webcam**
+
+Make sure the webcam is:
+- Physically connected to a USB port
+- Not in use by another application (Zoom, Teams, web browser with camera access, etc.)
+- Plugged into a powered USB port (some external cameras need extra power)
+
+**Step 4: Test the camera independently**
+
+```bash
+# Activate your virtual environment
+source venv/bin/activate
+
+# Run the camera test script
+python -m pitimelapse.camera_opencv
+```
+
+Or create a test file:
 
 ```python
 # test_camera.py
 import cv2
+import os
 
-print("Testing cameras...")
+print("Checking for camera devices...")
+devices = []
+try:
+    devices = [f for f in os.listdir('/dev') if f.startswith('video')]
+    if devices:
+        print(f"Found devices: {devices}")
+    else:
+        print("❌ No /dev/video* devices found")
+        print("   - Is your USB camera connected?")
+        print("   - Try plugging it into a different USB port")
+except:
+    pass
+
+print("\nTesting OpenCV camera detection...")
 for i in range(5):
     cap = cv2.VideoCapture(i)
     if cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            print(f"Camera {i}: Working! Resolution: {frame.shape[1]}x{frame.shape[0]}")
+            print(f"✓ Camera {i}: Working! Resolution: {frame.shape[1]}x{frame.shape[0]}")
         else:
-            print(f"Camera {i}: Opens but can't read")
+            print(f"⚠ Camera {i}: Opens but can't read frames")
         cap.release()
     else:
-        print(f"Camera {i}: Not available")
+        if i == 0:
+            print(f"❌ Camera {i}: Not available")
+
+print("\n" + "="*50)
+if devices:
+    print("✓ Devices exist - try restarting the app")
+else:
+    print("✗ No camera devices detected")
+    print("  Connect a USB camera and try again")
 ```
 
-Run it:
+Save it and run:
 
 ```bash
 python test_camera.py
 ```
 
+**Step 5: On Linux, check permissions**
+
+```bash
+# Your user needs permission to access video devices
+sudo usermod -aG video $USER
+
+# Log out and back in (or reboot) for changes to take effect
+```
+
+**Step 6: Try different camera indices**
+
+Some systems use `/dev/video1` or higher instead of `/dev/video0`. In the code, you can change this by modifying `camera_index` in `camera_opencv.py`:
+
+```python
+camera = OpenCVCamera(camera_index=1)  # Try camera 1
+```
+
+Or if you created a wrapper, update the config to pass the camera index.
+
 ### Multiple Cameras Connected
 
-If you have multiple cameras, specify the correct one in code or check which index works.
+If you have multiple cameras, you can specify which one to use by:
+
+1. Finding which index is yours with the test script above
+2. Modifying the camera_opencv.py file's `camera_index` parameter
+3. Or adding a config option (if implementing this feature)
+
+### Camera Opens But Can't Capture
+
+**Symptoms:**
+
+```
+✓ Camera 0: Opens but can't read frames
+```
+
+**Possible causes:**
+- Camera is being accessed by another application
+- Camera driver issue
+- USB bandwidth problem (if using multiple USB devices)
+
+**Solutions:**
+```bash
+# Close all apps using camera (Zoom, Teams, browser, etc.)
+
+# Restart the camera service
+sudo systemctl restart v4l2loopback  # if using virtual cameras
+
+# Try on a different USB port
+
+# Check for USB issues
+dmesg | tail -20  # Look for USB errors
+```
+
+
 
 ---
 

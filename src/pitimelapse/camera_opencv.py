@@ -11,6 +11,7 @@ fallback camera option that works on any computer with a webcam.
 import logging
 from typing import Optional, Tuple
 import numpy as np
+import os
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -77,39 +78,56 @@ class OpenCVCamera:
             return False
         
         try:
-            # Try to open the camera
-            # On Linux (like Raspberry Pi), we use V4L2 backend
-            self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_V4L2)
+            # Suppress OpenCV's verbose warnings by redirecting stderr at OS level
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            old_stderr_fd = os.dup(2)
+            os.dup2(devnull, 2)
+            os.close(devnull)
             
-            if not self.cap.isOpened():
-                # Fallback: try without specifying backend
-                self.cap = cv2.VideoCapture(self.camera_index)
-            
-            if not self.cap.isOpened():
-                logger.error(f"Could not open camera at index {self.camera_index}")
-                return False
-            
-            # Set the resolution
-            # Note: The camera might not support the exact resolution requested
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-            
-            # Read back the actual resolution (might be different from requested)
-            actual_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            actual_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            self.resolution = (actual_width, actual_height)
-            
-            logger.info(
-                f"Camera opened successfully. Resolution: {actual_width}x{actual_height}"
-            )
-            
-            # Warm up the camera by capturing a few frames
-            # Some cameras need this to adjust brightness
-            for _ in range(3):
-                self.cap.read()
-            
-            self._is_open = True
-            return True
+            try:
+                # Try to open the camera
+                # On Linux (like Raspberry Pi), we use V4L2 backend
+                self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_V4L2)
+                
+                if not self.cap.isOpened():
+                    # Fallback: try without specifying backend
+                    self.cap = cv2.VideoCapture(self.camera_index)
+                
+                if not self.cap.isOpened():
+                    # Camera not available - provide helpful error message
+                    logger.warning(
+                        f"No camera device found at index {self.camera_index}. "
+                        f"Check that your camera is connected and not in use by another application. "
+                        f"On Linux, you can check for cameras with: ls /dev/video*"
+                    )
+                    return False
+                
+                # Set the resolution
+                # Note: The camera might not support the exact resolution requested
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                
+                # Read back the actual resolution (might be different from requested)
+                actual_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                actual_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                self.resolution = (actual_width, actual_height)
+                
+                logger.info(
+                    f"Camera opened successfully. Resolution: {actual_width}x{actual_height}"
+                )
+                
+                # Warm up the camera by capturing a few frames
+                # Some cameras need this to adjust brightness
+                for _ in range(3):
+                    self.cap.read()
+                
+                self._is_open = True
+                return True
+                
+            finally:
+                # Restore stderr
+                os.dup2(old_stderr_fd, 2)
+                os.close(old_stderr_fd)
             
         except Exception as e:
             logger.error(f"Error opening camera: {e}")

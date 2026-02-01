@@ -76,7 +76,25 @@ Go to `http://localhost:8000` and start your first time-lapse!
 
 ---
 
-## 📖 Where to Go Next
+## 📚 Simple Learning Scripts
+
+**New to Python or time-lapse?** Start with our standalone learning scripts — no web server, no complexity, just pure Python fundamentals:
+
+```bash
+python simple.py              # Minimal script (Ctrl+C to stop)
+python simple_with_preview.py # With live preview window (ESC to stop)
+```
+
+| Script | Best For |
+|--------|----------|
+| `simple.py` | Beginners - minimal code, easy to understand |
+| `simple_with_preview.py` | Visual learners - see the camera feed live |
+
+📖 See [Simple Script Guide](docs/10_simple_script_guide.md) for a complete code walkthrough.
+
+---
+
+## �📖 Where to Go Next
 
 Choose based on what you need:
 
@@ -91,6 +109,7 @@ Choose based on what you need:
 | 🌐 **Learn web/Flask** | [Web Basics](docs/03_web_basics_flask.md) |
 | 📷 **Learn about cameras** | [Hardware & Camera](docs/04_hardware_camera_basics.md) |
 | 🚀 **Extend the project** | [Extensions & Challenges](docs/05_extensions_challenges.md) |
+| 📚 **Learn with simple script** | [Simple Script Guide](docs/10_simple_script_guide.md) |
 
 ---
 

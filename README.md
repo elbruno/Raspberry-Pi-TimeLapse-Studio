@@ -2,7 +2,7 @@
 
 A beginner-friendly time-lapse application that works on **Windows**, **macOS**, **Linux**, and **Raspberry Pi**! 📸
 
-Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save them with timestamps and control everything through a simple web interface.
+Capture photos using USB webcams (recommended default), built-in laptop cameras, or Raspberry Pi cameras. Save them with timestamps and control everything through a simple web interface.
 
 **Perfect for:**
 
@@ -15,7 +15,7 @@ Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save 
 ## ✨ Features
 
 - 📸 **Capture photos** on a configurable schedule
-- 📷 **Works with** Pi Camera, USB webcam, or laptop camera
+- 📷 **Works with** USB webcams (recommended), built-in cameras, or Pi Camera Module
 - 💻 **Cross-platform:** Windows, macOS, Linux, Raspberry Pi
 - 🌐 **Web interface** - control from your phone or computer
 - ⏰ **Timestamp overlay** on images
@@ -99,7 +99,7 @@ Choose based on what you need:
 Edit `config.yaml`:
 
 ```yaml
-camera_mode: "opencv"      # Use "picamera2" for Pi Camera
+camera_mode: "opencv"      # Recommended default (USB/built-in cameras)
 interval_seconds: 10       # Seconds between photos
 web_host: "127.0.0.1"      # Use "0.0.0.0" for network access
 web_port: 8000

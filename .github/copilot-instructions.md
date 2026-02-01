@@ -2,13 +2,14 @@
 
 ## 🎬 Project Overview
 
-**PiTimeLapse Lab** is a cross-platform Flask web application for capturing time-lapse photos on Raspberry Pi, laptops, or desktops. It uses threading for background capture and supports both official Pi cameras (picamera2) and USB webcams (OpenCV).
+**PiTimeLapse Lab** is a cross-platform Flask web application for capturing time-lapse photos using USB/built-in cameras (OpenCV) or Raspberry Pi cameras (picamera2). The default and recommended mode is **OpenCV** for maximum cross-platform compatibility.
 
 ### Key Goals
 - Beginner-friendly (extensive inline documentation)
-- Cross-platform support (Windows/macOS/Linux/Raspberry Pi)
+- **OpenCV as primary mode** (works on Windows/macOS/Linux/Raspberry Pi)
 - Graceful handling of optional hardware/libraries
 - Web-based control with status reporting
+- Pi Camera support for advanced Raspberry Pi users
 
 ---
 

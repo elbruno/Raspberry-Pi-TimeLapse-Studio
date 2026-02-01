@@ -7,8 +7,8 @@
 # ============================================================================
 
 # Which camera system to use:
-#   - "picamera2" : Use the official Raspberry Pi Camera Module (recommended for Pi)
-#   - "opencv"    : Use any USB webcam with OpenCV (works on any computer)
+#   - "opencv"    : Use any USB webcam with OpenCV (RECOMMENDED - works on all platforms)
+#   - "picamera2" : Use the official Raspberry Pi Camera Module (Raspberry Pi only, for advanced users)
 camera_mode: "opencv"
 
 # Image resolution (width x height in pixels)

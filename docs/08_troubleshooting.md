@@ -304,10 +304,10 @@ python3 -c "import cv2; cap = cv2.VideoCapture(0); print('Camera:', cap.isOpened
 **Solution:** Check `camera_mode` in config.yaml:
 
 ```yaml
-# For USB Webcam:
+# Default (recommended):
 camera_mode: "opencv"
 
-# For Pi Camera Module:
+# Only if using Pi Camera Module:
 camera_mode: "picamera2"
 ```
 

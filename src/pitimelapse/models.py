@@ -117,7 +117,7 @@ class Status:
         total_photos: Total photos in current session
         total_errors: Number of errors in current session
         last_error: Most recent error message (if any)
-        camera_mode: Which camera system is being used ("picamera2" or "opencv")
+        camera_mode: Which camera system is in use (\"opencv\" by default, or \"picamera2\")
         camera_available: Whether the camera is working
     """
     is_running: bool = False

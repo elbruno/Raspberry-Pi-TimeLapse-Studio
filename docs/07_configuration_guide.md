@@ -40,15 +40,17 @@ Selects which camera driver to use.
 
 **When to use each:**
 
-- **`opencv`** - Use for:
+- **`opencv`** (RECOMMENDED default) - Use for:
   - USB webcams on any platform
-  - Built-in laptop cameras (Windows/macOS)
-  - Testing on your desktop before deploying to Pi
+  - Built-in laptop cameras (Windows/macOS/Linux)
+  - Built-in cameras on Raspberry Pi
+  - Cross-platform compatibility and easy setup
+  - Works with most camera hardware
 
-- **`picamera2`** - Use for:
-  - Raspberry Pi Camera Module (any version)
-  - Best performance and quality on Raspberry Pi
-  - Requires libcamera to be installed
+- **`picamera2`** (Advanced, Raspberry Pi only) - Use for:
+  - Raspberry Pi Camera Module (CSI/ribbon cable camera)
+  - Maximum performance on official Pi cameras
+  - Requires picamera2 library to be installed
 
 ### `resolution_width` / `resolution_height`
 

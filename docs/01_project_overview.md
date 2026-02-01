@@ -7,6 +7,7 @@ Welcome to **PiTimeLapse Lab**! This document explains what this project is abou
 A **time-lapse** is a photography technique where you take many photos over a long period of time (hours, days, or even weeks), then play them back quickly like a video.
 
 **Examples of cool time-lapses:**
+
 - 🌅 A sunset over a few hours
 - 🌸 A flower blooming over several days
 - 🏗️ A building being constructed over months
@@ -113,6 +114,7 @@ PiTimeLapse-Lab/
 A **session** is one time-lapse recording. When you press "Start", a new session begins. When you press "Stop", it ends.
 
 Each session has:
+
 - A unique ID (like `session_20240115_143022`)
 - Its own folder for images
 - A JSON file with information about the session
@@ -151,6 +153,15 @@ Building and using this project teaches you:
 ## Next Steps
 
 Ready to learn more? Check out these documents:
+
+### Getting Started
+
+- [06 - Installation Guide](06_installation_guide.md) - Platform-specific setup (Windows, macOS, Linux, Pi)
+- [07 - Configuration Guide](07_configuration_guide.md) - All settings explained
+- [08 - Troubleshooting](08_troubleshooting.md) - Fix common problems
+- [09 - CLI & API Reference](09_cli_api_reference.md) - Commands and endpoints
+
+### Learning
 
 - [02 - Python Basics Used](02_python_basics_used.md) - Learn the Python concepts we use
 - [03 - Web Basics with Flask](03_web_basics_flask.md) - Understand how the web interface works

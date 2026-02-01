@@ -24,7 +24,15 @@ Capture photos using USB webcams (recommended default), built-in laptop cameras,
 
 ---
 
-## 🚀 Quick Start
+## � Screenshots
+
+| Dashboard | Gallery | Settings |
+|-----------|---------|----------|
+| ![Dashboard](images/01_dashboard.jpeg) | ![Gallery](images/02_gallery.jpeg) | ![Settings](images/03_settings.jpeg) |
+
+---
+
+## �🚀 Quick Start
 
 ### 1. Clone & Install
 

@@ -284,8 +284,41 @@ But at its core, it uses the same OpenCV calls you learned here!
 - Check USB cable
 
 ### Preview window doesn't appear
-- Use `simple.py` for headless systems
-- Install `opencv-python` (not `opencv-python-headless`)
+
+The preview script requires a display and the full OpenCV package with GUI support.
+
+**Install OpenCV with GUI support:**
+
+```bash
+# Replace the headless version with full OpenCV
+pip install opencv-python --break-system-packages
+```
+
+**Check if a display is available:**
+
+```bash
+echo $DISPLAY
+# If empty, you're on a headless system (SSH without X forwarding)
+```
+
+**Options for headless systems:**
+
+1. **Use the headless script** (recommended):
+   ```bash
+   python simple.py   # No preview, works everywhere
+   ```
+
+2. **Connect via SSH with X11 forwarding:**
+   ```bash
+   # From your local machine:
+   ssh -X pi@your-pi-hostname
+   # Then run the preview script
+   python simple_with_preview.py
+   ```
+
+3. **Run directly on the Pi's desktop** (if connected to a monitor):
+   - Open a terminal on the Pi's desktop
+   - Run `python simple_with_preview.py`
 
 ### ESC key doesn't work
 - Click on the preview window first (it needs focus)

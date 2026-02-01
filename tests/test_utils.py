@@ -125,9 +125,9 @@ class TestFormatDuration:
     
     def test_seconds_only(self):
         """Test duration less than a minute."""
-        assert format_duration(30) == "0m 30s"
+        assert format_duration(30) == "30s"
         assert format_duration(0) == "0s"
-        assert format_duration(59) == "0m 59s"
+        assert format_duration(59) == "59s"
     
     def test_minutes_and_seconds(self):
         """Test duration with minutes."""

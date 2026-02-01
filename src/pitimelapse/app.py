@@ -160,7 +160,7 @@ def save_settings():
     
     Validates the new settings and saves them to config.yaml.
     """
-    global config
+    global config, storage, scheduler
     
     if scheduler and scheduler.get_status().is_running:
         flash("Cannot change settings while time-lapse is running. Stop it first.", "error")
@@ -197,7 +197,6 @@ def save_settings():
             config = new_config
             
             # Re-initialize storage if output_dir changed
-            global storage, scheduler
             storage = StorageManager(config.output_dir)
             scheduler = CaptureScheduler(config, storage)
             

@@ -293,6 +293,31 @@ def download_session(session_id: str):
     )
 
 
+@app.route("/delete/<session_id>", methods=["POST"])
+def delete_session_route(session_id: str):
+    """
+    Delete a session and all its images.
+    
+    Requires POST request to prevent accidental deletion.
+    """
+    if not storage:
+        return jsonify({"success": False, "message": "Storage not available"}), 500
+    
+    # Check if this session is currently active
+    if scheduler and scheduler.get_status().is_running:
+        current_session = scheduler.get_current_session()
+        if current_session and current_session.id == session_id:
+            return jsonify({"success": False, "message": "Cannot delete active session. Stop the time-lapse first."}), 400
+    
+    # Delete the session
+    success = storage.delete_session(session_id)
+    
+    if success:
+        return jsonify({"success": True, "message": f"Session {session_id} deleted successfully"})
+    else:
+        return jsonify({"success": False, "message": "Failed to delete session"}), 500
+
+
 # =============================================================================
 # API ROUTES - These return JSON data
 # =============================================================================

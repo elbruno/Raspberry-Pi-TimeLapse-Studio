@@ -22,6 +22,9 @@
         <a href="{{ url_for('download_session', session_id=current_session.id) }}" class="btn btn-secondary">
             📥 Download ZIP
         </a>
+        <button type="button" class="btn btn-danger" onclick="deleteSession('{{ current_session.id }}')">
+            🗑️ Delete Session
+        </button>
         {% endif %}
     </div>
     {% endif %}
@@ -72,6 +75,27 @@
 <script>
     function changeSession(sessionId) {
         window.location.href = '{{ url_for("gallery") }}?session=' + sessionId;
+    }
+
+    function deleteSession(sessionId) {
+        if (!confirm('Are you sure you want to delete this session?\n\nThis will permanently delete all ' +
+            'photos in the session and cannot be undone.')) {
+            return;
+        }
+
+        fetch('/delete/' + sessionId, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.href = '{{ url_for("gallery") }}';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error deleting session: ' + error);
+            });
     }
 </script>
 {% endblock %}

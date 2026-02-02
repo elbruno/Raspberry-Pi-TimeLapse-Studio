@@ -2,6 +2,8 @@
 
 This document explains the Python programming concepts we use in PiTimeLapse Lab. If you're new to Python, this will help you understand the code!
 
+> 💡 **Learning Tip:** Don't try to memorize everything at once. Read a section, then look at the actual code in `simple.py` to see it in action!
+
 ## Variables
 
 Variables are like labeled boxes that store information.
@@ -21,6 +23,14 @@ camera_mode = "opencv"
 interval_seconds = 10
 overlay_timestamp = True
 ```
+
+**🎓 Why This Matters:**
+Variables let your program "remember" things. In our time-lapse app, we need to remember settings (like how often to take photos) and keep track of counts (like how many photos we've taken).
+
+**💡 Try This:**
+Open `simple.py` and change `INTERVAL_SECONDS = 10` to `INTERVAL_SECONDS = 5`. Run the script - photos will be taken twice as fast!
+
+---
 
 ## Functions
 
@@ -55,6 +65,14 @@ Key parts:
 - Parameters go in parentheses (e.g., `seconds`)
 - The docstring (in triple quotes) explains what the function does
 - `return` sends back a result
+
+**🎓 Why This Matters:**
+Functions help you avoid repeating code. Instead of writing the same 10 lines every time you need to format a duration, you write it once as a function and call it whenever needed.
+
+**💡 Try This:**
+In `simple.py`, find the `main()` function. All the time-lapse logic is inside it. What would happen if you moved some code into a separate `capture_photo()` function?
+
+---
 
 ## Classes and Objects
 
@@ -97,6 +115,14 @@ class StorageManager:
         # ... code to create folder ...
 ```
 
+**🎓 Why This Matters:**
+Classes help organize code into logical groups. The `StorageManager` class knows everything about saving and loading files. The `CaptureScheduler` class knows everything about taking photos. This makes the code easier to understand and maintain.
+
+**💡 Try This:**
+Look at `src/pitimelapse/models.py` - the `Session` class stores information about one time-lapse recording. What data does it keep track of?
+
+---
+
 ## Dataclasses
 
 Dataclasses are a simpler way to create classes that mainly store data.
@@ -127,6 +153,11 @@ class Session:
     interval_seconds: int = 10
     total_photos: int = 0
 ```
+
+**🎓 Why This Matters:**
+Dataclasses let you create "data containers" with less code. Instead of writing `__init__` and other methods, Python generates them for you. The `@dataclass` decorator (the `@` line above the class) is like telling Python "please add the standard methods for me."
+
+---
 
 ## Lists and Dictionaries
 
@@ -176,6 +207,14 @@ def to_dict(self):
     }
 ```
 
+**🎓 Why This Matters:**
+Lists are used everywhere: storing a list of captured photos, a list of errors, a list of sessions. Dictionaries are perfect for configuration and API responses (like JSON data).
+
+**💡 Try This:**
+Look at `config.yaml` - it's basically a dictionary! Each setting name (like `camera_mode`) is a key, and each value (like `opencv`) is the associated data.
+
+---
+
 ## Loops
 
 Loops repeat code multiple times.
@@ -213,6 +252,14 @@ while not self._stop_event.is_set():
         time.sleep(0.5)
 ```
 
+**🎓 Why This Matters:**
+The `while True` loop in `simple.py` is the heart of time-lapse! It keeps taking photos until you stop it. Understanding loops is essential for any program that repeats actions.
+
+**💡 Try This:**
+In `simple.py`, the camera warm-up uses `for _ in range(5):`. What happens if you change 5 to 10? The camera gets more time to adjust!
+
+---
+
 ## Conditionals (If/Else)
 
 Make decisions based on conditions.
@@ -242,6 +289,22 @@ def validate(self):
     
     return errors
 ```
+
+**🎓 Why This Matters:**
+Conditionals let your program make decisions. In `simple.py`, we use `if not cap.isOpened():` to check if the camera failed to open - and show a helpful error message if it did.
+
+**💡 Try This:**
+What if you wanted to take double-resolution photos during the day? You could add:
+```python
+from datetime import datetime
+hour = datetime.now().hour
+if 6 <= hour <= 18:
+    WIDTH = 1920  # Day: high resolution
+else:
+    WIDTH = 640   # Night: low resolution
+```
+
+---
 
 ## Exception Handling (Try/Except)
 
@@ -275,6 +338,14 @@ def capture(self):
         return None
 ```
 
+**🎓 Why This Matters:**
+Things go wrong: cameras disconnect, files fail to save, networks drop. Exception handling lets your program recover gracefully instead of crashing with an ugly error. In `simple.py`, we catch `KeyboardInterrupt` so pressing Ctrl+C prints a nice goodbye message instead of a stack trace.
+
+**💡 Try This:**
+In `simple.py`, the `try/except KeyboardInterrupt` block catches Ctrl+C. What happens if you remove the try/except and press Ctrl+C? (Hint: you'll see Python's default error message!)
+
+---
+
 ## Modules and Imports
 
 Split code into separate files and reuse it.
@@ -299,6 +370,14 @@ from .config import AppConfig, load_config, save_config
 from .storage import StorageManager
 from .capture import CaptureScheduler
 ```
+
+**🎓 Why This Matters:**
+Big programs are split into multiple files (modules). This keeps each file focused on one thing. The main app imports what it needs from other modules.
+
+**💡 Try This:**
+Look at the top of `simple.py` - each `import` brings in code from a different module. What does `import time` give us? The ability to use `time.sleep()`!
+
+---
 
 ## Type Hints
 
@@ -330,6 +409,11 @@ def get_timestamp_string(
 The `-> str` means the function returns a string.
 `Optional[datetime]` means it can be a datetime OR None.
 
+**🎓 Why This Matters:**
+Type hints make code easier to understand. When you see `name: str`, you immediately know that `name` should be text, not a number. Python doesn't enforce these, but they help you and other programmers avoid mistakes.
+
+---
+
 ## String Formatting (f-strings)
 
 Create strings that include variable values.
@@ -346,6 +430,14 @@ print(message)  # Output: My name is Alice and I am 15 years old.
 print(f"Next year I'll be {age + 1}")
 ```
 
+**🎓 Why This Matters:**
+F-strings are used everywhere in our code to create messages. In `simple.py`, we use `f"photo_{timestamp}.jpg"` to create unique filenames.
+
+**💡 Try This:**
+Change the filename pattern in `simple.py`. Instead of `f"photo_{timestamp}.jpg"`, try `f"timelapse_{photo_count:04d}.jpg"` - this creates filenames like `timelapse_0001.jpg`, `timelapse_0002.jpg`, etc.
+
+---
+
 ## Practice Exercises
 
 Try these to test your understanding:
@@ -359,6 +451,25 @@ Try these to test your understanding:
 4. **Loops**: In `capture.py`, find the main capture loop. What makes it stop?
 
 5. **Error Handling**: In `camera_opencv.py`, what happens if the camera fails to capture a photo?
+
+---
+
+## 🎯 Quick Reference Card
+
+| Concept | Example | When to Use |
+|---------|---------|-------------|
+| Variable | `x = 10` | Store data for later |
+| Function | `def greet(): return "Hi"` | Reusable code blocks |
+| Class | `class Camera:` | Group related data and functions |
+| List | `photos = ["a.jpg", "b.jpg"]` | Ordered collection |
+| Dictionary | `{"width": 640}` | Key-value pairs |
+| For loop | `for i in range(5):` | Repeat a known number of times |
+| While loop | `while running:` | Repeat until condition is false |
+| If/else | `if x > 0:` | Make decisions |
+| Try/except | `try: ... except:` | Handle errors gracefully |
+| Import | `import cv2` | Use code from other files |
+
+---
 
 ## Resources for Learning More
 

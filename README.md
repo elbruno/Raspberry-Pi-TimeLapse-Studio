@@ -12,6 +12,37 @@ Capture photos using USB webcams (recommended default), built-in laptop cameras,
 - 🏗️ Documenting projects
 - 📚 Learning Python and Raspberry Pi!
 
+---
+
+## 🎓 New to Programming? Start Here!
+
+This project is designed for **beginners**! If you're new to programming or Raspberry Pi:
+
+1. **Start simple**: Try `simple.py` first - it's just 80 lines of code!
+2. **Learn the concepts**: Check out [Python Basics](docs/02_python_basics_used.md)
+3. **Don't worry about mistakes**: They're the best way to learn!
+
+<details>
+<summary><strong>📖 Beginner's Glossary - Click to expand!</strong></summary>
+
+| Term | What it means |
+|------|--------------|
+| **Repository (repo)** | A folder containing all the project files, tracked by Git |
+| **Clone** | Download a copy of a repository to your computer |
+| **Terminal/Command Line** | A text interface to type commands (like PowerShell or Bash) |
+| **Virtual Environment (venv)** | A private space for this project's Python packages, so they don't conflict with other projects |
+| **pip** | Python's package installer - downloads and installs Python libraries |
+| **requirements.txt** | A list of Python packages this project needs |
+| **Port** | A number that identifies where a program "listens" for connections (like 8000) |
+| **localhost** | Your own computer - used to access web apps running on your machine |
+| **Camera index** | A number identifying which camera to use (0 = first camera, 1 = second, etc.) |
+| **OpenCV** | A popular library for working with cameras and images |
+| **Flask** | A simple framework for building web applications in Python |
+
+</details>
+
+---
+
 ## ✨ Features
 
 - 📸 **Capture photos** on a configurable schedule
@@ -32,29 +63,57 @@ Capture photos using USB webcams (recommended default), built-in laptop cameras,
 
 ---
 
-## �🚀 Quick Start
+## 🚀 Quick Start
+
+### 💡 What You'll Be Doing
+
+These commands will:
+1. **Clone**: Download a copy of this project to your computer
+2. **Create a virtual environment**: Set up an isolated Python workspace
+3. **Install dependencies**: Download the Python packages this project needs
+4. **Run the app**: Start the web interface!
 
 ### 1. Clone & Install
 
 **Windows:**
 
 ```powershell
+# Download the project (creates a new folder)
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+
+# Go into that folder
 cd Raspberry-Pi-TimeLapse-Studio
+
+# Create a virtual environment (a private Python workspace)
 python -m venv venv
+
+# Activate it (you'll see "(venv)" in your prompt)
 venv\Scripts\activate
+
+# Install the required Python packages
 pip install -r requirements.txt
 ```
 
 **macOS / Linux / Raspberry Pi:**
 
 ```bash
+# Download the project (creates a new folder)
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+
+# Go into that folder
 cd Raspberry-Pi-TimeLapse-Studio
+
+# Create a virtual environment
 python3 -m venv venv
+
+# Activate it (you'll see "(venv)" in your prompt)
 source venv/bin/activate
+
+# Install the required Python packages
 pip install -r requirements.txt
 ```
+
+> 💡 **What happens if you skip the virtual environment?** The app will still work, but you might get conflicts with other Python projects on your computer. Virtual environments keep things organized!
 
 ### 2. Validate Your Setup
 
@@ -83,9 +142,11 @@ python main.py
 
 Go to `http://localhost:8000` and start your first time-lapse!
 
+> 💡 **What does `localhost:8000` mean?** "localhost" is your own computer, and "8000" is the port number where the app is listening. It's like an address and apartment number!
+
 ---
 
-## � Returning Users
+## 🔄 Returning Users
 
 Already set up? Just activate your environment and run:
 
@@ -109,12 +170,13 @@ python main.py
 
 ---
 
-## �📖 Where to Go Next
+## 📖 Where to Go Next
 
 Choose based on what you need:
 
 | I want to... | Go to... |
 |--------------|----------|
+| 🎯 **Start learning (beginner)** | [Simple Script Guide](docs/10_simple_script_guide.md) ⬅️ Start here! |
 | 🔧 **Set up from scratch** | [Installation Guide](docs/06_installation_guide.md) |
 | ⚙️ **Configure settings** | [Configuration Guide](docs/07_configuration_guide.md) |
 | 🐛 **Fix a problem** | [Troubleshooting](docs/08_troubleshooting.md) |
@@ -124,7 +186,6 @@ Choose based on what you need:
 | 🌐 **Learn web/Flask** | [Web Basics](docs/03_web_basics_flask.md) |
 | 📷 **Learn about cameras** | [Hardware & Camera](docs/04_hardware_camera_basics.md) |
 | 🚀 **Extend the project** | [Extensions & Challenges](docs/05_extensions_challenges.md) |
-| 📚 **Learn with simple script** | [Simple Script Guide](docs/10_simple_script_guide.md) |
 
 ---
 
@@ -139,6 +200,8 @@ web_host: "127.0.0.1"      # Use "0.0.0.0" for network access
 web_port: 8000
 ```
 
+> 💡 **Try changing these!** Edit `interval_seconds` to 5 and your time-lapse will take photos faster. Edit `web_port` to 9000 if port 8000 is busy.
+
 📖 See [Configuration Guide](docs/07_configuration_guide.md) for all options.
 
 ---
@@ -149,10 +212,28 @@ web_port: 8000
 python main.py              # Start web server
 python main.py validate     # Check configuration
 python main.py sessions     # List all sessions
-python main.py --debug      # Debug mode
+python main.py --debug      # Debug mode (auto-reloads when you change code)
 ```
 
 📖 See [CLI & API Reference](docs/09_cli_api_reference.md) for full details.
+
+---
+
+## 🧪 Try the Simple Scripts First!
+
+Before diving into the full web app, try these minimal scripts to understand the basics:
+
+```bash
+# The simplest time-lapse script (headless, ~80 lines)
+python simple.py
+
+# Time-lapse with live preview window (~200 lines)
+python simple_with_preview.py
+```
+
+These scripts have **extensive comments** explaining every step. Perfect for learning!
+
+📖 See [Simple Script Guide](docs/10_simple_script_guide.md) for a detailed walkthrough.
 
 ---
 

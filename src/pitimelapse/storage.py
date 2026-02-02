@@ -294,20 +294,24 @@ class StorageManager:
             logger.error(f"Failed to delete session {session_id}: {e}")
             return False
     
-    def create_session_zip(self, session_id: str) -> Optional[str]:
+    def create_session_zip(self, session_id: str, session_folder: Optional[str] = None) -> Optional[str]:
         """
         Create a ZIP file of a session for download.
         
         Args:
             session_id: The ID of the session to zip
+            session_folder: Optional explicit path to session folder (for handling output_dir changes)
             
         Returns:
             Path to the ZIP file, or None if creation failed
         """
-        session_folder = self.base_dir / session_id
+        if session_folder:
+            folder = Path(session_folder)
+        else:
+            folder = self.base_dir / session_id
         
-        if not session_folder.exists():
-            logger.error(f"Session folder not found: {session_id}")
+        if not folder.exists():
+            logger.error(f"Session folder not found: {session_id} at {folder}")
             return None
         
         zip_path = self.base_dir / f"{session_id}.zip"
@@ -317,7 +321,7 @@ class StorageManager:
             shutil.make_archive(
                 str(self.base_dir / session_id),  # Base name (without .zip)
                 "zip",
-                session_folder,  # Folder to archive
+                folder,  # Folder to archive
             )
             
             logger.info(f"Created ZIP archive: {zip_path}")

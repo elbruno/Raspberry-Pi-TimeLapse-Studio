@@ -2,10 +2,34 @@
 
 Solutions for common issues on all platforms.
 
+## 🚀 Getting Started with Troubleshooting
+
+### Start Here: Run the Validation Command
+
+Before diving into specific issues, run the built-in validation tool:
+
+```bash
+python main.py validate
+```
+
+This command checks:
+- ✅ Configuration file validity
+- ✅ Required packages installation
+- ✅ Camera availability and accessibility  
+- ✅ Output directory permissions
+
+**It will tell you exactly what's wrong and how to fix it!**
+
+If `validate` passes, your setup is correct. If it shows errors, follow the specific fixes below.
+
+---
+
 ## Quick Diagnosis
 
 | Symptom | Likely Cause | Jump to |
 |---------|-------------|---------|
+| `python main.py validate` fails | Configuration, packages, or camera issue | [Use validate output](#getting-started-with-troubleshooting) |
+| "OpenCV not installed" | Missing opencv-python-headless | [OpenCV Not Installed](#no-module-named-cv2--opencv-cv2-is-not-installed) |
 | "Camera not found" | Camera not connected or wrong mode | [Camera Issues](#camera-issues) |
 | "Port already in use" | Another app using port 8000 | [Port Issues](#port-issues) |
 | "Permission denied" | Missing permissions | [Permission Issues](#permission-issues) |
@@ -280,10 +304,10 @@ python3 -c "import cv2; cap = cv2.VideoCapture(0); print('Camera:', cap.isOpened
 **Solution:** Check `camera_mode` in config.yaml:
 
 ```yaml
-# For USB Webcam:
+# Default (recommended):
 camera_mode: "opencv"
 
-# For Pi Camera Module:
+# Only if using Pi Camera Module:
 camera_mode: "picamera2"
 ```
 
@@ -311,37 +335,165 @@ journalctl -u pitimelapse -n 100
 
 ## Camera Issues
 
-### Camera Test Script
+### No Camera Device Found / Can't Open Camera
 
-Create a test script to diagnose camera issues:
+**Symptoms:**
+
+```
+[ WARN:0@3.760] global cap_v4l.cpp:914 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[video4linux2,v4l2 @ 0x...] Not a video capture device.
+OpenCV(4.13.0) ... VIDEOIO/FFMPEG: Camera index out of range ... 'device_list->nb_devices' is 0
+pitimelapse.camera_opencv - WARNING - No camera device found at index 0.
+```
+
+This error means OpenCV can't find any camera device connected to your system.
+
+**Solutions:**
+
+**Step 1: Check if any camera device is connected**
+
+```bash
+# List all video devices on the system
+ls /dev/video*
+
+# You should see at least one device like /dev/video0
+# If you see nothing, no camera is connected
+```
+
+**Step 2: On Raspberry Pi with Pi Camera Module**
+
+If you have a Pi Camera Module (ribbon cable), you should NOT use `camera_mode: opencv`. Instead:
+
+1. Check if camera is detected:
+   ```bash
+   libcamera-hello --list-cameras
+   ```
+
+2. Update `config.yaml`:
+   ```yaml
+   camera_mode: "picamera2"
+   ```
+
+**Step 3: On any system with a USB webcam**
+
+Make sure the webcam is:
+- Physically connected to a USB port
+- Not in use by another application (Zoom, Teams, web browser with camera access, etc.)
+- Plugged into a powered USB port (some external cameras need extra power)
+
+**Step 4: Test the camera independently**
+
+```bash
+# Activate your virtual environment
+source venv/bin/activate
+
+# Run the camera test script
+python -m pitimelapse.camera_opencv
+```
+
+Or create a test file:
 
 ```python
 # test_camera.py
 import cv2
+import os
 
-print("Testing cameras...")
+print("Checking for camera devices...")
+devices = []
+try:
+    devices = [f for f in os.listdir('/dev') if f.startswith('video')]
+    if devices:
+        print(f"Found devices: {devices}")
+    else:
+        print("❌ No /dev/video* devices found")
+        print("   - Is your USB camera connected?")
+        print("   - Try plugging it into a different USB port")
+except:
+    pass
+
+print("\nTesting OpenCV camera detection...")
 for i in range(5):
     cap = cv2.VideoCapture(i)
     if cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            print(f"Camera {i}: Working! Resolution: {frame.shape[1]}x{frame.shape[0]}")
+            print(f"✓ Camera {i}: Working! Resolution: {frame.shape[1]}x{frame.shape[0]}")
         else:
-            print(f"Camera {i}: Opens but can't read")
+            print(f"⚠ Camera {i}: Opens but can't read frames")
         cap.release()
     else:
-        print(f"Camera {i}: Not available")
+        if i == 0:
+            print(f"❌ Camera {i}: Not available")
+
+print("\n" + "="*50)
+if devices:
+    print("✓ Devices exist - try restarting the app")
+else:
+    print("✗ No camera devices detected")
+    print("  Connect a USB camera and try again")
 ```
 
-Run it:
+Save it and run:
 
 ```bash
 python test_camera.py
 ```
 
+**Step 5: On Linux, check permissions**
+
+```bash
+# Your user needs permission to access video devices
+sudo usermod -aG video $USER
+
+# Log out and back in (or reboot) for changes to take effect
+```
+
+**Step 6: Try different camera indices**
+
+Some systems use `/dev/video1` or higher instead of `/dev/video0`.
+Set the camera index in your configuration or the web Settings page:
+
+```yaml
+camera_mode: "opencv"
+camera_index: 1
+```
+
+You can also change this in the web UI under Settings → Camera Settings.
+
 ### Multiple Cameras Connected
 
-If you have multiple cameras, specify the correct one in code or check which index works.
+If you have multiple cameras, you can specify which one to use by:
+
+1. Finding which index is yours with the test script above
+2. Setting `camera_index` in `config.yaml` or the web Settings page
+
+### Camera Opens But Can't Capture
+
+**Symptoms:**
+
+```
+✓ Camera 0: Opens but can't read frames
+```
+
+**Possible causes:**
+- Camera is being accessed by another application
+- Camera driver issue
+- USB bandwidth problem (if using multiple USB devices)
+
+**Solutions:**
+```bash
+# Close all apps using camera (Zoom, Teams, browser, etc.)
+
+# Restart the camera service
+sudo systemctl restart v4l2loopback  # if using virtual cameras
+
+# Try on a different USB port
+
+# Check for USB issues
+dmesg | tail -20  # Look for USB errors
+```
+
+
 
 ---
 
@@ -418,13 +570,36 @@ ModuleNotFoundError: No module named 'flask'
    pip install -r requirements.txt
    ```
 
-### "No module named 'cv2'"
+### "No module named 'cv2'" / "OpenCV (cv2) is not installed"
+
+**Symptoms:**
+
+```
+WARNING - OpenCV (cv2) is not installed. Install it with: pip install opencv-python-headless
+ERROR - Camera library not available for mode: opencv
+```
 
 **Solution:**
 
+OpenCV is required when using USB cameras (`camera_mode: "opencv"`). Install it with:
+
 ```bash
-pip install opencv-python
+# Activate your virtual environment first
+source venv/bin/activate
+
+# Install OpenCV headless (no GUI dependencies)
+pip install opencv-python-headless
+
+# If you get PEP 668 errors about externally-managed environment:
+pip install --break-system-packages opencv-python-headless
 ```
+
+**Why headless?** The headless version is smaller and works better on Raspberry Pi and servers where you won't display GUI windows.
+
+**After installation:**
+
+- Verify it's installed: `python -c "import cv2; print(cv2.__version__)"`
+- Restart your application
 
 ### Virtual Environment Not Working
 
@@ -562,8 +737,8 @@ The application prints logs to the console. Look for error messages.
 ### Run Tests
 
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
+# Install dependencies (includes test tools)
+pip install -r requirements.txt
 
 # Run tests
 pytest -v

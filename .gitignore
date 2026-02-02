@@ -10,6 +10,9 @@ __pycache__/
 # Data directory - where captured images are stored
 data/
 
+# Simple script output folder
+simple_data/
+
 # Log files
 logs/
 *.log

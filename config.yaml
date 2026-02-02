@@ -1,93 +1,20 @@
 # PiTimeLapse Lab Configuration
 # Edit this file to change default settings.
-# You can also use environment variables (in .env) for some settings.
+# You can also use environment variables for some settings.
 
-# ============================================================================
-# CAMERA SETTINGS
-# ============================================================================
-
-# Which camera system to use:
-#   - "picamera2" : Use the official Raspberry Pi Camera Module (recommended for Pi)
-#   - "opencv"    : Use any USB webcam with OpenCV (works on any computer)
-camera_mode: "opencv"
-
-# Image resolution (width x height in pixels)
-# Common sizes:
-#   - 1920 x 1080 : Full HD (larger files)
-#   - 1280 x 720  : HD (recommended)
-#   - 640 x 480   : Low resolution (smaller files, faster)
-resolution_width: 1280
-resolution_height: 720
-
-# ============================================================================
-# CAPTURE SETTINGS
-# ============================================================================
-
-# How many seconds between each photo capture
-# Examples:
-#   - 5    : Fast capture (good for short events)
-#   - 10   : Default (good balance)
-#   - 60   : One photo per minute (good for slow changes like plants)
-#   - 300  : One photo every 5 minutes (good for construction projects)
+camera_mode: opencv
+camera_index: 0
+resolution_width: 640
+resolution_height: 480
 interval_seconds: 10
-
-# Wait this many seconds before the first capture starts
-# Set to 0 to start immediately
 start_delay_seconds: 0
-
-# Automatically stop after this many seconds
-# Set to 0 to run until manually stopped
-# Examples:
-#   - 3600   : Run for 1 hour
-#   - 86400  : Run for 24 hours
 duration_limit_seconds: 0
-
-# ============================================================================
-# OUTPUT SETTINGS
-# ============================================================================
-
-# Where to save captured images
-# Can be an absolute path (/home/pi/timelapse) or relative (./data)
-output_dir: "./data"
-
-# Image file format: "jpg" or "png"
-# JPG files are smaller, PNG files are higher quality
-image_format: "jpg"
-
-# Add a timestamp overlay to each image?
-# This burns the date/time into the image itself
+output_dir: ./data
+image_format: jpg
 overlay_timestamp: true
-
-# ============================================================================
-# WEB SERVER SETTINGS
-# ============================================================================
-
-# IP address to listen on
-# "0.0.0.0" means accept connections from any device on your network
-# "127.0.0.1" means only accept connections from localhost (this computer)
-web_host: "0.0.0.0"
-
-# Port number for the web interface
-# Access the app at: http://your-pi-ip:8000
+web_host: 0.0.0.0
 web_port: 8000
-
-# ============================================================================
-# ADVANCED SETTINGS
-# ============================================================================
-
-# Timezone for timestamps
-# Set to "local" to use your system's timezone
-# Or use a timezone name like "UTC", "America/New_York", "Europe/London"
-timezone: "local"
-
-# Auto-delete sessions older than this many days
-# Set to 0 to never automatically delete old sessions
+timezone: local
 retention_days: 0
-
-# Stop capturing if storage exceeds this many megabytes
-# Set to 0 for no limit (be careful - you could run out of disk space!)
 max_storage_mb: 0
-
-# Logging level: DEBUG, INFO, WARNING, ERROR
-# DEBUG shows the most detail, ERROR shows only errors
-log_level: "INFO"
+log_level: INFO

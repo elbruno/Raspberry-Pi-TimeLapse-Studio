@@ -5,14 +5,14 @@
 {% block content %}
 <div class="dashboard">
     <h1>📸 Dashboard</h1>
-    
+
     <!-- Status Card -->
     <div class="card status-card {% if status.is_running %}status-running{% else %}status-stopped{% endif %}">
         <div class="status-header">
             <span class="status-indicator {% if status.is_running %}running{% else %}stopped{% endif %}"></span>
             <h2>{% if status.is_running %}Time-lapse Running{% else %}Ready to Start{% endif %}</h2>
         </div>
-        
+
         {% if status.is_running and session %}
         <div class="status-details">
             <div class="stat">
@@ -54,8 +54,20 @@
             </div>
             {% endif %}
         </div>
+
+        <!-- Live Preview -->
+        <div class="preview-section">
+            <h3>📷 Live Preview</h3>
+            <div class="preview-container">
+                <img id="preview-frame" src="" alt="Latest captured frame"
+                    style="display: none; max-width: 100%; border-radius: 8px;">
+                <div id="preview-placeholder" class="preview-placeholder">
+                    <p>⏳ Waiting for first capture...</p>
+                </div>
+            </div>
+        </div>
         {% endif %}
-        
+
         <!-- Control Buttons -->
         <div class="control-buttons">
             {% if status.is_running %}
@@ -68,10 +80,10 @@
             </button>
             {% endif %}
         </div>
-        
+
         <div id="message" class="message"></div>
     </div>
-    
+
     <!-- Quick Info Cards -->
     <div class="info-cards">
         <div class="card info-card">
@@ -85,26 +97,26 @@
                 {% endif %}
             </p>
         </div>
-        
+
         <div class="card info-card">
             <h3>⏱️ Interval</h3>
             <p class="info-value">{{ config.interval_seconds }}s</p>
             <p class="info-desc">Between captures</p>
         </div>
-        
+
         <div class="card info-card">
             <h3>📁 Output</h3>
             <p class="info-value">{{ config.output_dir }}</p>
             <p class="info-desc">Storage folder</p>
         </div>
-        
+
         <div class="card info-card">
             <h3>🖼️ Resolution</h3>
             <p class="info-value">{{ config.resolution_width }}×{{ config.resolution_height }}</p>
             <p class="info-desc">{{ config.image_format | upper }}</p>
         </div>
     </div>
-    
+
     {% if status.last_error %}
     <div class="card error-card">
         <h3>⚠️ Last Error</h3>
@@ -116,85 +128,113 @@
 
 {% block scripts %}
 <script>
-// Start the time-lapse
-function startTimelapse() {
-    const btn = document.getElementById('start-btn');
-    btn.disabled = true;
-    btn.textContent = 'Starting...';
-    
-    fetch('/api/start', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            showMessage(data.message, data.success ? 'success' : 'error');
-            if (data.success) {
-                // Reload page to update status
-                setTimeout(() => location.reload(), 1000);
-            } else {
+    // Start the time-lapse
+    function startTimelapse() {
+        const btn = document.getElementById('start-btn');
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+
+        fetch('/api/start', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, data.success ? 'success' : 'error');
+                if (data.success) {
+                    // Reload page to update status
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '▶️ Start Time-lapse';
+                }
+            })
+            .catch(error => {
+                showMessage('Error: ' + error, 'error');
                 btn.disabled = false;
                 btn.textContent = '▶️ Start Time-lapse';
-            }
-        })
-        .catch(error => {
-            showMessage('Error: ' + error, 'error');
-            btn.disabled = false;
-            btn.textContent = '▶️ Start Time-lapse';
-        });
-}
+            });
+    }
 
-// Stop the time-lapse
-function stopTimelapse() {
-    const btn = document.getElementById('stop-btn');
-    btn.disabled = true;
-    btn.textContent = 'Stopping...';
-    
-    fetch('/api/stop', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            showMessage(data.message, data.success ? 'success' : 'error');
-            if (data.success) {
-                setTimeout(() => location.reload(), 1000);
-            } else {
+    // Stop the time-lapse
+    function stopTimelapse() {
+        const btn = document.getElementById('stop-btn');
+        btn.disabled = true;
+        btn.textContent = 'Stopping...';
+
+        fetch('/api/stop', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, data.success ? 'success' : 'error');
+                if (data.success) {
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '⏹️ Stop Time-lapse';
+                }
+            })
+            .catch(error => {
+                showMessage('Error: ' + error, 'error');
                 btn.disabled = false;
                 btn.textContent = '⏹️ Stop Time-lapse';
-            }
-        })
-        .catch(error => {
-            showMessage('Error: ' + error, 'error');
-            btn.disabled = false;
-            btn.textContent = '⏹️ Stop Time-lapse';
-        });
-}
+            });
+    }
 
-// Show a message
-function showMessage(text, type) {
-    const msgDiv = document.getElementById('message');
-    msgDiv.textContent = text;
-    msgDiv.className = 'message message-' + type;
-}
+    // Show a message
+    function showMessage(text, type) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = text;
+        msgDiv.className = 'message message-' + type;
+    }
 
-{% if status.is_running %}
-// Auto-refresh status every 5 seconds when running
-setInterval(() => {
-    fetch('/api/status')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('total-photos').textContent = data.total_photos;
-            if (data.last_capture_time) {
-                const time = new Date(data.last_capture_time);
-                document.getElementById('last-capture').textContent = 
-                    time.toLocaleTimeString();
-            }
-            if (data.next_capture_time) {
-                const time = new Date(data.next_capture_time);
-                document.getElementById('next-capture').textContent = 
-                    time.toLocaleTimeString();
-            }
-            // Reload if stopped
-            if (!data.is_running) {
-                location.reload();
-            }
-        });
-}, 5000);
-{% endif %}
+    {% if status.is_running %}
+    // Auto-refresh status every 5 seconds when running
+    setInterval(() => {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-photos').textContent = data.total_photos;
+                if (data.last_capture_time) {
+                    const time = new Date(data.last_capture_time);
+                    document.getElementById('last-capture').textContent =
+                        time.toLocaleTimeString();
+                }
+                if (data.next_capture_time) {
+                    const time = new Date(data.next_capture_time);
+                    document.getElementById('next-capture').textContent =
+                        time.toLocaleTimeString();
+                }
+                // Reload if stopped
+                if (!data.is_running) {
+                    location.reload();
+                }
+            });
+    }, 5000);
+
+    // Refresh preview frame every 2 seconds
+    function refreshPreview() {
+        const img = document.getElementById('preview-frame');
+        const placeholder = document.getElementById('preview-placeholder');
+
+        fetch('/api/latest-frame')
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('No frame');
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                img.onload = () => URL.revokeObjectURL(url);
+                img.src = url;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+            })
+            .catch(() => {
+                // No frame yet, keep placeholder visible
+            });
+    }
+
+    // Initial load and interval
+    refreshPreview();
+    setInterval(refreshPreview, 2000);
+    {% endif %}
 </script>
 {% endblock %}

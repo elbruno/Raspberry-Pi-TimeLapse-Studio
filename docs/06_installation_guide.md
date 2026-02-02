@@ -350,7 +350,22 @@ sudo apt install -y git python3-venv python3-pip
 
 ### Step 6: Install Camera Support
 
-**For Pi Camera Module:**
+**Option A: USB Webcam (RECOMMENDED)**
+
+OpenCV works with most USB webcams and is the recommended default:
+
+```bash
+# Check if your USB webcam is detected
+ls /dev/video*
+# You should see something like /dev/video0
+
+# OpenCV will be installed with pip install -r requirements.txt
+# It includes USB webcam support out of the box
+```
+
+**Option B: Raspberry Pi Camera Module (Advanced)**
+
+If you have a Pi Camera Module and want to use it instead of a USB camera:
 
 ```bash
 # Test if camera is detected
@@ -360,19 +375,11 @@ libcamera-hello --list-cameras
 # Take a test photo:
 libcamera-jpeg -o test.jpg
 
-# Install picamera2 (may already be installed)
+# Install picamera2
 sudo apt install -y python3-picamera2
-```
 
-**For USB Webcam:**
-
-```bash
-# Install required packages
-sudo apt install -y libopencv-dev python3-opencv
-
-# Check if webcam is detected
-ls /dev/video*
-# You should see something like /dev/video0
+# Then update config.yaml to use picamera2:
+# camera_mode: "picamera2"
 ```
 
 ### Step 7: Clone and Install PiTimeLapse Lab
@@ -395,7 +402,12 @@ source venv/bin/activate
 
 # Install Python dependencies
 pip install -r requirements.txt
+
+# If you get PEP 668 errors about externally-managed environments, use:
+pip install --break-system-packages -r requirements.txt
 ```
+
+**Important:** If the last command fails due to a "externally-managed-environment" error, use the `--break-system-packages` flag. This is safe for development environments and is necessary on some Raspberry Pi OS versions.
 
 ### Step 8: Configure the Application
 
@@ -407,11 +419,9 @@ nano config.yaml
 **Key settings to check:**
 
 ```yaml
-# If using USB Webcam:
-camera_mode: "opencv"
-
-# If using Pi Camera:
-camera_mode: "picamera2"
+# Camera mode (default is opencv - recommended for most users)
+camera_mode: "opencv"      # USB/built-in cameras
+# camera_mode: "picamera2"  # Uncomment if using Pi Camera Module
 
 # Capture interval (seconds between photos)
 interval_seconds: 10

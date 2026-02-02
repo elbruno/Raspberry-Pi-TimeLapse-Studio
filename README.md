@@ -2,7 +2,7 @@
 
 A beginner-friendly time-lapse application that works on **Windows**, **macOS**, **Linux**, and **Raspberry Pi**! 📸
 
-Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save them with timestamps and control everything through a simple web interface.
+Capture photos using USB webcams (recommended default), built-in laptop cameras, or Raspberry Pi cameras. Save them with timestamps and control everything through a simple web interface.
 
 **Perfect for:**
 
@@ -15,7 +15,7 @@ Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save 
 ## ✨ Features
 
 - 📸 **Capture photos** on a configurable schedule
-- 📷 **Works with** Pi Camera, USB webcam, or laptop camera
+- 📷 **Works with** USB webcams (recommended), built-in cameras, or Pi Camera Module
 - 💻 **Cross-platform:** Windows, macOS, Linux, Raspberry Pi
 - 🌐 **Web interface** - control from your phone or computer
 - ⏰ **Timestamp overlay** on images
@@ -24,7 +24,15 @@ Capture photos from your Pi camera, USB webcam, or built-in laptop camera. Save 
 
 ---
 
-## 🚀 Quick Start
+## � Screenshots
+
+| Dashboard | Gallery | Settings |
+|-----------|---------|----------|
+| ![Dashboard](images/01_dashboard.jpeg) | ![Gallery](images/02_gallery.jpeg) | ![Settings](images/03_settings.jpeg) |
+
+---
+
+## �🚀 Quick Start
 
 ### 1. Clone & Install
 
@@ -48,18 +56,35 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Run
+### 2. Validate Your Setup
+
+Before running, verify everything is configured correctly:
+
+```bash
+python main.py validate
+```
+
+This checks:
+- ✅ Configuration file
+- ✅ Required packages
+- ✅ Camera availability
+- ✅ Directory permissions
+
+If it shows any errors, the troubleshooting guide will help!
+
+### 3. Run
 
 ```bash
 python main.py
 ```
 
-### 3. Open Browser
+### 4. Open Browser
 
 Go to `http://localhost:8000` and start your first time-lapse!
 
 ---
 
+<<<<<<< HEAD
 ## � Returning Users
 
 Already set up? Just activate your environment and run:
@@ -82,6 +107,24 @@ python main.py validate     # Optional: check configuration
 python main.py
 ```
 
+=======
+## 📚 Simple Learning Scripts
+
+**New to Python or time-lapse?** Start with our standalone learning scripts — no web server, no complexity, just pure Python fundamentals:
+
+```bash
+python simple.py              # Minimal script (Ctrl+C to stop)
+python simple_with_preview.py # With live preview window (ESC to stop)
+```
+
+| Script | Best For |
+|--------|----------|
+| `simple.py` | Beginners - minimal code, easy to understand |
+| `simple_with_preview.py` | Visual learners - see the camera feed live |
+
+📖 See [Simple Script Guide](docs/10_simple_script_guide.md) for a complete code walkthrough.
+
+>>>>>>> 80135846745bb2cea834680a5175294fb1cfdd52
 ---
 
 ## �📖 Where to Go Next
@@ -99,6 +142,7 @@ Choose based on what you need:
 | 🌐 **Learn web/Flask** | [Web Basics](docs/03_web_basics_flask.md) |
 | 📷 **Learn about cameras** | [Hardware & Camera](docs/04_hardware_camera_basics.md) |
 | 🚀 **Extend the project** | [Extensions & Challenges](docs/05_extensions_challenges.md) |
+| 📚 **Learn with simple script** | [Simple Script Guide](docs/10_simple_script_guide.md) |
 
 ---
 
@@ -107,7 +151,7 @@ Choose based on what you need:
 Edit `config.yaml`:
 
 ```yaml
-camera_mode: "opencv"      # Use "picamera2" for Pi Camera
+camera_mode: "opencv"      # Recommended default (USB/built-in cameras)
 interval_seconds: 10       # Seconds between photos
 web_host: "127.0.0.1"      # Use "0.0.0.0" for network access
 web_port: 8000

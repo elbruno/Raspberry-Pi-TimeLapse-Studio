@@ -107,10 +107,10 @@ def draw_status_overlay(frame, photo_count, countdown):
     # OpenCV uses BGR (Blue-Green-Red) instead of RGB (Red-Green-Blue)!
     # This is a historical quirk from early camera hardware.
     # Common colors:
-    #   (0, 0, 255) = RED   (no blue, no green, full red)
-    #   (0, 255, 0) = GREEN (no blue, full green, no red)
-    #   (255, 0, 0) = BLUE  (full blue, no green, no red)
-    #   (0, 255, 255) = YELLOW (mix of green and red)
+    #   (0, 0, 255)   = RED    (0 blue, 0 green, 255 red)
+    #   (0, 255, 0)   = GREEN  (0 blue, 255 green, 0 red)
+    #   (255, 0, 0)   = BLUE   (255 blue, 0 green, 0 red)
+    #   (0, 255, 255) = YELLOW (green + red mixed)
     #   (255, 255, 255) = WHITE (all colors at max)
     
     # Draw the text in green

@@ -60,7 +60,31 @@ Go to `http://localhost:8000` and start your first time-lapse!
 
 ---
 
-## 📖 Where to Go Next
+## � Returning Users
+
+Already set up? Just activate your environment and run:
+
+**Windows:**
+
+```powershell
+cd Raspberry-Pi-TimeLapse-Studio
+venv\Scripts\activate
+python main.py validate     # Optional: check configuration
+python main.py
+```
+
+**macOS / Linux / Raspberry Pi:**
+
+```bash
+cd Raspberry-Pi-TimeLapse-Studio
+source venv/bin/activate
+python main.py validate     # Optional: check configuration
+python main.py
+```
+
+---
+
+## �📖 Where to Go Next
 
 Choose based on what you need:
 

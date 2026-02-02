@@ -65,6 +65,7 @@ python main.py validate
 ```
 
 This checks:
+
 - ✅ Configuration file
 - ✅ Required packages
 - ✅ Camera availability
@@ -84,7 +85,6 @@ Go to `http://localhost:8000` and start your first time-lapse!
 
 ---
 
-<<<<<<< HEAD
 ## � Returning Users
 
 Already set up? Just activate your environment and run:
@@ -107,24 +107,6 @@ python main.py validate     # Optional: check configuration
 python main.py
 ```
 
-=======
-## 📚 Simple Learning Scripts
-
-**New to Python or time-lapse?** Start with our standalone learning scripts — no web server, no complexity, just pure Python fundamentals:
-
-```bash
-python simple.py              # Minimal script (Ctrl+C to stop)
-python simple_with_preview.py # With live preview window (ESC to stop)
-```
-
-| Script | Best For |
-|--------|----------|
-| `simple.py` | Beginners - minimal code, easy to understand |
-| `simple_with_preview.py` | Visual learners - see the camera feed live |
-
-📖 See [Simple Script Guide](docs/10_simple_script_guide.md) for a complete code walkthrough.
-
->>>>>>> 80135846745bb2cea834680a5175294fb1cfdd52
 ---
 
 ## �📖 Where to Go Next

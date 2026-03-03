@@ -2,7 +2,7 @@
 """
 Lab 04 — Image Viewer
 =====================
-Display images from a folder on the Waveshare 3.5" RPi LCD (A).
+Display images from a folder on the 3.5" RPi LCD.
 Tap the left half of the screen for previous image, right half for next.
 Images are scaled to fit 480×320 while preserving aspect ratio.
 
@@ -10,7 +10,8 @@ Usage:
     python image_viewer.py                  # uses ./images/ folder
     python image_viewer.py /path/to/photos  # custom folder
 
-Hardware: Waveshare 3.5inch RPi LCD (A), 480x320, SPI
+Hardware: Kuman SC06 3.5" TFT LCD (480x320, ILI9486, XPT2046 touch)
+          Also works with other SPI displays using goodtft/LCD-show drivers
 Exit:     Ctrl+C or press ESC
 """
 

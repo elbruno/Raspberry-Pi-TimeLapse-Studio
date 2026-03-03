@@ -2,12 +2,13 @@
 """
 Lab 02 — Touch Demo
 ====================
-Interactive touch drawing demo for the Waveshare 3.5" RPi LCD (A).
+Interactive touch drawing demo for the 3.5" RPi LCD.
 Tap or drag on the screen to draw colored circles. A "Clear" button
 in the top-right corner resets the canvas. Touch coordinates are shown
 at the bottom of the screen.
 
-Hardware: Waveshare 3.5inch RPi LCD (A), 480x320, SPI, resistive touch
+Hardware: Kuman SC06 3.5" TFT LCD (480x320, ILI9486, XPT2046 touch)
+          Also works with other SPI displays using goodtft/LCD-show drivers
 Run:      python touch_demo.py
 Exit:     Ctrl+C or tap the X button
 """

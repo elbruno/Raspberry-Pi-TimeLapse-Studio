@@ -2,7 +2,7 @@
 """
 Lab 03 — System Monitor
 ========================
-Display live system stats on the Waveshare 3.5" RPi LCD (A):
+Display live system stats on the 3.5" RPi LCD:
   • CPU temperature
   • CPU usage (%)
   • Memory usage
@@ -11,7 +11,8 @@ Display live system stats on the Waveshare 3.5" RPi LCD (A):
 
 Auto-refreshes every 2 seconds.
 
-Hardware: Waveshare 3.5inch RPi LCD (A), 480x320, SPI
+Hardware: Kuman SC06 3.5" TFT LCD (480x320, ILI9486, XPT2046 touch)
+          Also works with other SPI displays using goodtft/LCD-show drivers
 Run:      python system_monitor.py
 Exit:     Ctrl+C or tap the screen quit area
 """

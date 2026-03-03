@@ -1,6 +1,6 @@
 # Lab 05 — Button UI
 
-A touch-button control panel for the Waveshare 3.5" RPi LCD (A).
+A touch-button control panel for the 3.5" RPi TFT LCD.
 
 ## What It Does
 
@@ -13,7 +13,12 @@ Displays a 2×2 grid of touch buttons:
 
 ## Prerequisites
 
-- Waveshare LCD driver installed (`sudo ./LCD35-show`)
+- LCD driver installed (see main labs README):
+
+  ```bash
+  cd LCD-show && sudo ./LCD35-show
+  ```
+
 - Python 3 with pygame: `pip install pygame`
 
 ## How to Run

@@ -1,6 +1,6 @@
 # Lab 01 — Hello LCD
 
-A simple "Hello World" for the Waveshare 3.5" RPi LCD (A).
+A simple "Hello World" for the 3.5" RPi TFT LCD.
 
 ## What It Does
 
@@ -11,7 +11,12 @@ A simple "Hello World" for the Waveshare 3.5" RPi LCD (A).
 
 ## Prerequisites
 
-- Waveshare LCD driver installed (`sudo ./LCD35-show`)
+- LCD driver installed (see main labs README):
+
+  ```bash
+  cd LCD-show && sudo ./LCD35-show
+  ```
+
 - Python 3 with pygame: `pip install pygame`
 
 ## How to Run

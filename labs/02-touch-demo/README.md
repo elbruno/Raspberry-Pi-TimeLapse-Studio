@@ -1,6 +1,6 @@
 # Lab 02 — Touch Demo
 
-Interactive drawing demo for the Waveshare 3.5" RPi LCD (A) touchscreen.
+Interactive drawing demo for the 3.5" RPi TFT LCD touchscreen.
 
 ## What It Does
 
@@ -11,7 +11,12 @@ Interactive drawing demo for the Waveshare 3.5" RPi LCD (A) touchscreen.
 
 ## Prerequisites
 
-- Waveshare LCD driver installed (`sudo ./LCD35-show`)
+- LCD driver installed (see main labs README):
+
+  ```bash
+  cd LCD-show && sudo ./LCD35-show
+  ```
+
 - Python 3 with pygame: `pip install pygame`
 
 ## How to Run

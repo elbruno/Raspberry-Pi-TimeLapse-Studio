@@ -2,10 +2,11 @@
 """
 Lab 01 — Hello LCD
 ==================
-Display "Hello World" on the Waveshare 3.5" RPi LCD (A) using pygame.
+Display "Hello World" on the 3.5" RPi LCD using pygame.
 Shows colored background, text, and basic shapes (rectangle, circle, line).
 
-Hardware: Waveshare 3.5inch RPi LCD (A), 480x320, SPI
+Hardware: Kuman SC06 3.5" TFT LCD (480x320, ILI9486, XPT2046 touch)
+          Also works with other SPI displays using goodtft/LCD-show drivers
 Run:      python hello_lcd.py
 Exit:     Ctrl+C or close the window
 """

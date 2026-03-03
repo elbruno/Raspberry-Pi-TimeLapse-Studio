@@ -1,6 +1,6 @@
 # Lab 04 — Image Viewer
 
-Browse images on the Waveshare 3.5" RPi LCD (A) with touch navigation.
+Browse images on the 3.5" RPi TFT LCD with touch navigation.
 
 ## What It Does
 
@@ -12,7 +12,12 @@ Browse images on the Waveshare 3.5" RPi LCD (A) with touch navigation.
 
 ## Prerequisites
 
-- Waveshare LCD driver installed (`sudo ./LCD35-show`)
+- LCD driver installed (see main labs README):
+
+  ```bash
+  cd LCD-show && sudo ./LCD35-show
+  ```
+
 - Python 3 with pygame and Pillow: `pip install pygame Pillow`
 
 ## How to Run

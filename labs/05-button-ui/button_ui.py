@@ -2,7 +2,7 @@
 """
 Lab 05 — Button UI
 ==================
-A simple touch-button control panel for the Waveshare 3.5" RPi LCD (A).
+A simple touch-button control panel for the 3.5" RPi LCD.
 
 Buttons:
   • LED On/Off — Toggles a simulated LED indicator on screen
@@ -10,7 +10,8 @@ Buttons:
   • Show IP     — Displays the current IP address
   • Quit        — Exits the application
 
-Hardware: Waveshare 3.5inch RPi LCD (A), 480x320, SPI, resistive touch
+Hardware: Kuman SC06 3.5" TFT LCD (480x320, ILI9486, XPT2046 touch)
+          Also works with other SPI displays using goodtft/LCD-show drivers
 Run:      python button_ui.py
 Exit:     Ctrl+C or tap the Quit button
 """

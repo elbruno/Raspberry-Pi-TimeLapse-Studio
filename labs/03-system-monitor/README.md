@@ -1,6 +1,6 @@
 # Lab 03 — System Monitor
 
-Live system stats dashboard for the Waveshare 3.5" RPi LCD (A).
+Live system stats dashboard for the 3.5" RPi TFT LCD.
 
 ## What It Does
 
@@ -16,7 +16,12 @@ Colors shift from green → yellow → red as usage increases.
 
 ## Prerequisites
 
-- Waveshare LCD driver installed (`sudo ./LCD35-show`)
+- LCD driver installed (see main labs README):
+
+  ```bash
+  cd LCD-show && sudo ./LCD35-show
+  ```
+
 - Python 3 with pygame and psutil: `pip install pygame psutil`
 
 ## How to Run

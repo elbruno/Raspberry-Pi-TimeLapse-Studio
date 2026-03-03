@@ -1,0 +1,6 @@
+[
+  {"persistent_name": "Remy", "universe": "ratatouille", "role": "Lead", "created_at": "2026-03-03T00:29:00Z", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Colette", "universe": "ratatouille", "role": "Frontend Dev", "created_at": "2026-03-03T00:29:00Z", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Linguini", "universe": "ratatouille", "role": "Backend Dev", "created_at": "2026-03-03T00:29:00Z", "legacy_named": false, "status": "active"},
+  {"persistent_name": "Alfredo", "universe": "ratatouille", "role": "Tester", "created_at": "2026-03-03T00:29:00Z", "legacy_named": false, "status": "active"}
+]

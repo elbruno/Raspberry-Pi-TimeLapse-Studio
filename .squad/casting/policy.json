@@ -1,0 +1,4 @@
+{
+  "universes_allowed": ["ratatouille"],
+  "max_capacity_per_universe": 10
+}

@@ -19,10 +19,22 @@ import os
 import sys
 import glob
 
-# SDL framebuffer configuration
-os.environ["SDL_FBDEV"] = "/dev/fb1"
-os.environ["SDL_MOUSEDEV"] = "/dev/input/touchscreen"
-os.environ["SDL_MOUSEDRV"] = "TSLIB"
+# ---------------------------------------------------------------------------
+# SDL environment — set BEFORE importing pygame.
+# If running in desktop (X11), use normal display.
+# If running in console (no DISPLAY), use framebuffer directly.
+# ---------------------------------------------------------------------------
+if not os.environ.get("DISPLAY"):
+    # Console mode — write directly to LCD framebuffer
+    # fb0 = ILI9486 LCD (confirmed via /sys/class/graphics/fb0/name)
+    os.environ["SDL_VIDEODRIVER"] = "fbcon"
+    os.environ["SDL_FBDEV"] = "/dev/fb0"
+    os.environ["SDL_MOUSEDEV"] = "/dev/input/touchscreen"
+    os.environ["SDL_MOUSEDRV"] = "TSLIB"
+    print("Running in framebuffer mode (console) on /dev/fb0")
+else:
+    # Desktop mode — use X11 display
+    print(f"Running in X11 mode (DISPLAY={os.environ['DISPLAY']})")
 
 import pygame
 

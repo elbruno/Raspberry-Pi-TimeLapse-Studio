@@ -120,3 +120,55 @@ Created `02 - Touch TimeLapse/ui_components.py` and `02 - Touch TimeLapse/timela
 - Desktop testing: `python timelapse_touch.py` (windowed); Pi: `python timelapse_touch.py --fullscreen`
 
 ---
+
+## LED Controller Rewrite: Serial Relay → USB Port Power Control
+
+**By:** Linguini (Backend Dev)  
+**Date:** 2026-03-05
+
+### Decision
+
+Rewrote `02-Touch-TimeLapse/led_controller.py` to control USB LED lights by toggling USB port power instead of sending serial relay commands.
+
+### Changes Made
+
+1. **Complete rewrite of led_controller.py**
+   - Removed pyserial dependency and LCUS-1 protocol commands
+   - Added uhubctl-based USB port power control (Linux only)
+   - Auto-detection skips system devices (cameras, storage, HID)
+   - Explicit port configuration via `led.usb_port` in config.yaml
+
+2. **Config updates**
+   - Added `led.usb_port: "auto"` to config.py defaults
+   - Documented usb_port option in config.yaml
+
+3. **Interface preserved**
+   - All public methods unchanged: `detect()`, `turn_on()`, `turn_off()`, `close()`, `is_available()`, `port_name`
+   - `__init__()` now accepts optional `usb_port` parameter with default "auto"
+   - Backward compatible with existing code (timelapse_touch.py, capture_engine.py)
+
+### Rationale
+
+- Original serial relay approach (LCUS-1 protocol via pyserial) didn't work — the USB LED stayed always on regardless of commands sent
+- User has a simple USB-powered LED that just needs power on/off, no special protocol
+- uhubctl is standard on Raspberry Pi (`sudo apt install uhubctl`)
+- USB port power control is the "native" way to control power on Pi
+
+### Technical Approach
+
+Uses the `uhubctl` tool to control per-port USB power:
+- `uhubctl -l {hub} -p {port} -a on -r 0` — turn port on
+- `uhubctl -l {hub} -p {port} -a off -r 0` — turn port off
+- Auto-detection parses uhubctl output, builds list of controllable ports with devices
+- Skips ports with system devices (USB hubs, mass storage, cameras, video, input/HID, audio)
+- Linux only — gracefully returns False on Windows/macOS
+
+### Impact
+
+- **No changes needed** to timelapse_touch.py, capture_engine.py, or ui_components.py
+- Existing code continues to work (backward compatible __init__ signature)
+- Future improvement: pass `config["led"]["usb_port"]` when creating LEDController in timelapse_touch.py
+- User must install uhubctl: `sudo apt install uhubctl`
+- May need to run with sudo or configure udev rules for non-root access
+
+---

@@ -209,6 +209,7 @@ class TimeLapseApp:
 
         # ── LED controller ──
         self.led = None
+        self.led_detected: bool = False
         self._init_led()
 
         # ── Storage & capture engine ──
@@ -268,6 +269,7 @@ class TimeLapseApp:
         self._show_countdown: bool = display_cfg.get("show_countdown", True)
         self._show_storage_info: bool = display_cfg.get("show_storage_info", True)
         self.header.show_storage_info = self._show_storage_info
+        self.header.led_detected = self.led_detected
 
         # Storage info state (refreshed periodically)
         self._free_gb: float = 0.0
@@ -305,9 +307,10 @@ class TimeLapseApp:
             return
         cam = OpenCVCamera()
         if cam.is_available():
-            idx = self.config.get("camera_index", 0)
-            w = self.config.get("camera_width", 640)
-            h = self.config.get("camera_height", 480)
+            cam_cfg = self.config.get("camera", {})
+            idx = cam_cfg.get("index", 0)
+            w = cam_cfg.get("width", 640)
+            h = cam_cfg.get("height", 480)
             if cam.open(idx, w, h):
                 self.camera = cam
                 logger.info("Camera opened (index=%d, %dx%d)", idx, w, h)
@@ -317,21 +320,24 @@ class TimeLapseApp:
             logger.warning("No camera detected")
 
     def _init_led(self) -> None:
-        """Auto-detect a USB LED relay if the module is available."""
+        """Auto-detect a USB LED relay and ensure it starts OFF."""
         if not LED_MODULE_AVAILABLE:
             logger.info("led_controller not available — LED support disabled")
             return
-        led_cfg = self.config.get("led", {})
-        if not led_cfg.get("enabled", True):
-            logger.info("LED disabled in config")
-            return
         controller = LEDController()
         if controller.detect():
-            self.led = controller
-            controller.turn_off()  # ensure LED starts in off state
-            logger.info("USB LED relay ready on %s", controller.port_name)
+            controller.turn_off()  # always ensure LED starts in off state
+            self.led_detected = True
+            logger.info("USB LED relay detected on %s", controller.port_name)
+            led_cfg = self.config.get("led", {})
+            if led_cfg.get("enabled", True):
+                self.led = controller
+                logger.info("LED relay enabled for capture")
+            else:
+                controller.close()
+                logger.info("LED disabled in config — relay turned off")
         else:
-            logger.info("No USB LED relay found — LED illumination disabled")
+            logger.info("No USB LED relay found")
 
     def _init_backend(self) -> None:
         """Set up StorageManager and CaptureEngine; check for interrupted sessions."""
@@ -436,12 +442,8 @@ class TimeLapseApp:
             self.session = self.storage.create_session()
             logger.info("Created session %s", self.session.session_id)
 
-        capture_config = {
-            "interval_seconds": self.config.get("interval_seconds", 30),
-            "photo_quality": self.config.get("photo_quality", 90),
-        }
         self.engine.start(self.session, self.camera, self.storage,
-                          capture_config, self.led)
+                          self.config, self.led)
         self._capture_start_time = time.time()
 
         # Swap buttons — only STOP visible while capturing

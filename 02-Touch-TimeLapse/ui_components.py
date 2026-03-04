@@ -135,6 +135,7 @@ class Header:
         self._font_title: Optional[pygame.font.Font] = None
         self._font_info: Optional[pygame.font.Font] = None
         self.usb_connected = False
+        self.led_detected = False
         self.photo_count = 0
         self.free_gb: float = 0.0
         self.remaining_photos: int = 0
@@ -205,6 +206,13 @@ class Header:
         usb_surf = self.font_info.render(usb_char, True, usb_color)
         x -= usb_surf.get_width()
         surface.blit(usb_surf, (x, 12))
+
+        # LED indicator (next to title)
+        led_color = COLOR_USB_OK if self.led_detected else COLOR_TEXT_DIM
+        led_text = "LED" if self.led_detected else ""
+        if led_text:
+            led_surf = self.font_info.render(f" {led_text}", True, led_color)
+            surface.blit(led_surf, (10 + title.get_width(), 12))
 
 
 # ---------------------------------------------------------------------------

@@ -26,9 +26,11 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # SDL environment — must be set BEFORE importing pygame.
 # On console (no DISPLAY env var) target the LCD framebuffer directly.
+# Modern SDL2 (2.32+) removed fbcon — try kmsdrm first.
 # ---------------------------------------------------------------------------
 if not os.environ.get("DISPLAY") and platform.system() == "Linux":
-    os.environ.setdefault("SDL_VIDEODRIVER", "fbcon")
+    # Try video drivers in order of preference (kmsdrm is the modern replacement for fbcon)
+    os.environ.setdefault("SDL_VIDEODRIVER", "kmsdrm,fbcon,directfb")
     os.environ.setdefault("SDL_FBDEV", "/dev/fb0")
     os.environ.setdefault("SDL_MOUSEDEV", "/dev/input/touchscreen")
     os.environ.setdefault("SDL_MOUSEDRV", "TSLIB")

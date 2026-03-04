@@ -57,6 +57,18 @@ python timelapse_touch.py --fullscreen
 
 > 💡 **No virtual environment needed** on a dedicated Pi — install packages globally. If you hit PEP 668 errors, add `--break-system-packages` to the pip command.
 
+### Add a Desktop Shortcut (one-time setup)
+
+Want to launch the app with a single tap? Run:
+
+```bash
+chmod +x install-shortcut.sh
+./install-shortcut.sh              # creates a desktop icon
+./install-shortcut.sh --autostart  # also launch automatically on boot
+```
+
+This creates a **PiTimeLapse Touch** icon on your desktop. Just tap it!
+
 ### On Desktop (development mode)
 
 ```bash
@@ -115,6 +127,7 @@ storage:
 ```
 02-Touch-TimeLapse/
 ├── timelapse_touch.py     # Main entry point — wires everything together
+├── install-shortcut.sh    # Creates desktop shortcut & optional autostart
 ├── ui_components.py       # Pygame UI widgets (buttons, header, preview, status bar)
 ├── camera_opencv.py       # Camera capture via OpenCV
 ├── capture_engine.py      # Background capture loop
@@ -206,10 +219,12 @@ pip install -r requirements.txt
 | Problem | Solution |
 |---------|----------|
 | Black screen on Pi LCD | Check LCD driver install — try `sudo ./MHS35-show` as alternative |
+| **`fbcon not available`** | **SDL 2.32+ removed fbcon. Update to latest code — it now tries `kmsdrm` first automatically** |
 | No touch response | Verify `/dev/input/touchscreen` exists; run `evtest /dev/input/event0` |
 | Camera not found | Check `camera.index` in config.yaml; try `0` or `1` |
 | Pygame won't start on Pi | Ensure `SDL_FBDEV=/dev/fb0` is set (the script does this automatically) |
 | USB drive not detected | Check drive is mounted; verify with `lsblk` |
+| PEP 668 / externally-managed | Add `--break-system-packages` to your pip command |
 
 ---
 

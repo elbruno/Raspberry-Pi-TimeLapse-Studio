@@ -24,6 +24,13 @@ from camera_opencv import OpenCVCamera
 from config import get_config_value
 from storage_manager import Session, StorageManager
 
+try:
+    from led_controller import LEDController
+    LED_AVAILABLE = True
+except ImportError:
+    LED_AVAILABLE = False
+    LEDController = None  # type: ignore[assignment, misc]
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3          # consecutive capture failures before giving up
@@ -49,11 +56,14 @@ class CaptureEngine:
         self._start_time: Optional[datetime] = None
         self._errors: list[str] = []
         self._last_photo_path: Optional[str] = None
+        self._next_capture_mono: float = 0.0  # monotonic timestamp of next capture
+        self._interval: float = 30.0
 
     # -- public interface -----------------------------------------------------
 
     def start(self, session: Session, camera: OpenCVCamera,
-              storage: StorageManager, config: dict) -> None:
+              storage: StorageManager, config: dict,
+              led: Optional["LEDController"] = None) -> None:  # type: ignore[name-defined]
         """
         Begin the capture loop in a background thread.
 
@@ -62,6 +72,7 @@ class CaptureEngine:
             camera:  Already-opened OpenCVCamera.
             storage: StorageManager pointed at the session base path.
             config:  Merged configuration dictionary.
+            led:     Optional LEDController for illumination before capture.
         """
         if self._thread is not None and self._thread.is_alive():
             logger.warning("Capture engine is already running")
@@ -78,7 +89,7 @@ class CaptureEngine:
 
         self._thread = threading.Thread(
             target=self._capture_loop,
-            args=(session, camera, storage, config),
+            args=(session, camera, storage, config, led),
             name="capture-engine",
             daemon=True,
         )
@@ -96,6 +107,7 @@ class CaptureEngine:
 
         with self._lock:
             self._running = False
+            self._next_capture_mono = 0.0
 
         logger.info("Capture engine stopped")
 
@@ -111,36 +123,71 @@ class CaptureEngine:
 
         Returns:
             Dictionary with ``total_photos``, ``elapsed_seconds``,
-            ``errors``, and ``last_photo_path``.
+            ``errors``, ``last_photo_path``, and ``next_capture_in``.
         """
         with self._lock:
             elapsed = 0.0
             if self._start_time:
                 elapsed = (datetime.now() - self._start_time).total_seconds()
+            # Countdown to next capture (seconds remaining)
+            next_in = 0.0
+            if self._running and self._next_capture_mono > 0:
+                next_in = max(0.0, self._next_capture_mono - time.monotonic())
             return {
                 "total_photos": self._total_photos,
                 "elapsed_seconds": round(elapsed, 1),
                 "errors": list(self._errors),
                 "last_photo_path": self._last_photo_path,
                 "is_running": self._running,
+                "next_capture_in": round(next_in, 0),
+                "interval": self._interval,
             }
 
     # -- internal capture loop ------------------------------------------------
 
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
-                      storage: StorageManager, config: dict) -> None:
+                      storage: StorageManager, config: dict,
+                      led: Optional["LEDController"] = None) -> None:  # type: ignore[name-defined]
         """Main loop executed inside the background thread."""
         interval = get_config_value(config, "capture.interval_seconds", 30)
         quality = get_config_value(config, "capture.quality", 90)
         retry_delay = get_config_value(config, "capture.retry_delay_seconds", RETRY_DELAY_S)
         consecutive_failures = 0
 
+        # LED settings
+        led_enabled = get_config_value(config, "led.enabled", True)
+        led_warmup = get_config_value(config, "led.warmup_seconds", 1.0)
+        use_led = led_enabled and led is not None and led.is_available()
+        if use_led:
+            logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
+
         logger.info("Capture loop running — interval=%ss, quality=%d",
                      interval, quality)
+
+        with self._lock:
+            self._interval = float(interval)
 
         try:
             while not self._stop_event.is_set():
                 next_capture = time.monotonic() + interval
+
+                # Publish the next-capture timestamp for the countdown UI
+                with self._lock:
+                    self._next_capture_mono = next_capture
+
+                # -- LED ON before capture --
+                if use_led:
+                    led.turn_on()  # type: ignore[union-attr]
+                    # Wait for warmup (interruptible)
+                    warmup_end = time.monotonic() + led_warmup
+                    while not self._stop_event.is_set():
+                        remaining = warmup_end - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        self._stop_event.wait(timeout=min(remaining, 0.25))
+                    if self._stop_event.is_set():
+                        led.turn_off()  # type: ignore[union-attr]
+                        break
 
                 # -- attempt to capture a frame --
                 frame = None
@@ -152,6 +199,10 @@ class CaptureEngine:
                     logger.warning("Capture attempt %d/%d failed",
                                    attempt, MAX_RETRIES)
                     time.sleep(retry_delay)
+
+                # -- LED OFF after capture --
+                if use_led:
+                    led.turn_off()  # type: ignore[union-attr]
 
                 if frame is None:
                     consecutive_failures += 1

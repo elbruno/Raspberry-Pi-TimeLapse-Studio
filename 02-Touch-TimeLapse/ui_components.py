@@ -324,9 +324,13 @@ class _SettingRow:
         minus_txt = font.render("–", True, COLOR_TEXT)
         surface.blit(minus_txt, minus_txt.get_rect(center=self.btn_minus.center))
 
-        # Value field
+        # Value field — show On/Off for boolean-style rows (min=0, max=1)
         pygame.draw.rect(surface, COLOR_FIELD_BG, self.val_rect, border_radius=6)
-        val_txt = font.render(str(self.value), True, COLOR_TEXT)
+        if self.min_val == 0 and self.max_val == 1:
+            display = "On" if self.value else "Off"
+        else:
+            display = str(self.value)
+        val_txt = font.render(display, True, COLOR_TEXT)
         surface.blit(val_txt, val_txt.get_rect(center=self.val_rect.center))
 
         # [+] button
@@ -348,13 +352,14 @@ class SettingsScreen:
         self._font: Optional[pygame.font.Font] = None
         self._title_font: Optional[pygame.font.Font] = None
 
-        row_h = 42
-        start_y = 44
-        btn_size = 38
+        row_h = 36
+        start_y = 40
+        btn_size = 32
 
         # Extract current values from config dict
         cam = config.get("camera", {})
         cap = config.get("capture", {})
+        led = config.get("led", {})
 
         self.rows = [
             _SettingRow(start_y, screen_w, btn_size,
@@ -372,6 +377,12 @@ class SettingsScreen:
             _SettingRow(start_y + row_h * 4, screen_w, btn_size,
                         "Height", "camera.height",
                         int(cam.get("height", 480)), 120, 1080, 120),
+            _SettingRow(start_y + row_h * 5, screen_w, btn_size,
+                        "LED Light", "led.enabled",
+                        1 if led.get("enabled", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 6, screen_w, btn_size,
+                        "LED Warmup", "led.warmup_seconds",
+                        int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
 
         # Bottom buttons — positioned below the last row
@@ -424,6 +435,10 @@ class SettingsScreen:
             },
             "preview": {"fps": 6},
             "storage": {"fallback_path": "./data"},
+            "led": {
+                "enabled": bool(flat.get("led.enabled", 1)),
+                "warmup_seconds": flat.get("led.warmup_seconds", 1),
+            },
         }
 
     def draw(self, surface: pygame.Surface) -> None:

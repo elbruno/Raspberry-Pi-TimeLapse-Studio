@@ -42,6 +42,10 @@ DEFAULTS: dict = {
     "storage": {
         "fallback_path": "./data",
     },
+    "led": {
+        "enabled": True,
+        "warmup_seconds": 1.0,
+    },
 }
 
 
@@ -164,5 +168,14 @@ def validate_config(config: dict) -> list[str]:
     fps = get_config_value(config, "preview.fps", 6)
     if not isinstance(fps, (int, float)) or fps <= 0:
         errors.append(f"preview.fps must be > 0, got {fps}")
+
+    # LED checks
+    led_enabled = get_config_value(config, "led.enabled", True)
+    if not isinstance(led_enabled, bool):
+        errors.append(f"led.enabled must be true or false, got {led_enabled}")
+
+    led_warmup = get_config_value(config, "led.warmup_seconds", 1.0)
+    if not isinstance(led_warmup, (int, float)) or led_warmup < 0:
+        errors.append(f"led.warmup_seconds must be >= 0, got {led_warmup}")
 
     return errors

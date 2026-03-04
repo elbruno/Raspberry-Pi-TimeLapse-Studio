@@ -15,7 +15,8 @@ A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi.
 - 🖥️ **Dual mode** — fullscreen on Pi LCD, windowed on desktop for development
 - 📷 **OpenCV camera** — works with USB webcams and built-in cameras
 - 🎛️ **On-screen controls** — start/stop, settings, close, status display, live preview at 6 fps
-- ⚙️ **In-app settings** — adjust interval, quality, and camera settings from the touchscreen
+- ⚙️ **In-app settings** — adjust interval, quality, camera, and LED settings from the touchscreen
+- 💡 **USB LED light support** — auto-detects USB relay modules to illuminate the scene before each capture
 
 ---
 
@@ -124,6 +125,10 @@ preview:
 
 storage:
   fallback_path: ./data  # used when no USB drive found
+
+led:
+  enabled: true          # auto-use USB LED relay if detected
+  warmup_seconds: 1.0    # seconds to wait after LED on, before capture
 ```
 
 ### Key Settings
@@ -135,6 +140,8 @@ storage:
 | `capture.quality` | JPEG compression quality (1–100) | `90` |
 | `preview.fps` | Live preview refresh rate | `6` |
 | `storage.fallback_path` | Where to save if no USB drive is found | `./data` |
+| `led.enabled` | Auto-use USB LED relay when detected | `true` |
+| `led.warmup_seconds` | Seconds between LED on and photo capture | `1.0` |
 
 ---
 
@@ -146,10 +153,11 @@ storage:
 ├── install-shortcut.sh    # Creates desktop shortcut & optional autostart
 ├── ui_components.py       # Pygame UI widgets (buttons, header, preview, status bar)
 ├── camera_opencv.py       # Camera capture via OpenCV
-├── capture_engine.py      # Background capture loop
+├── capture_engine.py      # Background capture loop (LED integration)
+├── led_controller.py      # USB LED relay auto-detection and control
 ├── storage_manager.py     # File saving & USB detection
 ├── usb_detector.py        # Auto-detect USB storage devices
-├── config.py              # Configuration loading
+├── config.py              # Configuration loading and saving
 ├── config.yaml            # Default settings
 ├── requirements.txt       # Python dependencies
 ├── data/                  # Default local storage for captures
@@ -197,6 +205,34 @@ Use the **[–]** and **[+]** stepper buttons to adjust values, then tap **SAVE*
 1. The app checks for a connected USB drive on startup
 2. If found → saves photos to the USB drive
 3. If not found → falls back to `./data` (configurable in `config.yaml`)
+
+### 💡 USB LED Light
+
+The app can automatically control a **USB relay module** to illuminate the scene before each photo. This is ideal for dark environments or consistent lighting in time-lapse sequences.
+
+**How it works:**
+1. On startup, the app scans USB serial ports for relay modules (CH340, FTDI, etc.)
+2. If a relay is found and LED is enabled in settings → the capture cycle becomes:
+   - **LED ON** → wait warmup (default 1 second) → **capture photo** → **LED OFF**
+3. If no relay is detected → normal capture (no delay, no error)
+
+**Supported hardware:**
+- LCUS-1 type USB relay modules (most common, ~$3-5)
+- SainSmart, HiLetgo, or similar single-channel USB relay boards
+- Any USB relay using the standard 0xA0 serial protocol
+
+**Setup:**
+```bash
+# Install the relay module
+pip install pyserial    # already in requirements.txt
+
+# Plug the USB relay into the Pi — it auto-detects as /dev/ttyUSB0
+# Connect your LED light to the relay's NO (Normally Open) terminal
+```
+
+**Settings (in-app or config.yaml):**
+- **LED Light** — On/Off toggle (disable if you don't want LED control)
+- **LED Warmup** — seconds to wait after turning on before capture (0–5)
 
 ---
 

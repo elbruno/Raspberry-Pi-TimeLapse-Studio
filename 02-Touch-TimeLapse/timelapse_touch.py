@@ -128,6 +128,13 @@ try:
 except ImportError:
     CONFIG_AVAILABLE = False
 
+try:
+    from led_controller import LEDController
+    LED_MODULE_AVAILABLE = True
+except ImportError:
+    LED_MODULE_AVAILABLE = False
+    LEDController = None  # type: ignore[assignment, misc]
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -199,6 +206,10 @@ class TimeLapseApp:
         # ── Camera ──
         self.camera: Optional[OpenCVCamera] = None  # type: ignore[assignment]
         self._init_camera()
+
+        # ── LED controller ──
+        self.led = None
+        self._init_led()
 
         # ── Storage & capture engine ──
         self.storage = None
@@ -292,6 +303,22 @@ class TimeLapseApp:
                 logger.warning("Camera failed to open")
         else:
             logger.warning("No camera detected")
+
+    def _init_led(self) -> None:
+        """Auto-detect a USB LED relay if the module is available."""
+        if not LED_MODULE_AVAILABLE:
+            logger.info("led_controller not available — LED support disabled")
+            return
+        led_cfg = self.config.get("led", {})
+        if not led_cfg.get("enabled", True):
+            logger.info("LED disabled in config")
+            return
+        controller = LEDController()
+        if controller.detect():
+            self.led = controller
+            logger.info("USB LED relay ready on %s", controller.port_name)
+        else:
+            logger.info("No USB LED relay found — LED illumination disabled")
 
     def _init_backend(self) -> None:
         """Set up StorageManager and CaptureEngine; check for interrupted sessions."""
@@ -400,7 +427,8 @@ class TimeLapseApp:
             "interval_seconds": self.config.get("interval_seconds", 30),
             "photo_quality": self.config.get("photo_quality", 90),
         }
-        self.engine.start(self.session, self.camera, self.storage, capture_config)
+        self.engine.start(self.session, self.camera, self.storage,
+                          capture_config, self.led)
         self._capture_start_time = time.time()
 
         # Swap buttons
@@ -470,9 +498,9 @@ class TimeLapseApp:
             if errors:
                 status_text = f"Error: {errors[-1]}"
             else:
-                status_text = "Capturing..."
+                countdown = int(st.get("next_capture_in", 0))
+                status_text = f"Next: {countdown}s"
         elif self.engine is not None and self._capture_start_time > 0:
-            # Engine was running but stopped
             st = self.engine.get_status()
             photo_count = st.get("total_photos", 0)
             elapsed = self._elapsed()
@@ -515,6 +543,8 @@ class TimeLapseApp:
         logger.info("Shutting down…")
         if self.engine is not None and self.engine.is_running:
             self.engine.stop()
+        if self.led is not None:
+            self.led.close()
         if self.camera is not None:
             self.camera.close()
         pygame.quit()

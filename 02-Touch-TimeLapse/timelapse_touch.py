@@ -263,6 +263,18 @@ class TimeLapseApp:
         self._capture_start_time: float = 0.0
         self._last_preview_time: float = 0.0
 
+        # Display feature flags
+        display_cfg = self.config.get("display", {})
+        self._show_countdown: bool = display_cfg.get("show_countdown", True)
+        self._show_storage_info: bool = display_cfg.get("show_storage_info", True)
+        self.header.show_storage_info = self._show_storage_info
+
+        # Storage info state (refreshed periodically)
+        self._free_gb: float = 0.0
+        self._remaining_photos: int = 0
+        self._last_storage_refresh: float = 0.0
+        self._STORAGE_REFRESH_INTERVAL: float = 30.0
+
         logger.info("TimeLapseApp initialized (%dx%d, fullscreen=%s)",
                      self.screen_w, self.screen_h, self.fullscreen)
 
@@ -467,6 +479,13 @@ class TimeLapseApp:
             save_config(new_config)
         self.config = _load_app_config()
         self._settings_screen = None
+
+        # Refresh display feature flags
+        display_cfg = self.config.get("display", {})
+        self._show_countdown = display_cfg.get("show_countdown", True)
+        self._show_storage_info = display_cfg.get("show_storage_info", True)
+        self.header.show_storage_info = self._show_storage_info
+
         self.status_bar.update("Settings saved", 0)
         logger.info("Settings saved")
 
@@ -490,6 +509,13 @@ class TimeLapseApp:
         status_text = "Ready"
         elapsed = 0.0
 
+        # Periodically refresh storage info
+        if self._show_storage_info:
+            now = time.time()
+            if now - self._last_storage_refresh > self._STORAGE_REFRESH_INTERVAL:
+                self._last_storage_refresh = now
+                self._refresh_storage_info()
+
         if self.engine is not None and self.engine.is_running:
             st = self.engine.get_status()
             photo_count = st.get("total_photos", 0)
@@ -497,17 +523,43 @@ class TimeLapseApp:
             errors = st.get("errors", [])
             if errors:
                 status_text = f"Error: {errors[-1]}"
-            else:
+            elif self._show_countdown:
                 countdown = int(st.get("next_capture_in", 0))
                 status_text = f"Next: {countdown}s"
+            else:
+                status_text = "Capturing..."
         elif self.engine is not None and self._capture_start_time > 0:
             st = self.engine.get_status()
             photo_count = st.get("total_photos", 0)
             elapsed = self._elapsed()
             status_text = "Stopped"
 
-        self.header.update(self.usb_connected, photo_count)
+        self.header.update(self.usb_connected, photo_count,
+                           self._free_gb, self._remaining_photos)
         self.status_bar.update(status_text, elapsed)
+
+    def _refresh_storage_info(self) -> None:
+        """Query disk usage and estimate remaining photos."""
+        if not USB_AVAILABLE or not self.usb_connected:
+            self._free_gb = 0.0
+            self._remaining_photos = 0
+            return
+        try:
+            info = get_drive_info(self.usb_path)
+            self._free_gb = float(info.get("free_gb", 0.0))
+            free_bytes = int(info.get("free_bytes", 0))
+
+            cam = self.config.get("camera", {})
+            cap = self.config.get("capture", {})
+            w = cam.get("width", 640)
+            h = cam.get("height", 480)
+            q = cap.get("quality", 90)
+            # Rough JPEG size estimate (RGB × quality / compression)
+            avg_size = max(w * h * 3 * q / 100 / 10, 1024)
+            self._remaining_photos = int(free_bytes / avg_size)
+        except Exception:
+            self._free_gb = 0.0
+            self._remaining_photos = 0
 
     def _elapsed(self) -> float:
         """Seconds since capture started."""

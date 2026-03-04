@@ -46,6 +46,10 @@ DEFAULTS: dict = {
         "enabled": True,
         "warmup_seconds": 1.0,
     },
+    "display": {
+        "show_countdown": True,
+        "show_storage_info": True,
+    },
 }
 
 
@@ -177,5 +181,11 @@ def validate_config(config: dict) -> list[str]:
     led_warmup = get_config_value(config, "led.warmup_seconds", 1.0)
     if not isinstance(led_warmup, (int, float)) or led_warmup < 0:
         errors.append(f"led.warmup_seconds must be >= 0, got {led_warmup}")
+
+    # Display checks
+    for key in ("display.show_countdown", "display.show_storage_info"):
+        val = get_config_value(config, key, True)
+        if not isinstance(val, bool):
+            errors.append(f"{key} must be true or false, got {val}")
 
     return errors

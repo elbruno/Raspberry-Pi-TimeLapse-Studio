@@ -15,8 +15,10 @@ A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi.
 - 🖥️ **Dual mode** — fullscreen on Pi LCD, windowed on desktop for development
 - 📷 **OpenCV camera** — works with USB webcams and built-in cameras
 - 🎛️ **On-screen controls** — start/stop, settings, close, status display, live preview at 6 fps
-- ⚙️ **In-app settings** — adjust interval, quality, camera, and LED settings from the touchscreen
+- ⚙️ **In-app settings** — tabbed settings screen (Camera + Features) to adjust all parameters from the touchscreen
 - 💡 **USB LED light support** — auto-detects USB relay modules to illuminate the scene before each capture
+- ⏱️ **Countdown timer** — shows seconds until the next capture (toggleable)
+- 📊 **Storage info** — displays free disk space and estimated remaining photos (toggleable)
 
 ---
 
@@ -129,6 +131,10 @@ storage:
 led:
   enabled: true          # auto-use USB LED relay if detected
   warmup_seconds: 1.0    # seconds to wait after LED on, before capture
+
+display:
+  show_countdown: true   # show countdown timer to next photo
+  show_storage_info: true # show free space and remaining photos estimate
 ```
 
 ### Key Settings
@@ -142,6 +148,8 @@ led:
 | `storage.fallback_path` | Where to save if no USB drive is found | `./data` |
 | `led.enabled` | Auto-use USB LED relay when detected | `true` |
 | `led.warmup_seconds` | Seconds between LED on and photo capture | `1.0` |
+| `display.show_countdown` | Show countdown timer to next photo during capture | `true` |
+| `display.show_storage_info` | Show free disk space and remaining photos estimate | `true` |
 
 ---
 
@@ -191,12 +199,21 @@ python timelapse_touch.py
 
 ### Settings Screen
 
-Tap **SETTINGS** on the main screen (when not capturing) to open the settings form:
+Tap **SETTINGS** on the main screen (when not capturing) to open the settings form. Settings are organized into two tabs:
+
+#### Camera Tab
 
 - **Interval (s)** — seconds between photos (1–3600)
 - **Quality** — JPEG compression (1–100)
 - **Camera** — camera device index (0–9)
 - **Width / Height** — camera capture resolution
+
+#### Features Tab
+
+- **Countdown** — show/hide the countdown timer to the next capture
+- **Storage Info** — show/hide free disk space and remaining photos estimate in the header
+- **LED Flash** — enable/disable USB LED relay illumination before each photo
+- **LED Warmup** — seconds to wait after turning the LED on before capturing (0–5)
 
 Use the **[–]** and **[+]** stepper buttons to adjust values, then tap **SAVE** to write to `config.yaml` or **BACK** to discard changes.
 

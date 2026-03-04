@@ -20,3 +20,7 @@ storage:
 led:
   enabled: true          # auto-use USB LED relay if detected
   warmup_seconds: 1.0    # seconds to wait after LED on, before capture
+
+display:
+  show_countdown: true   # show countdown timer to next photo
+  show_storage_info: true # show free space and remaining photos estimate

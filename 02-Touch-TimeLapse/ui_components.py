@@ -37,6 +37,8 @@ COLOR_SAVE = (78, 204, 163)            # green for save
 COLOR_BACK = (120, 120, 140)           # grey for back
 COLOR_STEPPER = (60, 80, 120)          # stepper +/- buttons
 COLOR_FIELD_BG = (35, 35, 55)          # value field background
+COLOR_TAB_ACTIVE = (15, 52, 96)        # active tab (matches status bar)
+COLOR_TAB_INACTIVE = (30, 30, 50)      # inactive tab
 
 
 def _darken(color: Tuple[int, ...], amount: int = 40) -> Tuple[int, ...]:
@@ -120,7 +122,11 @@ class Button:
 # Header
 # ---------------------------------------------------------------------------
 class Header:
-    """Top bar showing app title, USB status indicator, and photo count."""
+    """Top bar showing app title, USB status indicator, and photo count.
+
+    When ``show_storage_info`` is True and a USB drive is connected the
+    header also renders free space and an estimated remaining photo count.
+    """
 
     HEIGHT = 40
 
@@ -130,6 +136,9 @@ class Header:
         self._font_info: Optional[pygame.font.Font] = None
         self.usb_connected = False
         self.photo_count = 0
+        self.free_gb: float = 0.0
+        self.remaining_photos: int = 0
+        self.show_storage_info: bool = False
 
     @property
     def font_title(self) -> pygame.font.Font:
@@ -143,28 +152,59 @@ class Header:
             self._font_info = pygame.font.SysFont("monospace", 15)
         return self._font_info
 
-    def update(self, usb_connected: bool, photo_count: int) -> None:
+    @staticmethod
+    def _format_count(n: int) -> str:
+        """Format large numbers compactly (e.g. 142000 → '142K')."""
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n / 1_000:.0f}K"
+        return str(n)
+
+    def update(self, usb_connected: bool, photo_count: int,
+               free_gb: float = 0.0, remaining_photos: int = 0) -> None:
         """Update header data (called each frame or on state change)."""
         self.usb_connected = usb_connected
         self.photo_count = photo_count
+        self.free_gb = free_gb
+        self.remaining_photos = remaining_photos
 
     def draw(self, surface: pygame.Surface) -> None:
         """Render the header bar."""
         pygame.draw.rect(surface, COLOR_HEADER, (0, 0, self.width, self.HEIGHT))
 
         # Title
-        title = self.font_title.render("PiTimeLapse Touch", True, COLOR_TEXT)
+        title = self.font_title.render("PiTimeLapse", True, COLOR_TEXT)
         surface.blit(title, (10, 10))
+
+        # Right-aligned info rendered from the right edge inward
+        x = self.width - 10
+
+        # Photo count (always shown)
+        count_text = f"#{self.photo_count}"
+        count_surf = self.font_info.render(count_text, True, COLOR_TEXT)
+        x -= count_surf.get_width()
+        surface.blit(count_surf, (x, 12))
+
+        if self.show_storage_info and self.usb_connected and self.free_gb > 0:
+            # Remaining photos estimate
+            rem_text = f"~{self._format_count(self.remaining_photos)} "
+            rem_surf = self.font_info.render(rem_text, True, COLOR_TEXT_DIM)
+            x -= rem_surf.get_width()
+            surface.blit(rem_surf, (x, 12))
+
+            # Free space
+            free_text = f"{self.free_gb:.1f}G "
+            free_surf = self.font_info.render(free_text, True, COLOR_TEXT_DIM)
+            x -= free_surf.get_width()
+            surface.blit(free_surf, (x, 12))
 
         # USB indicator
         usb_color = COLOR_USB_OK if self.usb_connected else COLOR_USB_BAD
-        usb_char = "\u2713" if self.usb_connected else "\u2717"  # ✓ / ✗
-        usb_label = self.font_info.render(f"USB: {usb_char}", True, usb_color)
-        surface.blit(usb_label, (self.width - 200, 12))
-
-        # Photo count
-        count_surf = self.font_info.render(f"Photos: {self.photo_count}", True, COLOR_TEXT)
-        surface.blit(count_surf, (self.width - 110, 12))
+        usb_char = "\u2713 " if self.usb_connected else "\u2717 "
+        usb_surf = self.font_info.render(usb_char, True, usb_color)
+        x -= usb_surf.get_width()
+        surface.blit(usb_surf, (x, 12))
 
 
 # ---------------------------------------------------------------------------
@@ -340,28 +380,44 @@ class _SettingRow:
 
 
 class SettingsScreen:
-    """Full-screen settings form for 480×320 displays.
+    """Full-screen settings form with tabs for 480×320 displays.
+
+    Two tabs:
+      * **Camera** — capture interval, quality, camera index, resolution.
+      * **Features** — countdown, storage info, LED flash, LED warmup.
 
     Uses stepper controls ([–] value [+]) instead of text input —
     much easier on a small touchscreen.
     """
 
+    TAB_HEIGHT = 34
+
     def __init__(self, screen_w: int, screen_h: int, config: dict) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
-        self._title_font: Optional[pygame.font.Font] = None
+        self.active_tab: int = 0  # 0 = Camera, 1 = Features
+
+        # Tab buttons
+        tab_w = screen_w // 2
+        self.tab_rects = [
+            pygame.Rect(0, 0, tab_w, self.TAB_HEIGHT),
+            pygame.Rect(tab_w, 0, screen_w - tab_w, self.TAB_HEIGHT),
+        ]
+        self.tab_labels = ["Camera", "Features"]
 
         row_h = 36
-        start_y = 40
+        start_y = self.TAB_HEIGHT + 6
         btn_size = 32
 
         # Extract current values from config dict
         cam = config.get("camera", {})
         cap = config.get("capture", {})
         led = config.get("led", {})
+        display = config.get("display", {})
 
-        self.rows = [
+        # ── Camera tab rows ──
+        self.camera_rows = [
             _SettingRow(start_y, screen_w, btn_size,
                         "Interval (s)", "capture.interval_seconds",
                         int(cap.get("interval_seconds", 30)), 1, 3600, 5),
@@ -377,10 +433,22 @@ class SettingsScreen:
             _SettingRow(start_y + row_h * 4, screen_w, btn_size,
                         "Height", "camera.height",
                         int(cam.get("height", 480)), 120, 1080, 120),
-            _SettingRow(start_y + row_h * 5, screen_w, btn_size,
-                        "LED Light", "led.enabled",
+        ]
+
+        # ── Features tab rows ──
+        self.features_rows = [
+            _SettingRow(start_y, screen_w, btn_size,
+                        "Countdown", "display.show_countdown",
+                        1 if display.get("show_countdown", True) else 0,
+                        0, 1, 1),
+            _SettingRow(start_y + row_h, screen_w, btn_size,
+                        "Storage Info", "display.show_storage_info",
+                        1 if display.get("show_storage_info", True) else 0,
+                        0, 1, 1),
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+                        "LED Flash", "led.enabled",
                         1 if led.get("enabled", True) else 0, 0, 1, 1),
-            _SettingRow(start_y + row_h * 6, screen_w, btn_size,
+            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
                         "LED Warmup", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
@@ -402,15 +470,17 @@ class SettingsScreen:
             self._font = pygame.font.SysFont("monospace", 18, bold=True)
         return self._font
 
-    @property
-    def title_font(self) -> pygame.font.Font:
-        if self._title_font is None:
-            self._title_font = pygame.font.SysFont("monospace", 22, bold=True)
-        return self._title_font
-
     def handle_tap(self, pos: Tuple[int, int]) -> Optional[str]:
         """Handle a touch/click. Returns 'save', 'back', or None."""
-        for row in self.rows:
+        # Tab switching
+        for i, rect in enumerate(self.tab_rects):
+            if rect.collidepoint(pos):
+                self.active_tab = i
+                return None
+
+        # Active tab rows
+        rows = self.camera_rows if self.active_tab == 0 else self.features_rows
+        for row in rows:
             row.handle_tap(pos)
 
         if self.btn_save.collidepoint(pos):
@@ -421,7 +491,9 @@ class SettingsScreen:
 
     def get_values(self) -> dict:
         """Return current settings as a nested config dict."""
-        flat = {row.key: row.value for row in self.rows}
+        flat = {}
+        for row in self.camera_rows + self.features_rows:
+            flat[row.key] = row.value
         return {
             "camera": {
                 "mode": "opencv",
@@ -439,25 +511,39 @@ class SettingsScreen:
                 "enabled": bool(flat.get("led.enabled", 1)),
                 "warmup_seconds": flat.get("led.warmup_seconds", 1),
             },
+            "display": {
+                "show_countdown": bool(flat.get("display.show_countdown", 1)),
+                "show_storage_info": bool(flat.get("display.show_storage_info", 1)),
+            },
         }
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(COLOR_BACKGROUND)
 
-        # Title
-        title = self.title_font.render("Settings", True, COLOR_TEXT)
-        surface.blit(title, (20, 14))
+        # ── Tab bar ──
+        for i, (rect, label) in enumerate(zip(self.tab_rects, self.tab_labels)):
+            color = COLOR_TAB_ACTIVE if i == self.active_tab else COLOR_TAB_INACTIVE
+            text_color = COLOR_TEXT if i == self.active_tab else COLOR_TEXT_DIM
+            pygame.draw.rect(surface, color, rect)
+            # Highlight strip under active tab
+            if i == self.active_tab:
+                pygame.draw.line(surface, COLOR_START,
+                                 (rect.left + 4, rect.bottom - 2),
+                                 (rect.right - 4, rect.bottom - 2), 3)
+            tab_txt = self.font.render(label, True, text_color)
+            surface.blit(tab_txt, tab_txt.get_rect(center=rect.center))
 
-        # Setting rows
-        for row in self.rows:
+        # ── Setting rows for active tab ──
+        rows = self.camera_rows if self.active_tab == 0 else self.features_rows
+        for row in rows:
             row.draw(surface, self.font)
 
-        # Save button
+        # ── Save button ──
         pygame.draw.rect(surface, COLOR_SAVE, self.btn_save, border_radius=10)
         save_txt = self.font.render("SAVE", True, COLOR_TEXT)
         surface.blit(save_txt, save_txt.get_rect(center=self.btn_save.center))
 
-        # Back button
+        # ── Back button ──
         pygame.draw.rect(surface, COLOR_BACK, self.btn_back, border_radius=10)
         back_txt = self.font.render("BACK", True, COLOR_TEXT)
         surface.blit(back_txt, back_txt.get_rect(center=self.btn_back.center))

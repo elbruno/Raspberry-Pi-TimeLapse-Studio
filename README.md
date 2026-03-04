@@ -14,7 +14,7 @@ Capture photos using USB webcams (recommended default), built-in laptop cameras,
 
 ---
 
-## 🎓 New to Programming? Start Here!
+## 🎓 New to Programming? Start Here
 
 This project is designed for **beginners**! If you're new to programming or Raspberry Pi:
 
@@ -59,7 +59,7 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 
 | Dashboard | Gallery | Settings |
 |-----------|---------|----------|
-| ![Dashboard](images/01_dashboard.jpeg) | ![Gallery](images/02_gallery.jpeg) | ![Settings](images/03_settings.jpeg) |
+| ![Dashboard](01%20-%20WebApp%20TimeLapse/images/01_dashboard.jpeg) | ![Gallery](01%20-%20WebApp%20TimeLapse/images/02_gallery.jpeg) | ![Settings](01%20-%20WebApp%20TimeLapse/images/03_settings.jpeg) |
 
 ---
 
@@ -68,6 +68,7 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 ### 💡 What You'll Be Doing
 
 These commands will:
+
 1. **Clone**: Download a copy of this project to your computer
 2. **Create a virtual environment**: Set up an isolated Python workspace
 3. **Install dependencies**: Download the Python packages this project needs
@@ -81,8 +82,8 @@ These commands will:
 # Download the project (creates a new folder)
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 
-# Go into that folder
-cd Raspberry-Pi-TimeLapse-Studio
+# Go into the scenario 01 folder
+cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
 
 # Create a virtual environment (a private Python workspace)
 python -m venv venv
@@ -100,8 +101,8 @@ pip install -r requirements.txt
 # Download the project (creates a new folder)
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 
-# Go into that folder
-cd Raspberry-Pi-TimeLapse-Studio
+# Go into the scenario 01 folder
+cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
 
 # Create a virtual environment
 python3 -m venv venv
@@ -153,7 +154,7 @@ Already set up? Just activate your environment and run:
 **Windows:**
 
 ```powershell
-cd Raspberry-Pi-TimeLapse-Studio
+cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
 venv\Scripts\activate
 python main.py validate     # Optional: check configuration
 python main.py
@@ -162,7 +163,7 @@ python main.py
 **macOS / Linux / Raspberry Pi:**
 
 ```bash
-cd Raspberry-Pi-TimeLapse-Studio
+cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
 source venv/bin/activate
 python main.py validate     # Optional: check configuration
 python main.py
@@ -176,16 +177,16 @@ Choose based on what you need:
 
 | I want to... | Go to... |
 |--------------|----------|
-| 🎯 **Start learning (beginner)** | [Simple Script Guide](docs/10_simple_script_guide.md) ⬅️ Start here! |
-| 🔧 **Set up from scratch** | [Installation Guide](docs/06_installation_guide.md) |
-| ⚙️ **Configure settings** | [Configuration Guide](docs/07_configuration_guide.md) |
-| 🐛 **Fix a problem** | [Troubleshooting](docs/08_troubleshooting.md) |
-| 📡 **Use the API** | [CLI & API Reference](docs/09_cli_api_reference.md) |
-| 📚 **Understand the code** | [Project Overview](docs/01_project_overview.md) |
-| 🐍 **Learn Python basics** | [Python Basics](docs/02_python_basics_used.md) |
-| 🌐 **Learn web/Flask** | [Web Basics](docs/03_web_basics_flask.md) |
-| 📷 **Learn about cameras** | [Hardware & Camera](docs/04_hardware_camera_basics.md) |
-| 🚀 **Extend the project** | [Extensions & Challenges](docs/05_extensions_challenges.md) |
+| 🎯 **Start learning (beginner)** | [Simple Script Guide](01%20-%20WebApp%20TimeLapse/docs/10_simple_script_guide.md) ⬅️ Start here! |
+| 🔧 **Set up from scratch** | [Installation Guide](01%20-%20WebApp%20TimeLapse/docs/06_installation_guide.md) |
+| ⚙️ **Configure settings** | [Configuration Guide](01%20-%20WebApp%20TimeLapse/docs/07_configuration_guide.md) |
+| 🐛 **Fix a problem** | [Troubleshooting](01%20-%20WebApp%20TimeLapse/docs/08_troubleshooting.md) |
+| 📡 **Use the API** | [CLI & API Reference](01%20-%20WebApp%20TimeLapse/docs/09_cli_api_reference.md) |
+| 📚 **Understand the code** | [Project Overview](01%20-%20WebApp%20TimeLapse/docs/01_project_overview.md) |
+| 🐍 **Learn Python basics** | [Python Basics](01%20-%20WebApp%20TimeLapse/docs/02_python_basics_used.md) |
+| 🌐 **Learn web/Flask** | [Web Basics](01%20-%20WebApp%20TimeLapse/docs/03_web_basics_flask.md) |
+| 📷 **Learn about cameras** | [Hardware & Camera](01%20-%20WebApp%20TimeLapse/docs/04_hardware_camera_basics.md) |
+| 🚀 **Extend the project** | [Extensions & Challenges](01%20-%20WebApp%20TimeLapse/docs/05_extensions_challenges.md) |
 
 ---
 
@@ -194,46 +195,52 @@ Choose based on what you need:
 Edit `config.yaml`:
 
 ```yaml
-camera_mode: "opencv"      # Recommended default (USB/built-in cameras)
-interval_seconds: 10       # Seconds between photos
-web_host: "127.0.0.1"      # Use "0.0.0.0" for network access
+camera_mode: opencv          # Recommended default (USB/built-in cameras)
+camera_index: 0              # 0 = first camera, 1 = second, etc.
+interval_seconds: 10         # Seconds between photos
+output_dir: ./data           # Where photos are saved
+web_host: 0.0.0.0            # 0.0.0.0 = accessible from network, 127.0.0.1 = local only
 web_port: 8000
 ```
 
 > 💡 **Try changing these!** Edit `interval_seconds` to 5 and your time-lapse will take photos faster. Edit `web_port` to 9000 if port 8000 is busy.
 
-📖 See [Configuration Guide](docs/07_configuration_guide.md) for all options.
+📖 See [Configuration Guide](01%20-%20WebApp%20TimeLapse/docs/07_configuration_guide.md) for all options.
 
 ---
 
 ## 🖥️ CLI Commands
 
 ```bash
-python main.py              # Start web server
-python main.py validate     # Check configuration
-python main.py sessions     # List all sessions
-python main.py --debug      # Debug mode (auto-reloads when you change code)
+python main.py                    # Start web server
+python main.py --debug            # Debug mode (auto-reloads when you change code)
+python main.py validate           # Check configuration, packages, camera & permissions
+python main.py sessions           # List all sessions
+python main.py cleanup --days 7   # Delete sessions older than 7 days
+python main.py init               # Create a default config file
 ```
 
-📖 See [CLI & API Reference](docs/09_cli_api_reference.md) for full details.
+📖 See [CLI & API Reference](01%20-%20WebApp%20TimeLapse/docs/09_cli_api_reference.md) for full details.
 
 ---
 
-## 🧪 Try the Simple Scripts First!
+## 🧪 Try the Simple Scripts First
 
 Before diving into the full web app, try these minimal scripts to understand the basics:
 
 ```bash
 # The simplest time-lapse script (headless, ~80 lines)
-python simple.py
+python "01 - WebApp TimeLapse/simple.py"
 
 # Time-lapse with live preview window (~200 lines)
-python simple_with_preview.py
+python "01 - WebApp TimeLapse/simple_with_preview.py"
 ```
+
+> 💡 Or `cd "01 - WebApp TimeLapse"` first and then just `python simple.py`.
 
 These scripts have **extensive comments** explaining every step. Perfect for learning!
 
-📖 See [Simple Script Guide](docs/10_simple_script_guide.md) for a detailed walkthrough.
+📖 See [Simple Script Guide](01%20-%20WebApp%20TimeLapse/docs/10_simple_script_guide.md) for a detailed walkthrough.
 
 ---
 

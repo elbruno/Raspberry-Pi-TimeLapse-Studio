@@ -18,8 +18,9 @@ storage:
   fallback_path: ./data  # used when no USB drive found
 
 led:
-  enabled: true          # auto-use USB LED relay if detected
+  enabled: true          # auto-use USB LED if controllable port found
   warmup_seconds: 1.0    # seconds to wait after LED on, before capture
+  usb_port: auto         # "auto" to detect, or explicit like "1-1.2"
 
 display:
   show_countdown: true   # show countdown timer to next photo

@@ -45,6 +45,7 @@ DEFAULTS: dict = {
     "led": {
         "enabled": True,
         "warmup_seconds": 1.0,
+        "usb_port": "auto",
     },
     "display": {
         "show_countdown": True,

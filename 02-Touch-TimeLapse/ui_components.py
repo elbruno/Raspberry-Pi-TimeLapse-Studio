@@ -322,6 +322,89 @@ class PreviewArea:
             pygame.draw.circle(surface, COLOR_NO_CAMERA, icon_rect.center, 12, 2)
 
 
+class ThumbnailArea:
+    """Displays the last captured photo as a thumbnail.
+
+    Loads images from disk and caches them for performance. Only reloads when
+    the path changes to minimize I/O on Raspberry Pi.
+    """
+
+    def __init__(self, x: int, y: int, width: int, height: int) -> None:
+        self.rect = pygame.Rect(x, y, width, height)
+        self._photo_surface: Optional[pygame.Surface] = None
+        self._current_path: str = ""
+        self._label_font: Optional[pygame.font.Font] = None
+        self._placeholder_font: Optional[pygame.font.Font] = None
+
+    @property
+    def label_font(self) -> pygame.font.Font:
+        if self._label_font is None:
+            self._label_font = pygame.font.SysFont("monospace", 12, bold=True)
+        return self._label_font
+
+    @property
+    def placeholder_font(self) -> pygame.font.Font:
+        if self._placeholder_font is None:
+            self._placeholder_font = pygame.font.SysFont("monospace", 14, bold=True)
+        return self._placeholder_font
+
+    def update_photo(self, photo_path: str) -> None:
+        """Load and cache a new photo from disk. Only reloads if path changed."""
+        if photo_path == self._current_path:
+            return  # Already loaded
+        
+        self._current_path = photo_path
+        
+        if not photo_path:
+            self._photo_surface = None
+            return
+        
+        try:
+            # Load image from disk
+            img = pygame.image.load(photo_path)
+            w, h = img.get_size()
+            
+            # Scale to fit thumbnail area (preserve aspect ratio)
+            # Use regular scale (not smoothscale) for performance on Pi
+            label_h = 20  # Reserve space for "Last Photo" label
+            available_h = self.rect.height - label_h - 4
+            scale = min((self.rect.width - 4) / w, available_h / h)
+            new_w, new_h = int(w * scale), int(h * scale)
+            
+            self._photo_surface = pygame.transform.scale(img, (new_w, new_h))
+        except Exception:
+            # Failed to load — clear the surface
+            self._photo_surface = None
+            self._current_path = ""
+
+    def draw(self, surface: pygame.Surface) -> None:
+        """Render the thumbnail (or placeholder) onto *surface*."""
+        # Dark background
+        pygame.draw.rect(surface, COLOR_PREVIEW_BG, self.rect)
+        
+        # Draw label at top
+        label_text = self.label_font.render("Last Photo", True, COLOR_TEXT_DIM)
+        label_x = self.rect.x + (self.rect.width - label_text.get_width()) // 2
+        surface.blit(label_text, (label_x, self.rect.y + 4))
+        
+        # Photo area starts below label
+        photo_y = self.rect.y + 24
+        photo_h = self.rect.height - 24
+        
+        if self._photo_surface is not None:
+            # Center the scaled photo in the available area
+            px = self.rect.x + (self.rect.width - self._photo_surface.get_width()) // 2
+            py = photo_y + (photo_h - self._photo_surface.get_height()) // 2
+            surface.blit(self._photo_surface, (px, py))
+        else:
+            # Placeholder
+            placeholder = self.placeholder_font.render("No Photos", True, COLOR_NO_CAMERA)
+            placeholder_rect = placeholder.get_rect(
+                center=(self.rect.centerx, photo_y + photo_h // 2)
+            )
+            surface.blit(placeholder, placeholder_rect)
+
+
 # ---------------------------------------------------------------------------
 # SettingsScreen
 # ---------------------------------------------------------------------------

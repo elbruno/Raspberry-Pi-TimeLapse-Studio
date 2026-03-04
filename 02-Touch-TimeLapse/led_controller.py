@@ -1,20 +1,26 @@
 """
 led_controller.py - USB LED Light Controller for Touch TimeLapse
 
-Auto-detects USB relay modules (e.g. LCUS-1, SainSmart, HiLetgo) and
-provides simple on/off control.  The LED is turned on before each photo
-capture to illuminate the scene, then turned off afterward.
+Controls simple USB-powered LED lights by toggling USB port power on/off
+using uhubctl (preferred) or sysfs (fallback). No special protocol needed —
+just power the LED directly.
 
-If no USB relay is detected, all operations are silent no-ops — the
-rest of the app works exactly the same.
+The LED is turned on before each photo capture to illuminate the scene,
+then turned off afterward.
 
-Supported hardware:
-    - LCUS-1 type USB relay modules (CH340/CH341 chip)
-    - Most single-channel USB relay boards using the 0xA0 protocol
-    - Devices that appear as /dev/ttyUSB* or COM* serial ports
+If no controllable USB port is detected, all operations are silent no-ops —
+the rest of the app works exactly the same.
+
+Requirements:
+    - Linux (Raspberry Pi or similar)
+    - uhubctl utility: sudo apt install uhubctl
+    - Root access or udev rule for non-root control
+
+    Note: uhubctl typically requires root. For dedicated Pi setups, run the
+    app with sudo, or add a udev rule to grant non-root access to USB hubs.
 
 Usage:
-    led = LEDController()
+    led = LEDController(usb_port="auto")
     if led.is_available():
         led.turn_on()
         time.sleep(1)
@@ -23,157 +29,327 @@ Usage:
 """
 
 import logging
-import time
+import platform
+import re
+import subprocess
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Optional dependency — pyserial may not be installed
-try:
-    import serial
-    import serial.tools.list_ports
-    SERIAL_AVAILABLE = True
-except ImportError:
-    SERIAL_AVAILABLE = False
-    serial = None  # type: ignore[assignment]
-    logger.info(
-        "pyserial is not installed — USB LED control disabled. "
-        "Install with: pip install pyserial"
-    )
+# uhubctl availability check
+_UHUBCTL_AVAILABLE: Optional[bool] = None
 
-# Common USB relay protocol (LCUS-1 / generic single-channel relay)
-# Format: 0xA0  channel  state  checksum
-_CMD_RELAY_ON = bytes([0xA0, 0x01, 0x01, 0xA2])
-_CMD_RELAY_OFF = bytes([0xA0, 0x01, 0x00, 0xA1])
-_BAUD_RATE = 9600
-
-# USB vendor/product hints for common relay modules
-_RELAY_KEYWORDS = [
-    "ch340", "ch341",       # Most common relay chip
-    "usb serial",           # Generic USB-serial adapters
-    "usb-serial",
-    "relay",
-    "ft232",                # FTDI-based relays
-    "cp210",                # CP2102-based relays
-    "pl2303",               # Prolific-based
+# Device classes to SKIP (cameras, storage, input devices)
+_SKIP_DEVICE_CLASSES = [
+    "hub",          # USB hubs themselves
+    "mass storage", # USB drives, SD card readers
+    "camera",       # USB webcams
+    "video",        # Video devices
+    "input",        # Keyboard, mouse, touchscreen
+    "hid",          # Human Interface Devices
+    "audio",        # Sound devices
 ]
 
 
-class LEDController:
-    """USB relay-based LED controller with auto-detection.
+def _check_uhubctl() -> bool:
+    """Check if uhubctl is installed and available."""
+    global _UHUBCTL_AVAILABLE
+    if _UHUBCTL_AVAILABLE is not None:
+        return _UHUBCTL_AVAILABLE
 
-    On init, scans USB serial ports for likely relay modules.
-    If none found, all methods are safe no-ops.
+    try:
+        result = subprocess.run(
+            ["uhubctl", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        _UHUBCTL_AVAILABLE = result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        _UHUBCTL_AVAILABLE = False
+
+    if not _UHUBCTL_AVAILABLE:
+        logger.info(
+            "uhubctl not found — USB LED control disabled. "
+            "Install with: sudo apt install uhubctl"
+        )
+    return _UHUBCTL_AVAILABLE
+
+
+class LEDController:
+    """USB port power controller for simple LED lights.
+
+    Controls USB LED by toggling port power using uhubctl.
+    Auto-detects suitable USB ports (skips cameras, storage, input devices).
     """
 
-    def __init__(self) -> None:
-        self._port: Optional[serial.Serial] = None  # type: ignore[name-defined]
-        self._port_name: Optional[str] = None
+    def __init__(self, usb_port: str = "auto") -> None:
+        """
+        Initialize LED controller.
+
+        Args:
+            usb_port: USB port location (e.g., "1-1.2") or "auto" to detect
+        """
+        self._usb_port: Optional[str] = None
+        self._hub_location: Optional[str] = None
+        self._port_number: Optional[str] = None
         self._available: bool = False
+        self._configured_port: str = usb_port
 
     def detect(self) -> bool:
-        """Scan for a USB relay device and open the first one found.
+        """Scan for a controllable USB port and prepare for control.
 
-        Returns True if a relay was found and opened.
+        Returns True if a suitable port was found.
         """
-        if not SERIAL_AVAILABLE:
+        # Only works on Linux
+        if platform.system() != "Linux":
+            logger.info("USB port power control only supported on Linux")
             return False
 
+        if not _check_uhubctl():
+            return False
+
+        # If explicit port specified, validate and use it
+        if self._configured_port != "auto":
+            if self._validate_explicit_port(self._configured_port):
+                return True
+            else:
+                logger.warning(
+                    "Configured USB port %s not found or not controllable",
+                    self._configured_port
+                )
+                return False
+
+        # Auto-detect mode: scan for candidate ports
+        return self._auto_detect_port()
+
+    def _validate_explicit_port(self, port_spec: str) -> bool:
+        """Validate that an explicitly configured port exists and is controllable."""
         try:
-            ports = serial.tools.list_ports.comports()
-            for port_info in ports:
-                desc = (port_info.description or "").lower()
-                hwid = (port_info.hwid or "").lower()
-                combined = f"{desc} {hwid}"
+            result = subprocess.run(
+                ["uhubctl"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
 
-                # Match against known relay/serial adapter keywords
-                if any(kw in combined for kw in _RELAY_KEYWORDS):
-                    if self._try_open(port_info.device):
-                        return True
+            # Parse uhubctl output to find this specific port
+            for line in result.stdout.splitlines():
+                # Look for lines like "  Port 2: 0503 power" (port with power control)
+                port_match = re.search(
+                    r"Port\s+(\d+):\s+\w+\s+(?:power|off|On)",
+                    line,
+                    re.IGNORECASE
+                )
+                if port_match:
+                    # Check if this matches our port spec
+                    # Port spec format: "hub_location" (e.g., "1-1") with port number
+                    # We'll store both and construct commands later
+                    self._usb_port = port_spec
+                    self._available = True
+                    logger.info("Using configured USB port: %s", port_spec)
+                    return True
 
-            # Fallback: try any /dev/ttyUSB* port (Linux Pi typical)
-            for port_info in ports:
-                device = port_info.device or ""
-                if "ttyUSB" in device or "ttyACM" in device:
-                    if self._try_open(device):
-                        return True
+        except (subprocess.TimeoutExpired, Exception) as exc:
+            logger.warning("Error validating USB port %s: %s", port_spec, exc)
 
-        except Exception as exc:
-            logger.warning("LED detection error: %s", exc)
-
-        logger.info("No USB LED/relay device detected — LED control disabled")
         return False
 
-    def _try_open(self, device: str) -> bool:
-        """Attempt to open a serial port as a relay device."""
+    def _auto_detect_port(self) -> bool:
+        """Auto-detect a suitable USB port for LED control."""
         try:
-            self._port = serial.Serial(
-                port=device,
-                baudrate=_BAUD_RATE,
-                timeout=1,
-                write_timeout=1,
+            result = subprocess.run(
+                ["uhubctl"],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
-            self._port_name = device
-            self._available = True
-            # Start with relay OFF
-            self._port.write(_CMD_RELAY_OFF)
-            time.sleep(0.1)
-            logger.info("USB LED relay detected on %s", device)
-            return True
-        except Exception as exc:
-            logger.debug("Could not open %s as relay: %s", device, exc)
-            if self._port is not None:
-                try:
-                    self._port.close()
-                except Exception:
-                    pass
-            self._port = None
-            self._available = False
-            return False
+
+            if result.returncode != 0:
+                # Check if permission error
+                if "permission denied" in result.stderr.lower():
+                    logger.warning(
+                        "uhubctl requires root permissions. "
+                        "Run with sudo or add a udev rule for non-root access."
+                    )
+                else:
+                    logger.warning("uhubctl failed: %s", result.stderr.strip())
+                return False
+
+            # Parse uhubctl output
+            current_hub = None
+            candidates = []
+
+            for line in result.stdout.splitlines():
+                # Hub line: "Current status for hub 1-1 [0424:9514 Generic USB2.0 Hub, USB 2.00, 5 ports, ppps]"
+                hub_match = re.search(
+                    r"hub\s+([\d\-\.]+)\s+\[.*?,.*?(\d+)\s+ports.*?ppps",
+                    line,
+                    re.IGNORECASE
+                )
+                if hub_match:
+                    current_hub = hub_match.group(1)
+                    continue
+
+                # Port line: "  Port 2: 0100 power"
+                # We want ports that are OFF or have power control
+                if current_hub:
+                    port_match = re.search(
+                        r"Port\s+(\d+):\s+(\w+)\s+(.*)",
+                        line,
+                        re.IGNORECASE
+                    )
+                    if port_match:
+                        port_num = port_match.group(1)
+                        status = port_match.group(2)
+                        info = port_match.group(3).lower()
+
+                        # Skip if it's a device we don't want to power cycle
+                        skip = False
+                        for skip_class in _SKIP_DEVICE_CLASSES:
+                            if skip_class in info:
+                                skip = True
+                                break
+
+                        if not skip and "power" in info:
+                            candidates.append((current_hub, port_num, info))
+
+            if candidates:
+                # Pick the first candidate
+                hub, port, info = candidates[0]
+                self._hub_location = hub
+                self._port_number = port
+                self._usb_port = f"{hub}.{port}"
+                self._available = True
+                logger.info(
+                    "Auto-detected USB LED port: hub %s, port %s (%s)",
+                    hub, port, info.strip()
+                )
+                if len(candidates) > 1:
+                    logger.info(
+                        "Found %d candidate ports. Using first. "
+                        "Set led.usb_port in config.yaml to use a specific port.",
+                        len(candidates)
+                    )
+                return True
+
+            logger.info(
+                "No suitable USB ports found for LED control. "
+                "All ports are either in use by system devices or lack power switching."
+            )
+
+        except (subprocess.TimeoutExpired, Exception) as exc:
+            logger.warning("Error detecting USB ports: %s", exc)
+
+        return False
 
     def is_available(self) -> bool:
-        """Return True if a USB relay was detected and is open."""
-        return self._available and self._port is not None
+        """Return True if a controllable USB port was detected."""
+        return self._available
 
     def turn_on(self) -> bool:
-        """Turn the LED relay ON. Returns True on success."""
+        """Turn the LED ON by enabling USB port power. Returns True on success."""
         if not self.is_available():
             return False
+
         try:
-            self._port.write(_CMD_RELAY_ON)  # type: ignore[union-attr]
-            logger.debug("LED ON (%s)", self._port_name)
-            return True
+            # If we have explicit hub and port, use those
+            if self._hub_location and self._port_number:
+                cmd = [
+                    "uhubctl",
+                    "-l", self._hub_location,
+                    "-p", self._port_number,
+                    "-a", "on",
+                    "-r", "0",
+                ]
+            else:
+                # Fallback: just use the port spec directly
+                logger.warning("Using fallback port control (may be slow)")
+                cmd = ["uhubctl", "-a", "on", "-r", "0"]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+
+            if result.returncode == 0:
+                logger.debug("LED ON (USB port %s)", self._usb_port)
+                return True
+            else:
+                if "permission denied" in result.stderr.lower():
+                    logger.warning(
+                        "Cannot control USB port — permission denied. "
+                        "Run with sudo or configure udev rules."
+                    )
+                else:
+                    logger.warning("Failed to turn LED on: %s", result.stderr.strip())
+                return False
+
+        except subprocess.TimeoutExpired:
+            logger.warning("LED turn_on command timed out")
+            return False
         except Exception as exc:
             logger.warning("Failed to turn LED on: %s", exc)
             return False
 
     def turn_off(self) -> bool:
-        """Turn the LED relay OFF. Returns True on success."""
+        """Turn the LED OFF by disabling USB port power. Returns True on success."""
         if not self.is_available():
             return False
+
         try:
-            self._port.write(_CMD_RELAY_OFF)  # type: ignore[union-attr]
-            logger.debug("LED OFF (%s)", self._port_name)
-            return True
+            if self._hub_location and self._port_number:
+                cmd = [
+                    "uhubctl",
+                    "-l", self._hub_location,
+                    "-p", self._port_number,
+                    "-a", "off",
+                    "-r", "0",
+                ]
+            else:
+                logger.warning("Using fallback port control (may be slow)")
+                cmd = ["uhubctl", "-a", "off", "-r", "0"]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+
+            if result.returncode == 0:
+                logger.debug("LED OFF (USB port %s)", self._usb_port)
+                return True
+            else:
+                if "permission denied" in result.stderr.lower():
+                    logger.warning(
+                        "Cannot control USB port — permission denied. "
+                        "Run with sudo or configure udev rules."
+                    )
+                else:
+                    logger.warning("Failed to turn LED off: %s", result.stderr.strip())
+                return False
+
+        except subprocess.TimeoutExpired:
+            logger.warning("LED turn_off command timed out")
+            return False
         except Exception as exc:
             logger.warning("Failed to turn LED off: %s", exc)
             return False
 
     def close(self) -> None:
-        """Turn off the relay and close the serial port."""
-        if self._port is not None:
-            try:
-                self._port.write(_CMD_RELAY_OFF)
-                time.sleep(0.05)
-                self._port.close()
-                logger.info("LED controller closed (%s)", self._port_name)
-            except Exception as exc:
-                logger.warning("Error closing LED controller: %s", exc)
-        self._port = None
+        """Turn off the LED and clean up."""
+        if self._available:
+            self.turn_off()
+            logger.info("LED controller closed (USB port %s)", self._usb_port)
         self._available = False
-        self._port_name = None
+        self._usb_port = None
+        self._hub_location = None
+        self._port_number = None
 
     @property
     def port_name(self) -> Optional[str]:
-        """The serial port device name, or None."""
-        return self._port_name
+        """The USB port location (e.g., "1-1.2"), or None."""
+        return self._usb_port

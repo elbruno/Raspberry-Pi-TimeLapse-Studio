@@ -86,6 +86,7 @@ from ui_components import (
     PreviewArea,
     SettingsScreen,
     StatusBar,
+    ThumbnailArea,
     COLOR_BACKGROUND,
     COLOR_CLOSE,
     COLOR_SETTINGS,
@@ -231,8 +232,14 @@ class TimeLapseApp:
         preview_y = header_h
         preview_h = self.screen_h - header_h - button_row_h - status_h
 
+        # Split preview area: live camera (left) + thumbnail (right)
+        preview_w = int(self.screen_w * 0.67)  # ~320px for live preview
+        thumb_gap = 6
+        thumb_w = self.screen_w - preview_w - thumb_gap  # ~154px for thumbnail
+        
         self.header = Header(self.screen_w)
-        self.preview = PreviewArea(0, preview_y, self.screen_w, preview_h)
+        self.preview = PreviewArea(0, preview_y, preview_w, preview_h)
+        self.thumbnail = ThumbnailArea(preview_w + thumb_gap, preview_y, thumb_w, preview_h)
 
         # Three buttons: [START/STOP] [SETTINGS] [CLOSE]
         btn_y = header_h + preview_h + 10
@@ -263,6 +270,7 @@ class TimeLapseApp:
         self._running = False
         self._capture_start_time: float = 0.0
         self._last_preview_time: float = 0.0
+        self._last_thumbnail_path: str = ""  # Track last photo for thumbnail updates
 
         # Display feature flags
         display_cfg = self.config.get("display", {})
@@ -320,22 +328,23 @@ class TimeLapseApp:
             logger.warning("No camera detected")
 
     def _init_led(self) -> None:
-        """Auto-detect a USB LED relay and ensure it starts OFF."""
+        """Auto-detect a USB LED and ensure it starts OFF."""
         if not LED_MODULE_AVAILABLE:
             logger.info("led_controller not available — LED support disabled")
             return
-        controller = LEDController()
+        led_cfg = self.config.get("led", {})
+        usb_port = led_cfg.get("usb_port", "auto")
+        controller = LEDController(usb_port=usb_port)
         if controller.detect():
             controller.turn_off()  # always ensure LED starts in off state
             self.led_detected = True
-            logger.info("USB LED relay detected on %s", controller.port_name)
-            led_cfg = self.config.get("led", {})
+            logger.info("USB LED detected on %s", controller.port_name)
             if led_cfg.get("enabled", True):
                 self.led = controller
-                logger.info("LED relay enabled for capture")
+                logger.info("LED enabled for capture")
             else:
                 controller.close()
-                logger.info("LED disabled in config — relay turned off")
+                logger.info("LED disabled in config — turned off")
         else:
             logger.info("No USB LED relay found")
 
@@ -528,6 +537,13 @@ class TimeLapseApp:
             photo_count = st.get("total_photos", 0)
             elapsed = self._elapsed()
             errors = st.get("errors", [])
+            
+            # Update thumbnail if a new photo was captured
+            last_path = st.get("last_photo_path", "")
+            if last_path and last_path != self._last_thumbnail_path:
+                self._last_thumbnail_path = last_path
+                self.thumbnail.update_photo(last_path)
+            
             if errors:
                 status_text = f"Error: {errors[-1]}"
             elif self._show_countdown:
@@ -584,6 +600,7 @@ class TimeLapseApp:
             self.screen.fill(COLOR_BACKGROUND)
             self.header.draw(self.screen)
             self.preview.draw(self.screen)
+            self.thumbnail.draw(self.screen)
             self.btn_start.draw(self.screen)
             self.btn_stop.draw(self.screen)
             self.btn_settings.draw(self.screen)

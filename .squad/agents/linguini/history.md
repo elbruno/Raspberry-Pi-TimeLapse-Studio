@@ -35,3 +35,24 @@
 - Orchestration logs: `.squad/orchestration-log/2026-03-04T2100-{linguini,colette,alfredo}.md`
 - All decisions merged into `.squad/decisions.md` with deduplication
 
+## LED Controller USB Port Power Rewrite (2026-03-05)
+- Rewrote `02-Touch-TimeLapse/led_controller.py` to use USB port power control instead of serial relay commands
+- Old approach (serial relay with LCUS-1 protocol) didn't work — LED stayed always on
+- New approach: Uses `uhubctl` to toggle USB port power on/off (works on Raspberry Pi)
+- Auto-detection skips cameras, storage devices, keyboards/mice — only controls ports with simple USB devices
+- Added `led.usb_port` config option: "auto" for detection, or explicit like "1-1.2"
+- Interface unchanged: `detect()`, `turn_on()`, `turn_off()`, `close()`, `is_available()`, `port_name` property
+- `__init__(usb_port="auto")` has default param for backward compatibility with existing code
+- uhubctl requires root or udev rules — logs helpful permission messages
+- Linux-only (gracefully returns False on Windows/macOS)
+- Config files updated: `config.py` adds usb_port default, `config.yaml` documents the option
+
+## Split Preview Layout — Live + Thumbnail (Current Session)
+- Created `ThumbnailArea` class in `ui_components.py` to display last captured photo alongside live preview
+- Layout: 67% width (~320px) for live camera preview (left), remaining ~154px for thumbnail (right) with 6px gap
+- Thumbnail caching: only reloads from disk when `last_photo_path` changes (performance optimization for Pi)
+- Uses `pygame.transform.scale` (not `smoothscale`) for thumbnail to reduce CPU load
+- Thumbnail shows "Last Photo" label at top, "No Photos" placeholder when no captures yet
+- Status polling in `_update_status()` checks `engine.get_status()["last_photo_path"]` and updates thumbnail on change
+- Key files: `02-Touch-TimeLapse/ui_components.py` (ThumbnailArea class), `02-Touch-TimeLapse/timelapse_touch.py` (split layout + thumbnail tracking)
+

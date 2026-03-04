@@ -59,8 +59,7 @@ Touch TimeLapse is a **standalone time-lapse photo capture station** that runs o
 | Item | Notes |
 |------|-------|
 | **USB flash drive** | For saving photos to removable storage |
-| **USB LED relay module** | LCUS-1 type, for scene illumination ([$3–5 on Amazon/AliExpress](https://www.amazon.com/s?k=LCUS-1+USB+relay)) |
-| **LED light or lamp** | Connected to the relay module's output terminals |
+| **USB LED light** | Any USB-powered LED light (ring light, strip, desk lamp) — controlled via USB port power |
 | **Pi Camera Module** | Alternative to USB webcam (picamera2 support planned) |
 
 ### For Initial Setup
@@ -231,14 +230,14 @@ When the app starts, you see the **main screen**:
 
 ```
 ┌──────────────────────────────────────────────────┐
-│ PiTimeLapse        ✓ 14.2G ~142K  #0             │  ← Header
-├──────────────────────────────────────────────────┤
-│                                                  │
-│                                                  │
-│              Live Camera Preview                 │  ← Preview area
-│                                                  │
-│                                                  │
-├──────────────────────────────────────────────────┤
+│ PiTimeLapse LED     ✓ 14.2G ~142K  #0            │  ← Header
+├────────────────────────┬─────────────────────────┤
+│                        │      Last Photo         │
+│    Live Camera         │                         │
+│    Preview             │    [thumbnail of most   │  ← Split preview
+│                        │     recent capture]     │
+│                        │                         │
+├────────────────────────┴─────────────────────────┤
 │   [ START ]    [ SETTINGS ]    [ CLOSE ]         │  ← Buttons
 ├──────────────────────────────────────────────────┤
 │ Status: Ready                    Elapsed: 00:00  │  ← Status bar
@@ -252,15 +251,23 @@ The header shows at a glance:
 | Element | Meaning |
 |---------|---------|
 | **PiTimeLapse** | App title |
+| **LED** (green) | USB LED light detected and controllable |
 | **✓** (green) | USB drive connected |
 | **✗** (red) | No USB drive — saving to local `./data` folder |
 | **14.2G** | Free space on USB drive (when Storage Info is enabled) |
 | **~142K** | Estimated remaining photos (when Storage Info is enabled) |
 | **#0** | Total photos captured in current session |
 
-### 7.2 Live Preview
+### 7.2 Split Preview
 
-The center area shows a **live camera preview** that updates every 3 seconds. If no camera is detected, you'll see a "No Camera" placeholder with a camera icon.
+The center area is split into two zones:
+
+| Zone | Width | What it shows |
+|------|-------|---------------|
+| **Live Preview** (left) | ~67% | Live camera feed, updates every 3 seconds |
+| **Last Photo** (right) | ~33% | Thumbnail of the most recently captured photo |
+
+If no camera is detected, the live preview shows a "No Camera" placeholder. The thumbnail shows "No Photos" until the first capture.
 
 ### 7.3 Buttons
 
@@ -416,64 +423,79 @@ The estimate is based on your current resolution and quality settings. Higher re
 
 ## 10. USB LED Flash Light
 
-The app can control a **USB relay module** to turn a light on before each photo, then off again after capture. This is ideal for:
+The app can control a **USB-powered LED light** by toggling the USB port power on and off before each photo capture. This is ideal for:
 
 - Dark environments (indoor plants, aquariums, night captures)
 - Consistent lighting across a time-lapse sequence
 - Avoiding ambient light variations
 
-### 10.1 Supported Hardware
+### 10.1 How It Works
 
-| Hardware | Notes |
-|----------|-------|
-| **LCUS-1 USB relay** | Most common, cheapest (~$3-5) |
-| **SainSmart USB relay** | Single channel, similar protocol |
-| **HiLetgo USB relay** | Compatible with standard 0xA0 protocol |
-| Any relay with **CH340/CH341**, **FTDI**, or **CP2102** USB-serial chip | Auto-detected |
+Instead of using a serial relay protocol, the app uses **`uhubctl`** to toggle USB port power directly. When the LED's USB port is powered off, the LED turns off. When powered on, it turns on. Simple and reliable.
 
-### 10.2 Wiring the LED
+### 10.2 Requirements
 
-```
-USB Relay Module
-┌──────────────┐
-│              │
-│   USB ──────────── Pi USB port
-│              │
-│   COM ──────────── LED power (+)
-│   NO  ──────────── LED other wire
-│              │      (NO = Normally Open)
-└──────────────┘
+| Item | Notes |
+|------|-------|
+| **uhubctl** | `sudo apt install uhubctl` — controls USB port power |
+| **Any USB LED light** | Ring light, LED strip, desk lamp — anything USB-powered |
+| **Root access** | uhubctl needs root permissions (use `sudo` or udev rules) |
 
-LED power supply ──── LED power (–)
-```
-
-- Connect the **LED positive wire** to the relay's **COM** (Common) terminal
-- Connect the **LED's other wire** to the relay's **NO** (Normally Open) terminal
-- The relay acts as a switch — when activated, it closes the circuit and the LED turns on
+> 💡 On a dedicated Pi device, running with `sudo` is the easiest option.
 
 ### 10.3 How the Capture Cycle Works
 
-When LED Flash is enabled and a relay is detected:
+When LED Flash is enabled and a controllable USB port is detected:
 
 ```
-1. LED ON        ← relay activates, light turns on
+1. LED ON        ← USB port powered on, light turns on
 2. Wait warmup   ← configurable delay (default 1 second)
 3. CAPTURE PHOTO ← camera takes the picture
-4. LED OFF       ← relay deactivates, light turns off
+4. LED OFF       ← USB port powered off, light turns off
 5. Wait interval ← countdown to next capture
 ```
 
-If no relay is detected, the capture cycle runs normally without steps 1, 2, and 4.
+If no controllable port is detected, the capture cycle runs normally without steps 1, 2, and 4.
 
 ### 10.4 Setup Steps
 
-1. Plug the USB relay module into the Pi
-2. Connect your LED light to the relay terminals (see wiring diagram above)
-3. The app auto-detects the relay on startup — no configuration needed
-4. Toggle **LED Flash** on/off in Settings → Features tab
-5. Adjust **LED Warmup** (0–5 seconds) for your light's warm-up time
+1. Install uhubctl: `sudo apt install uhubctl`
+2. Plug your USB LED light into a USB port on the Pi
+3. Run `sudo uhubctl` to verify your USB hub supports per-port power switching
+4. The app auto-detects controllable ports on startup
+5. Toggle **LED Flash** on/off in Settings → Features tab
+6. Adjust **LED Warmup** (0–5 seconds) for your light's warm-up time
 
-> 💡 The relay appears as `/dev/ttyUSB0` on the Pi. You can verify with: `ls /dev/ttyUSB*`
+### 10.5 Specifying a USB Port
+
+By default, the app auto-detects which USB port to control (`usb_port: auto`). If auto-detection picks the wrong port, you can specify it explicitly in `config.yaml`:
+
+```yaml
+led:
+  enabled: true
+  warmup_seconds: 1.0
+  usb_port: "1-1.2"   # explicit hub.port location
+```
+
+Run `sudo uhubctl` to list available hubs and ports. The location is shown in the output (e.g., `hub 1-1, port 2` → `usb_port: "1-1.2"`).
+
+### 10.6 Running Without Root
+
+To avoid using `sudo`, create a udev rule:
+
+```bash
+# Find your USB hub vendor ID (from uhubctl output)
+sudo nano /etc/udev/rules.d/99-uhubctl.rules
+
+# Add this line (adjust idVendor for your hub):
+SUBSYSTEM=="usb", ATTR{idVendor}=="2109", MODE="0666"
+
+# Reload rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+> 💡 The header bar shows **LED** in green when a controllable USB port is detected.
 
 ---
 
@@ -541,8 +563,9 @@ storage:
   fallback_path: ./data  # used when no USB drive found
 
 led:
-  enabled: true          # auto-use USB LED relay if detected
+  enabled: true          # auto-use USB LED if controllable port found
   warmup_seconds: 1.0    # seconds to wait after LED on, before capture
+  usb_port: auto         # "auto" to detect, or explicit like "1-1.2"
 
 display:
   show_countdown: true   # show countdown timer to next photo
@@ -561,8 +584,9 @@ display:
 | `capture.quality` | integer | 1–100 | `90` | JPEG compression quality |
 | `preview.fps` | integer | 1–30 | `6` | Live preview refresh rate |
 | `storage.fallback_path` | string | any path | `./data` | Where to save if no USB drive |
-| `led.enabled` | boolean | `true`/`false` | `true` | Enable USB LED relay |
+| `led.enabled` | boolean | `true`/`false` | `true` | Enable USB LED port power control |
 | `led.warmup_seconds` | float | 0.0–5.0 | `1.0` | LED warmup delay before capture |
+| `led.usb_port` | string | `auto` or port location | `auto` | USB port for LED (`auto` or e.g. `1-1.2`) |
 | `display.show_countdown` | boolean | `true`/`false` | `true` | Show countdown in status bar |
 | `display.show_storage_info` | boolean | `true`/`false` | `true` | Show storage info in header |
 
@@ -616,9 +640,11 @@ Save with `Ctrl+O`, exit with `Ctrl+X`. Changes take effect next time the app st
 
 | Problem | Solution |
 |---------|----------|
-| **LED relay not detected** | Check `ls /dev/ttyUSB*`. If empty, the relay isn't recognized. Try a different USB port. |
+| **LED not detected** | Check uhubctl is installed: `sudo uhubctl`. If not found: `sudo apt install uhubctl`. |
+| **Permission denied** | uhubctl needs root. Run app with `sudo` or add a udev rule (see [section 10.6](#106-running-without-root)). |
 | **LED turns on but photo is still dark** | Increase `led.warmup_seconds` — the LED may need more time to reach full brightness. |
-| **LED stays on after app crash** | Unplug and replug the USB relay to reset it. The app turns off the LED during clean shutdown. |
+| **LED stays on after app crash** | Run `sudo uhubctl -l <hub> -p <port> -a off` to manually cut port power. |
+| **Wrong USB port detected** | Set `led.usb_port` explicitly in config.yaml (see [section 10.5](#105-specifying-a-usb-port)). |
 
 ---
 
@@ -657,10 +683,10 @@ A: Not directly. The app looks for USB-mounted drives. You could mount a network
 ### LED
 
 **Q: Do I need the LED feature?**
-A: No — it's completely optional. If no USB relay is connected, the LED feature has zero effect on the app. You can also disable it in the Features tab.
+A: No — it's completely optional. If no controllable USB port is found, the LED feature has zero effect on the app. You can also disable it in the Features tab.
 
 **Q: Can I use any type of light?**
-A: Yes — the relay is just a switch. You can connect any light (LED strip, desk lamp, ring light) as long as it's within the relay's power rating (usually 10A @ 250V AC or 30V DC for LCUS-1 modules).
+A: Yes — any USB-powered light works (ring light, LED strip, desk lamp). The app controls it by toggling USB port power on and off.
 
 ---
 
@@ -686,7 +712,7 @@ A: Yes — the relay is just a switch. You can connect any light (LED strip, des
 │  Logs:      Watch SSH terminal output            │
 │  Camera:    ls /dev/video*                       │
 │  USB:       lsblk                                │
-│  LED relay: ls /dev/ttyUSB*                      │
+│  LED:       sudo uhubctl                        │
 │                                                  │
 └──────────────────────────────────────────────────┘
 ```

@@ -59,6 +59,12 @@ pip install -r requirements.txt
 > python3 -m venv venv
 > source venv/bin/activate    # Windows: venv\Scripts\activate
 > ```
+>
+> ⚠️ **PEP 668 error?** On newer Raspberry Pi OS (Bookworm+), pip refuses to install system-wide. Add `--break-system-packages` to the pip command:
+> ```bash
+> pip install -r requirements.txt --break-system-packages
+> ```
+> This is safe on a dedicated Pi that only runs this project.
 
 ### 2. Validate Your Setup
 

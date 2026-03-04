@@ -64,6 +64,8 @@ python main.py                  # Open http://localhost:8000
 ```
 
 > 💡 **Virtual environment optional.** On a dedicated Raspberry Pi you can install packages globally. On a shared/dev machine, use `python3 -m venv venv && source venv/bin/activate` first (Windows: `venv\Scripts\activate`).
+>
+> ⚠️ **PEP 668 error?** On newer Raspberry Pi OS, pip may refuse to install globally. Add `--break-system-packages` to the pip command — this is safe on a dedicated Pi.
 
 📖 Full instructions → [**01-WebApp-TimeLapse/README.md**](01-WebApp-TimeLapse/README.md)
 
@@ -78,6 +80,8 @@ python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
 ```
 
 > 💡 **Virtual environment optional.** On a dedicated Pi this isn't needed. On a shared machine, create one first (see note above).
+>
+> ⚠️ **PEP 668 error?** Add `--break-system-packages` to the pip command (safe on a dedicated Pi).
 
 📖 Full instructions → [**02-Touch-TimeLapse/README.md**](02-Touch-TimeLapse/README.md)
 

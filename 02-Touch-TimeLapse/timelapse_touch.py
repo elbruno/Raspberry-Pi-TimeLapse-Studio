@@ -25,31 +25,40 @@ from typing import Optional
 
 # ---------------------------------------------------------------------------
 # SDL environment — must be set BEFORE importing pygame.
-# On console (no DISPLAY env var) target the LCD framebuffer directly.
-# SDL doesn't support comma-separated drivers — we probe one at a time.
+# When running via SSH while a desktop session is active on the LCD,
+# we inject DISPLAY=:0 so SDL uses X11.  If no desktop is running we
+# fall back to kmsdrm / fbcon / directfb.  "dummy" is never used — it
+# renders to nothing.
 # ---------------------------------------------------------------------------
-_SDL_HEADLESS = False
-if not os.environ.get("DISPLAY") and platform.system() == "Linux":
-    os.environ.setdefault("SDL_FBDEV", "/dev/fb0")
-    os.environ.setdefault("SDL_MOUSEDEV", "/dev/input/touchscreen")
-    os.environ.setdefault("SDL_MOUSEDRV", "TSLIB")
-    _SDL_HEADLESS = True
+_SDL_NEEDS_PROBE = False
+if platform.system() == "Linux" and not os.environ.get("DISPLAY"):
+    # Check whether an X server is running on :0 (desktop on the LCD)
+    _x_running = os.path.exists("/tmp/.X11-unix/X0")
+    if _x_running:
+        os.environ["DISPLAY"] = ":0"
+        logging.getLogger(__name__).info("No DISPLAY set — using :0 (desktop detected)")
+    else:
+        # True headless / console — target framebuffer
+        os.environ.setdefault("SDL_FBDEV", "/dev/fb0")
+        os.environ.setdefault("SDL_MOUSEDEV", "/dev/input/touchscreen")
+        os.environ.setdefault("SDL_MOUSEDRV", "TSLIB")
+        _SDL_NEEDS_PROBE = True
 
 import numpy as np
 import pygame
 
 
 def _init_display_driver() -> None:
-    """Try SDL video drivers in order until one works (headless Linux only).
+    """Initialise the SDL video driver.
 
-    On desktop (DISPLAY set), pygame picks the right driver automatically.
-    On headless Pi we try: kmsdrm → fbcon → directfb → dummy.
+    If DISPLAY is set (local or injected above) pygame auto-detects fine.
+    Otherwise probe kmsdrm → fbcon → directfb one at a time.
     """
-    if not _SDL_HEADLESS:
+    if not _SDL_NEEDS_PROBE:
         pygame.display.init()
         return
 
-    drivers = ["kmsdrm", "fbcon", "directfb", "dummy"]
+    drivers = ["kmsdrm", "fbcon", "directfb"]
     for driver in drivers:
         os.environ["SDL_VIDEODRIVER"] = driver
         try:
@@ -59,7 +68,7 @@ def _init_display_driver() -> None:
         except pygame.error:
             pygame.display.quit()
 
-    # Last resort — let SDL choose
+    # Last resort — let SDL choose (may still fail)
     os.environ.pop("SDL_VIDEODRIVER", None)
     pygame.display.init()
 

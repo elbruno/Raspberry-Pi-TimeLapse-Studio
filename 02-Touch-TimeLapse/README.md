@@ -2,7 +2,7 @@
 
 A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi. Tap the screen to start/stop captures — no browser, no keyboard needed.
 
-> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 01 — WebApp TimeLapse](../01%20-%20WebApp%20TimeLapse/README.md)
+> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 01 — WebApp TimeLapse](../01-WebApp-TimeLapse/README.md)
 
 ---
 
@@ -26,8 +26,8 @@ Use **Touch TimeLapse** when you want a **standalone capture station** — plug 
 |----------|---------------|
 | Field time-lapse (outdoors, no WiFi) | ✅ Perfect |
 | Kiosk/exhibit capture station | ✅ Perfect |
-| Remote monitoring from your phone | ❌ Use [Scenario 01](../01%20-%20WebApp%20TimeLapse/) |
-| Learning Python web development | ❌ Use [Scenario 01](../01%20-%20WebApp%20TimeLapse/) |
+| Remote monitoring from your phone | ❌ Use [Scenario 01](../01-WebApp-TimeLapse/) |
+| Learning Python web development | ❌ Use [Scenario 01](../01-WebApp-TimeLapse/) |
 
 ---
 
@@ -48,7 +48,7 @@ Use **Touch TimeLapse** when you want a **standalone capture station** — plug 
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 pip install -r requirements.txt
 
 # Run fullscreen on the Pi LCD
@@ -61,7 +61,7 @@ python timelapse_touch.py --fullscreen
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 pip install -r requirements.txt
 
 # Run in a window for development
@@ -113,7 +113,7 @@ storage:
 ## 🏗️ Project Structure
 
 ```
-02 - Touch TimeLapse/
+02-Touch-TimeLapse/
 ├── timelapse_touch.py     # Main entry point — wires everything together
 ├── ui_components.py       # Pygame UI widgets (buttons, header, preview, status bar)
 ├── camera_opencv.py       # Camera capture via OpenCV

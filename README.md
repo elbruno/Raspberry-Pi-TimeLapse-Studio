@@ -20,8 +20,8 @@ This repository contains **two complete time-lapse applications** and a set of *
 
 | Folder | What it is | Best for |
 |--------|-----------|----------|
-| [**01 - WebApp TimeLapse**](01%20-%20WebApp%20TimeLapse/) | 🌐 Web-based time-lapse app with Flask | Any platform — control from your phone or computer |
-| [**02 - Touch TimeLapse**](02%20-%20Touch%20TimeLapse/) | 👆 Touchscreen GUI time-lapse app with Pygame | Raspberry Pi with a 3.5" touchscreen display |
+| [**01-WebApp-TimeLapse**](01-WebApp-TimeLapse/) | 🌐 Web-based time-lapse app with Flask | Any platform — control from your phone or computer |
+| [**02-Touch-TimeLapse**](02-Touch-TimeLapse/) | 👆 Touchscreen GUI time-lapse app with Pygame | Raspberry Pi with a 3.5" touchscreen display |
 | [**labs**](labs/) | 🧪 Hands-on LCD & touchscreen demos | Learning Raspberry Pi display programming |
 
 ---
@@ -47,7 +47,7 @@ This repository contains **two complete time-lapse applications** and a set of *
 
 | Dashboard | Gallery | Settings |
 |-----------|---------|----------|
-| ![Dashboard](01%20-%20WebApp%20TimeLapse/images/01_dashboard.jpeg) | ![Gallery](01%20-%20WebApp%20TimeLapse/images/02_gallery.jpeg) | ![Settings](01%20-%20WebApp%20TimeLapse/images/03_settings.jpeg) |
+| ![Dashboard](01-WebApp-TimeLapse/images/01_dashboard.jpeg) | ![Gallery](01-WebApp-TimeLapse/images/02_gallery.jpeg) | ![Settings](01-WebApp-TimeLapse/images/03_settings.jpeg) |
 
 ---
 
@@ -57,7 +57,7 @@ This repository contains **two complete time-lapse applications** and a set of *
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/01-WebApp-TimeLapse
 pip install -r requirements.txt
 python main.py validate         # Check your setup
 python main.py                  # Open http://localhost:8000
@@ -65,13 +65,13 @@ python main.py                  # Open http://localhost:8000
 
 > 💡 **Virtual environment optional.** On a dedicated Raspberry Pi you can install packages globally. On a shared/dev machine, use `python3 -m venv venv && source venv/bin/activate` first (Windows: `venv\Scripts\activate`).
 
-📖 Full instructions → [**01 - WebApp TimeLapse/README.md**](01%20-%20WebApp%20TimeLapse/README.md)
+📖 Full instructions → [**01-WebApp-TimeLapse/README.md**](01-WebApp-TimeLapse/README.md)
 
 ### Scenario 02 — Touch TimeLapse (Raspberry Pi)
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 pip install -r requirements.txt
 python timelapse_touch.py                  # Windowed (desktop dev)
 python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
@@ -79,7 +79,7 @@ python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
 
 > 💡 **Virtual environment optional.** On a dedicated Pi this isn't needed. On a shared machine, create one first (see note above).
 
-📖 Full instructions → [**02 - Touch TimeLapse/README.md**](02%20-%20Touch%20TimeLapse/README.md)
+📖 Full instructions → [**02-Touch-TimeLapse/README.md**](02-Touch-TimeLapse/README.md)
 
 ---
 
@@ -88,7 +88,7 @@ python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
 This project is designed for **beginners**! If you're new to programming or Raspberry Pi:
 
 1. **Start simple**: Try `simple.py` in Scenario 01 — it's just ~80 lines of code!
-2. **Learn the concepts**: Check out [Python Basics](01%20-%20WebApp%20TimeLapse/docs/02_python_basics_used.md)
+2. **Learn the concepts**: Check out [Python Basics](01-WebApp-TimeLapse/docs/02_python_basics_used.md)
 3. **Don't worry about mistakes**: They're the best way to learn!
 
 <details>
@@ -120,18 +120,18 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 
 | I want to... | Go to... |
 |--------------|----------|
-| 🎯 **Start learning (beginner)** | [Simple Script Guide](01%20-%20WebApp%20TimeLapse/docs/10_simple_script_guide.md) ⬅️ Start here! |
-| 🔧 **Set up from scratch** | [Installation Guide](01%20-%20WebApp%20TimeLapse/docs/06_installation_guide.md) |
-| ⚙️ **Configure settings** | [Configuration Guide](01%20-%20WebApp%20TimeLapse/docs/07_configuration_guide.md) |
-| 🐛 **Fix a problem** | [Troubleshooting](01%20-%20WebApp%20TimeLapse/docs/08_troubleshooting.md) |
-| 📡 **Use the API** | [CLI & API Reference](01%20-%20WebApp%20TimeLapse/docs/09_cli_api_reference.md) |
-| 📚 **Understand the code** | [Project Overview](01%20-%20WebApp%20TimeLapse/docs/01_project_overview.md) |
+| 🎯 **Start learning (beginner)** | [Simple Script Guide](01-WebApp-TimeLapse/docs/10_simple_script_guide.md) ⬅️ Start here! |
+| 🔧 **Set up from scratch** | [Installation Guide](01-WebApp-TimeLapse/docs/06_installation_guide.md) |
+| ⚙️ **Configure settings** | [Configuration Guide](01-WebApp-TimeLapse/docs/07_configuration_guide.md) |
+| 🐛 **Fix a problem** | [Troubleshooting](01-WebApp-TimeLapse/docs/08_troubleshooting.md) |
+| 📡 **Use the API** | [CLI & API Reference](01-WebApp-TimeLapse/docs/09_cli_api_reference.md) |
+| 📚 **Understand the code** | [Project Overview](01-WebApp-TimeLapse/docs/01_project_overview.md) |
 
 ### Scenario 02 — Touch TimeLapse
 
 | I want to... | Go to... |
 |--------------|----------|
-| 👆 **Get started with the touchscreen app** | [Touch TimeLapse README](02%20-%20Touch%20TimeLapse/README.md) |
+| 👆 **Get started with the touchscreen app** | [Touch TimeLapse README](02-Touch-TimeLapse/README.md) |
 | 🧪 **Try the LCD labs** | [Labs README](labs/README.md) |
 
 ---

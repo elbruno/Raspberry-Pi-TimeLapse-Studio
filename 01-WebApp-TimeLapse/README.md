@@ -2,7 +2,7 @@
 
 A **web-based time-lapse application** built with Flask and OpenCV. Control your camera from any browser — on your phone, laptop, or another computer on the network.
 
-> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 02 — Touch TimeLapse](../02%20-%20Touch%20TimeLapse/README.md)
+> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 02 — Touch TimeLapse](../02-Touch-TimeLapse/README.md)
 
 ---
 
@@ -42,7 +42,7 @@ A **web-based time-lapse application** built with Flask and OpenCV. Control your
 
 ```powershell
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio\01-WebApp-TimeLapse
 pip install -r requirements.txt
 ```
 
@@ -50,11 +50,11 @@ pip install -r requirements.txt
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/01-WebApp-TimeLapse
 pip install -r requirements.txt
 ```
 
-> 💡 **Virtual environment (optional):** On a dedicated Raspberry Pi you can skip this — install packages globally. On a shared or development machine, create one first to avoid conflicts:
+> 💡 **Virtual environment (optional):**On a dedicated Raspberry Pi you can skip this — install packages globally. On a shared or development machine, create one first to avoid conflicts:
 > ```bash
 > python3 -m venv venv
 > source venv/bin/activate    # Windows: venv\Scripts\activate
@@ -92,7 +92,7 @@ Go to **http://localhost:8000** and start your first time-lapse!
 Already set up? Just navigate and run:
 
 ```bash
-cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
+cd Raspberry-Pi-TimeLapse-Studio/01-WebApp-TimeLapse
 python main.py
 ```
 
@@ -155,7 +155,7 @@ These scripts have **extensive comments** explaining every step — perfect for 
 ## 🏗️ Project Structure
 
 ```
-01 - WebApp TimeLapse/
+01-WebApp-TimeLapse/
 ├── main.py                  # CLI entry point
 ├── config.yaml              # Settings
 ├── requirements.txt         # Python dependencies

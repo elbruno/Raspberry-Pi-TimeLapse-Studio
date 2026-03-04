@@ -328,6 +328,7 @@ class TimeLapseApp:
         controller = LEDController()
         if controller.detect():
             self.led = controller
+            controller.turn_off()  # ensure LED starts in off state
             logger.info("USB LED relay ready on %s", controller.port_name)
         else:
             logger.info("No USB LED relay found — LED illumination disabled")
@@ -443,9 +444,11 @@ class TimeLapseApp:
                           capture_config, self.led)
         self._capture_start_time = time.time()
 
-        # Swap buttons
+        # Swap buttons — only STOP visible while capturing
         self.btn_start.visible = False
         self.btn_stop.visible = True
+        self.btn_settings.visible = False
+        self.btn_close.visible = False
         self.status_bar.update("Capturing...", 0)
 
     def _on_stop(self) -> None:
@@ -457,6 +460,8 @@ class TimeLapseApp:
         # Swap buttons back
         self.btn_stop.visible = False
         self.btn_start.visible = True
+        self.btn_settings.visible = True
+        self.btn_close.visible = True
         self.status_bar.update("Stopped", self._elapsed())
 
     def _on_settings(self) -> None:

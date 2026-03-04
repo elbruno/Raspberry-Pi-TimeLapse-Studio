@@ -2,7 +2,7 @@
 
 A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi. Tap the screen to start/stop captures — no browser, no keyboard needed.
 
-> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 01 — WebApp TimeLapse](../01-WebApp-TimeLapse/README.md)
+> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 01 — WebApp TimeLapse](../01-WebApp-TimeLapse/README.md) · [**User Manual**](USER_MANUAL.md)
 
 ---
 

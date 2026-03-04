@@ -136,6 +136,7 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 | I want to... | Go to... |
 |--------------|----------|
 | 👆 **Get started with the touchscreen app** | [Touch TimeLapse README](02-Touch-TimeLapse/README.md) |
+| 📖 **Full user manual (setup, usage, FAQ)** | [User Manual](02-Touch-TimeLapse/USER_MANUAL.md) |
 | 🧪 **Try the LCD labs** | [Labs README](labs/README.md) |
 
 ---

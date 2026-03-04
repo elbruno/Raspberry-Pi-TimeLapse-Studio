@@ -26,17 +26,42 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # SDL environment — must be set BEFORE importing pygame.
 # On console (no DISPLAY env var) target the LCD framebuffer directly.
-# Modern SDL2 (2.32+) removed fbcon — try kmsdrm first.
+# SDL doesn't support comma-separated drivers — we probe one at a time.
 # ---------------------------------------------------------------------------
+_SDL_HEADLESS = False
 if not os.environ.get("DISPLAY") and platform.system() == "Linux":
-    # Try video drivers in order of preference (kmsdrm is the modern replacement for fbcon)
-    os.environ.setdefault("SDL_VIDEODRIVER", "kmsdrm,fbcon,directfb")
     os.environ.setdefault("SDL_FBDEV", "/dev/fb0")
     os.environ.setdefault("SDL_MOUSEDEV", "/dev/input/touchscreen")
     os.environ.setdefault("SDL_MOUSEDRV", "TSLIB")
+    _SDL_HEADLESS = True
 
 import numpy as np
 import pygame
+
+
+def _init_display_driver() -> None:
+    """Try SDL video drivers in order until one works (headless Linux only).
+
+    On desktop (DISPLAY set), pygame picks the right driver automatically.
+    On headless Pi we try: kmsdrm → fbcon → directfb → dummy.
+    """
+    if not _SDL_HEADLESS:
+        pygame.display.init()
+        return
+
+    drivers = ["kmsdrm", "fbcon", "directfb", "dummy"]
+    for driver in drivers:
+        os.environ["SDL_VIDEODRIVER"] = driver
+        try:
+            pygame.display.init()
+            logging.getLogger(__name__).info("SDL video driver: %s", driver)
+            return
+        except pygame.error:
+            pygame.display.quit()
+
+    # Last resort — let SDL choose
+    os.environ.pop("SDL_VIDEODRIVER", None)
+    pygame.display.init()
 
 # Local UI components
 from ui_components import (
@@ -138,7 +163,8 @@ class TimeLapseApp:
         self.fullscreen = fullscreen or self.config.get("fullscreen", False)
 
         # ── Pygame init ──
-        pygame.init()
+        _init_display_driver()
+        pygame.font.init()
         flags = pygame.FULLSCREEN if self.fullscreen else 0
         self.screen = pygame.display.set_mode((self.screen_w, self.screen_h), flags)
         pygame.display.set_caption("PiTimeLapse Touch")

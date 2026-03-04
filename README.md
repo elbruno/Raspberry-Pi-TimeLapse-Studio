@@ -1,8 +1,8 @@
 # 🎬 PiTimeLapse Lab
 
-A beginner-friendly time-lapse application that works on **Windows**, **macOS**, **Linux**, and **Raspberry Pi**! 📸
+A beginner-friendly time-lapse studio that works on **Windows**, **macOS**, **Linux**, and **Raspberry Pi**! 📸
 
-Capture photos using USB webcams (recommended default), built-in laptop cameras, or Raspberry Pi cameras. Save them with timestamps and control everything through a simple web interface.
+Capture photos using USB webcams, built-in laptop cameras, or Raspberry Pi cameras. Save them with timestamps and control everything through a **web browser** or a **touchscreen GUI**.
 
 **Perfect for:**
 
@@ -14,12 +14,81 @@ Capture photos using USB webcams (recommended default), built-in laptop cameras,
 
 ---
 
+## 📦 What's Inside
+
+This repository contains **two complete time-lapse applications** and a set of **hands-on labs** for learning touchscreen development:
+
+| Folder | What it is | Best for |
+|--------|-----------|----------|
+| [**01 - WebApp TimeLapse**](01%20-%20WebApp%20TimeLapse/) | 🌐 Web-based time-lapse app with Flask | Any platform — control from your phone or computer |
+| [**02 - Touch TimeLapse**](02%20-%20Touch%20TimeLapse/) | 👆 Touchscreen GUI time-lapse app with Pygame | Raspberry Pi with a 3.5" touchscreen display |
+| [**labs**](labs/) | 🧪 Hands-on LCD & touchscreen demos | Learning Raspberry Pi display programming |
+
+---
+
+## 🎯 Which Scenario Should I Use?
+
+| | 01 — WebApp TimeLapse | 02 — Touch TimeLapse |
+|---|---|---|
+| **Interface** | Web browser (Flask) | Native touchscreen GUI (Pygame) |
+| **Platform** | ✅ Windows, macOS, Linux, Raspberry Pi | 🍓 Raspberry Pi with touchscreen (dev mode on desktop) |
+| **Control** | Remote — from any device on the network | On-device — tap the screen directly |
+| **Camera** | USB webcam, built-in camera, Pi Camera | USB webcam, Pi Camera |
+| **Best for** | Remote monitoring, multi-device access | Standalone field capture, kiosk setups |
+| **Complexity** | Beginner-friendly with extensive docs | Intermediate — hardware setup required |
+
+> 💡 **Not sure?** Start with **Scenario 01** — it works on any computer and doesn't require special hardware.
+
+---
+
+## �� Screenshots
+
+### Scenario 01 — WebApp TimeLapse
+
+| Dashboard | Gallery | Settings |
+|-----------|---------|----------|
+| ![Dashboard](01%20-%20WebApp%20TimeLapse/images/01_dashboard.jpeg) | ![Gallery](01%20-%20WebApp%20TimeLapse/images/02_gallery.jpeg) | ![Settings](01%20-%20WebApp%20TimeLapse/images/03_settings.jpeg) |
+
+---
+
+## 🚀 Quick Start
+
+### Scenario 01 — WebApp TimeLapse (Recommended)
+
+```bash
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python main.py validate         # Check your setup
+python main.py                  # Open http://localhost:8000
+```
+
+📖 Full instructions → [**01 - WebApp TimeLapse/README.md**](01%20-%20WebApp%20TimeLapse/README.md)
+
+### Scenario 02 — Touch TimeLapse (Raspberry Pi)
+
+```bash
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python timelapse_touch.py                  # Windowed (desktop dev)
+python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
+```
+
+📖 Full instructions → [**02 - Touch TimeLapse/README.md**](02%20-%20Touch%20TimeLapse/README.md)
+
+---
+
 ## 🎓 New to Programming? Start Here
 
 This project is designed for **beginners**! If you're new to programming or Raspberry Pi:
 
-1. **Start simple**: Try `simple.py` first - it's just 80 lines of code!
-2. **Learn the concepts**: Check out [Python Basics](docs/02_python_basics_used.md)
+1. **Start simple**: Try `simple.py` in Scenario 01 — it's just ~80 lines of code!
+2. **Learn the concepts**: Check out [Python Basics](01%20-%20WebApp%20TimeLapse/docs/02_python_basics_used.md)
 3. **Don't worry about mistakes**: They're the best way to learn!
 
 <details>
@@ -38,142 +107,16 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 | **Camera index** | A number identifying which camera to use (0 = first camera, 1 = second, etc.) |
 | **OpenCV** | A popular library for working with cameras and images |
 | **Flask** | A simple framework for building web applications in Python |
+| **Pygame** | A library for making graphical applications and games in Python |
+| **Framebuffer** | A low-level way to draw directly to a screen without a desktop environment |
 
 </details>
 
 ---
 
-## ✨ Features
+## 📖 Documentation
 
-- 📸 **Capture photos** on a configurable schedule
-- 📷 **Works with** USB webcams (recommended), built-in cameras, or Pi Camera Module
-- 💻 **Cross-platform:** Windows, macOS, Linux, Raspberry Pi
-- 🌐 **Web interface** - control from your phone or computer
-- ⏰ **Timestamp overlay** on images
-- 📦 **Download sessions** as ZIP files
-- 🧪 **Well tested** with automated tests
-
----
-
-## � Screenshots
-
-| Dashboard | Gallery | Settings |
-|-----------|---------|----------|
-| ![Dashboard](01%20-%20WebApp%20TimeLapse/images/01_dashboard.jpeg) | ![Gallery](01%20-%20WebApp%20TimeLapse/images/02_gallery.jpeg) | ![Settings](01%20-%20WebApp%20TimeLapse/images/03_settings.jpeg) |
-
----
-
-## 🚀 Quick Start
-
-### 💡 What You'll Be Doing
-
-These commands will:
-
-1. **Clone**: Download a copy of this project to your computer
-2. **Create a virtual environment**: Set up an isolated Python workspace
-3. **Install dependencies**: Download the Python packages this project needs
-4. **Run the app**: Start the web interface!
-
-### 1. Clone & Install
-
-**Windows:**
-
-```powershell
-# Download the project (creates a new folder)
-git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-
-# Go into the scenario 01 folder
-cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
-
-# Create a virtual environment (a private Python workspace)
-python -m venv venv
-
-# Activate it (you'll see "(venv)" in your prompt)
-venv\Scripts\activate
-
-# Install the required Python packages
-pip install -r requirements.txt
-```
-
-**macOS / Linux / Raspberry Pi:**
-
-```bash
-# Download the project (creates a new folder)
-git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-
-# Go into the scenario 01 folder
-cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
-
-# Create a virtual environment
-python3 -m venv venv
-
-# Activate it (you'll see "(venv)" in your prompt)
-source venv/bin/activate
-
-# Install the required Python packages
-pip install -r requirements.txt
-```
-
-> 💡 **What happens if you skip the virtual environment?** The app will still work, but you might get conflicts with other Python projects on your computer. Virtual environments keep things organized!
-
-### 2. Validate Your Setup
-
-Before running, verify everything is configured correctly:
-
-```bash
-python main.py validate
-```
-
-This checks:
-
-- ✅ Configuration file
-- ✅ Required packages
-- ✅ Camera availability
-- ✅ Directory permissions
-
-If it shows any errors, the troubleshooting guide will help!
-
-### 3. Run
-
-```bash
-python main.py
-```
-
-### 4. Open Browser
-
-Go to `http://localhost:8000` and start your first time-lapse!
-
-> 💡 **What does `localhost:8000` mean?** "localhost" is your own computer, and "8000" is the port number where the app is listening. It's like an address and apartment number!
-
----
-
-## 🔄 Returning Users
-
-Already set up? Just activate your environment and run:
-
-**Windows:**
-
-```powershell
-cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
-venv\Scripts\activate
-python main.py validate     # Optional: check configuration
-python main.py
-```
-
-**macOS / Linux / Raspberry Pi:**
-
-```bash
-cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
-source venv/bin/activate
-python main.py validate     # Optional: check configuration
-python main.py
-```
-
----
-
-## 📖 Where to Go Next
-
-Choose based on what you need:
+### Scenario 01 — WebApp TimeLapse
 
 | I want to... | Go to... |
 |--------------|----------|
@@ -183,64 +126,13 @@ Choose based on what you need:
 | 🐛 **Fix a problem** | [Troubleshooting](01%20-%20WebApp%20TimeLapse/docs/08_troubleshooting.md) |
 | 📡 **Use the API** | [CLI & API Reference](01%20-%20WebApp%20TimeLapse/docs/09_cli_api_reference.md) |
 | 📚 **Understand the code** | [Project Overview](01%20-%20WebApp%20TimeLapse/docs/01_project_overview.md) |
-| 🐍 **Learn Python basics** | [Python Basics](01%20-%20WebApp%20TimeLapse/docs/02_python_basics_used.md) |
-| 🌐 **Learn web/Flask** | [Web Basics](01%20-%20WebApp%20TimeLapse/docs/03_web_basics_flask.md) |
-| 📷 **Learn about cameras** | [Hardware & Camera](01%20-%20WebApp%20TimeLapse/docs/04_hardware_camera_basics.md) |
-| 🚀 **Extend the project** | [Extensions & Challenges](01%20-%20WebApp%20TimeLapse/docs/05_extensions_challenges.md) |
 
----
+### Scenario 02 — Touch TimeLapse
 
-## 🔧 Basic Configuration
-
-Edit `config.yaml`:
-
-```yaml
-camera_mode: opencv          # Recommended default (USB/built-in cameras)
-camera_index: 0              # 0 = first camera, 1 = second, etc.
-interval_seconds: 10         # Seconds between photos
-output_dir: ./data           # Where photos are saved
-web_host: 0.0.0.0            # 0.0.0.0 = accessible from network, 127.0.0.1 = local only
-web_port: 8000
-```
-
-> 💡 **Try changing these!** Edit `interval_seconds` to 5 and your time-lapse will take photos faster. Edit `web_port` to 9000 if port 8000 is busy.
-
-📖 See [Configuration Guide](01%20-%20WebApp%20TimeLapse/docs/07_configuration_guide.md) for all options.
-
----
-
-## 🖥️ CLI Commands
-
-```bash
-python main.py                    # Start web server
-python main.py --debug            # Debug mode (auto-reloads when you change code)
-python main.py validate           # Check configuration, packages, camera & permissions
-python main.py sessions           # List all sessions
-python main.py cleanup --days 7   # Delete sessions older than 7 days
-python main.py init               # Create a default config file
-```
-
-📖 See [CLI & API Reference](01%20-%20WebApp%20TimeLapse/docs/09_cli_api_reference.md) for full details.
-
----
-
-## 🧪 Try the Simple Scripts First
-
-Before diving into the full web app, try these minimal scripts to understand the basics:
-
-```bash
-# The simplest time-lapse script (headless, ~80 lines)
-python "01 - WebApp TimeLapse/simple.py"
-
-# Time-lapse with live preview window (~200 lines)
-python "01 - WebApp TimeLapse/simple_with_preview.py"
-```
-
-> 💡 Or `cd "01 - WebApp TimeLapse"` first and then just `python simple.py`.
-
-These scripts have **extensive comments** explaining every step. Perfect for learning!
-
-📖 See [Simple Script Guide](01%20-%20WebApp%20TimeLapse/docs/10_simple_script_guide.md) for a detailed walkthrough.
+| I want to... | Go to... |
+|--------------|----------|
+| 👆 **Get started with the touchscreen app** | [Touch TimeLapse README](02%20-%20Touch%20TimeLapse/README.md) |
+| 🧪 **Try the LCD labs** | [Labs README](labs/README.md) |
 
 ---
 

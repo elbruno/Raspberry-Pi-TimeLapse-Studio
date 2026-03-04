@@ -58,12 +58,12 @@ This repository contains **two complete time-lapse applications** and a set of *
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python main.py validate         # Check your setup
 python main.py                  # Open http://localhost:8000
 ```
+
+> 💡 **Virtual environment optional.** On a dedicated Raspberry Pi you can install packages globally. On a shared/dev machine, use `python3 -m venv venv && source venv/bin/activate` first (Windows: `venv\Scripts\activate`).
 
 📖 Full instructions → [**01 - WebApp TimeLapse/README.md**](01%20-%20WebApp%20TimeLapse/README.md)
 
@@ -72,12 +72,12 @@ python main.py                  # Open http://localhost:8000
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 python timelapse_touch.py                  # Windowed (desktop dev)
 python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
 ```
+
+> 💡 **Virtual environment optional.** On a dedicated Pi this isn't needed. On a shared machine, create one first (see note above).
 
 📖 Full instructions → [**02 - Touch TimeLapse/README.md**](02%20-%20Touch%20TimeLapse/README.md)
 
@@ -99,7 +99,7 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 | **Repository (repo)** | A folder containing all the project files, tracked by Git |
 | **Clone** | Download a copy of a repository to your computer |
 | **Terminal/Command Line** | A text interface to type commands (like PowerShell or Bash) |
-| **Virtual Environment (venv)** | A private space for this project's Python packages, so they don't conflict with other projects |
+| **Virtual Environment (venv)** | An optional private space for this project's Python packages — recommended on shared machines, not needed on a dedicated Raspberry Pi |
 | **pip** | Python's package installer - downloads and installs Python libraries |
 | **requirements.txt** | A list of Python packages this project needs |
 | **Port** | A number that identifies where a program "listens" for connections (like 8000) |

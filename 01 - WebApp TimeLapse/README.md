@@ -32,10 +32,9 @@ A **web-based time-lapse application** built with Flask and OpenCV. Control your
 ### 💡 What You'll Be Doing
 
 1. **Clone**: Download the project
-2. **Create a virtual environment**: Isolated Python workspace
-3. **Install dependencies**: Download required packages
-4. **Validate**: Make sure everything works
-5. **Run**: Start the web interface!
+2. **Install dependencies**: Download required packages
+3. **Validate**: Make sure everything works
+4. **Run**: Start the web interface!
 
 ### 1. Clone & Install
 
@@ -44,8 +43,6 @@ A **web-based time-lapse application** built with Flask and OpenCV. Control your
 ```powershell
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
-python -m venv venv
-venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -54,12 +51,14 @@ pip install -r requirements.txt
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> 💡 **What happens if you skip the virtual environment?** The app will still work, but you might get conflicts with other Python projects. Virtual environments keep things organized!
+> 💡 **Virtual environment (optional):** On a dedicated Raspberry Pi you can skip this — install packages globally. On a shared or development machine, create one first to avoid conflicts:
+> ```bash
+> python3 -m venv venv
+> source venv/bin/activate    # Windows: venv\Scripts\activate
+> ```
 
 ### 2. Validate Your Setup
 
@@ -90,23 +89,14 @@ Go to **http://localhost:8000** and start your first time-lapse!
 
 ## 🔄 Returning Users
 
-Already set up? Just activate and run:
-
-**Windows:**
-
-```powershell
-cd "Raspberry-Pi-TimeLapse-Studio\01 - WebApp TimeLapse"
-venv\Scripts\activate
-python main.py
-```
-
-**macOS / Linux / Raspberry Pi:**
+Already set up? Just navigate and run:
 
 ```bash
 cd "Raspberry-Pi-TimeLapse-Studio/01 - WebApp TimeLapse"
-source venv/bin/activate
 python main.py
 ```
+
+> If you're using a virtual environment, activate it first: `source venv/bin/activate` (Windows: `venv\Scripts\activate`).
 
 ---
 

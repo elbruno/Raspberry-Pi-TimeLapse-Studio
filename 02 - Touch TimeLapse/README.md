@@ -49,26 +49,30 @@ Use **Touch TimeLapse** when you want a **standalone capture station** — plug 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 
 # Run fullscreen on the Pi LCD
 python timelapse_touch.py --fullscreen
 ```
 
+> 💡 **No virtual environment needed** on a dedicated Pi — install packages globally. If you hit PEP 668 errors, add `--break-system-packages` to the pip command.
+
 ### On Desktop (development mode)
 
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd "Raspberry-Pi-TimeLapse-Studio/02 - Touch TimeLapse"
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run in a window for development
 python timelapse_touch.py
 ```
+
+> 💡 **Virtual environment (optional):** On a shared dev machine, create one first to avoid conflicts:
+> ```bash
+> python3 -m venv venv
+> source venv/bin/activate    # Windows: venv\Scripts\activate
+> ```
 
 ---
 

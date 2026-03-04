@@ -10,7 +10,7 @@ A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi.
 
 - 📸 **Capture photos** on a configurable schedule with live preview
 - 👆 **Touchscreen GUI** — designed for 3.5" displays (480×320)
-- 🔌 **No desktop required** — renders directly to the framebuffer
+- 🔌 **SSH-friendly** — run from SSH and it renders on the LCD automatically
 - 💾 **Auto-detects USB storage** — saves to USB drive when available, falls back to local storage
 - 🖥️ **Dual mode** — fullscreen on Pi LCD, windowed on desktop for development
 - 📷 **OpenCV camera** — works with USB webcams and built-in cameras
@@ -50,16 +50,29 @@ Use **Touch TimeLapse** when you want a **standalone capture station** — plug 
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 pip install -r requirements.txt
-
-# Run fullscreen on the Pi LCD
-python timelapse_touch.py --fullscreen
 ```
 
 > 💡 **No virtual environment needed** on a dedicated Pi — install packages globally. If you hit PEP 668 errors, add `--break-system-packages` to the pip command.
 
-### Add a Desktop Shortcut (one-time setup)
+There are two ways to launch the app on the Pi:
 
-Want to launch the app with a single tap? Run:
+#### Option A — Test via SSH (recommended first)
+
+SSH into the Pi from another computer so you can see logs and debug issues. The app auto-detects the Pi's desktop session and renders on the LCD:
+
+```bash
+ssh pi@<your-pi-ip>
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+python timelapse_touch.py --fullscreen
+```
+
+The app will appear on the Pi's touchscreen while you watch the logs in your SSH terminal. This is the best way to test and iterate — you can see errors, stop with `Ctrl+C`, edit config, and relaunch without touching the tiny LCD.
+
+> 💡 **How it works:** When running via SSH, there's no `DISPLAY` environment variable. The app detects the Pi's running desktop session and automatically sets `DISPLAY=:0` so pygame renders on the LCD via X11.
+
+#### Option B — Desktop shortcut (production use)
+
+Once everything works, install a shortcut so you (or anyone) can launch with a single tap on the LCD:
 
 ```bash
 chmod +x install-shortcut.sh
@@ -67,7 +80,9 @@ chmod +x install-shortcut.sh
 ./install-shortcut.sh --autostart  # also launch automatically on boot
 ```
 
-This creates a **PiTimeLapse Touch** icon on your desktop. Just tap it!
+This creates a **PiTimeLapse Touch** icon on the desktop. Just tap it!
+
+> 🎯 **Recommended workflow:** Use **SSH** to install, configure, and test → then run `install-shortcut.sh` to set up one-tap launch for daily use.
 
 ### On Desktop (development mode)
 
@@ -145,11 +160,15 @@ storage:
 ## 🖥️ Usage
 
 ```bash
-# Windowed mode (desktop development)
+# Via SSH — test on Pi while watching logs in your terminal
+ssh pi@<your-pi-ip>
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+python timelapse_touch.py --fullscreen
+
+# Windowed mode — desktop development (macOS/Windows/Linux)
 python timelapse_touch.py
 
-# Fullscreen mode (Pi touchscreen)
-python timelapse_touch.py --fullscreen
+# Desktop shortcut — tap the icon on the Pi LCD (after install-shortcut.sh)
 ```
 
 ### On-Screen Controls
@@ -218,8 +237,10 @@ pip install -r requirements.txt
 
 | Problem | Solution |
 |---------|----------|
+| **App runs but nothing on LCD (via SSH)** | **Ensure the Pi desktop is running on the LCD. The app auto-detects it and sets `DISPLAY=:0`** |
 | Black screen on Pi LCD | Check LCD driver install — try `sudo ./MHS35-show` as alternative |
 | **`fbcon not available`** | **SDL 2.32+ removed fbcon. Update to latest code — it now tries `kmsdrm` first automatically** |
+| **`SDL video driver: dummy`** | **The dummy driver renders nothing. Ensure the Pi desktop is active; the app needs X11 via `DISPLAY=:0`** |
 | No touch response | Verify `/dev/input/touchscreen` exists; run `evtest /dev/input/event0` |
 | Camera not found | Check `camera.index` in config.yaml; try `0` or `1` |
 | Pygame won't start on Pi | Ensure `SDL_FBDEV=/dev/fb0` is set (the script does this automatically) |

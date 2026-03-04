@@ -32,10 +32,17 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 _SDL_NEEDS_PROBE = False
 if platform.system() == "Linux" and not os.environ.get("DISPLAY"):
-    # Check whether an X server is running on :0 (desktop on the LCD)
+    # Check whether an X server is running on :0 (desktop on the LCD).
+    # This is the typical case when running via SSH while the Pi desktop
+    # is displayed on the touchscreen.
     _x_running = os.path.exists("/tmp/.X11-unix/X0")
     if _x_running:
         os.environ["DISPLAY"] = ":0"
+        # Some setups also need XAUTHORITY so X11 accepts the connection
+        if not os.environ.get("XAUTHORITY"):
+            _xa = os.path.expanduser("~/.Xauthority")
+            if os.path.exists(_xa):
+                os.environ["XAUTHORITY"] = _xa
         logging.getLogger(__name__).info("No DISPLAY set — using :0 (desktop detected)")
     else:
         # True headless / console — target framebuffer

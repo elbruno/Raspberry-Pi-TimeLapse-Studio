@@ -69,7 +69,11 @@ class OpenCVCamera:
             os.close(devnull)
 
             try:
-                self.cap = cv2.VideoCapture(camera_index)
+                # Use V4L2 backend on Linux for better Pi compatibility
+                if os.name != "nt":
+                    self.cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
+                else:
+                    self.cap = cv2.VideoCapture(camera_index)
 
                 if not self.cap.isOpened():
                     logger.warning(
@@ -78,16 +82,20 @@ class OpenCVCamera:
                     )
                     return False
 
+                # Use MJPEG for faster USB transfer on Pi
+                self.cap.set(cv2.CAP_PROP_FOURCC,
+                             cv2.VideoWriter_fourcc(*"MJPG"))
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                # Minimal buffer to avoid stale frames and reduce latency
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
                 actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 self.resolution = (actual_w, actual_h)
 
-                # Warm-up frames so auto-exposure stabilises
-                for _ in range(3):
-                    self.cap.read()
+                # Single warm-up grab (non-blocking) instead of 3× read()
+                self.cap.grab()
 
                 self._is_open = True
                 logger.info("Camera opened — resolution %dx%d", actual_w, actual_h)
@@ -105,6 +113,8 @@ class OpenCVCamera:
         """
         Grab a single frame from the camera.
 
+        Uses grab()+retrieve() instead of read() to reduce V4L2 blocking.
+
         Returns:
             BGR numpy array, or None on failure.
         """
@@ -113,7 +123,10 @@ class OpenCVCamera:
             return None
 
         try:
-            ret, frame = self.cap.read()
+            if not self.cap.grab():
+                logger.error("Failed to capture frame")
+                return None
+            ret, frame = self.cap.retrieve()
             if ret and frame is not None:
                 return frame
             logger.error("Failed to capture frame")

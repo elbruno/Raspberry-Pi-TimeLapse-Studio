@@ -284,6 +284,7 @@ class _SettingRow:
         self,
         y: int,
         screen_w: int,
+        btn_size: int,
         label: str,
         key: str,
         value: int,
@@ -298,12 +299,11 @@ class _SettingRow:
         self.max_val = max_val
         self.step = step
 
-        btn_size = 44
         # [–]  value  [+] — right-aligned
         self.btn_minus = pygame.Rect(screen_w - 190, y, btn_size, btn_size)
-        self.val_rect = pygame.Rect(screen_w - 140, y, 60, btn_size)
-        self.btn_plus = pygame.Rect(screen_w - 74, y, btn_size, btn_size)
-        self.label_y = y + 12
+        self.val_rect = pygame.Rect(screen_w - 146, y, 60, btn_size)
+        self.btn_plus = pygame.Rect(screen_w - 80, y, btn_size, btn_size)
+        self.label_y = y + btn_size // 2 - 8
 
     def handle_tap(self, pos: Tuple[int, int]) -> bool:
         """Return True if this row consumed the tap."""
@@ -348,35 +348,36 @@ class SettingsScreen:
         self._font: Optional[pygame.font.Font] = None
         self._title_font: Optional[pygame.font.Font] = None
 
-        row_h = 52
-        start_y = 50
+        row_h = 42
+        start_y = 44
+        btn_size = 38
 
         # Extract current values from config dict
         cam = config.get("camera", {})
         cap = config.get("capture", {})
 
         self.rows = [
-            _SettingRow(start_y, screen_w,
+            _SettingRow(start_y, screen_w, btn_size,
                         "Interval (s)", "capture.interval_seconds",
                         int(cap.get("interval_seconds", 30)), 1, 3600, 5),
-            _SettingRow(start_y + row_h, screen_w,
+            _SettingRow(start_y + row_h, screen_w, btn_size,
                         "Quality", "capture.quality",
                         int(cap.get("quality", 90)), 1, 100, 5),
-            _SettingRow(start_y + row_h * 2, screen_w,
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
                         "Camera", "camera.index",
                         int(cam.get("index", 0)), 0, 9, 1),
-            _SettingRow(start_y + row_h * 3, screen_w,
+            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
                         "Width", "camera.width",
                         int(cam.get("width", 640)), 160, 1920, 160),
-            _SettingRow(start_y + row_h * 4, screen_w,
+            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
                         "Height", "camera.height",
                         int(cam.get("height", 480)), 120, 1080, 120),
         ]
 
-        # Bottom buttons
+        # Bottom buttons — positioned below the last row
         btn_w = 140
-        btn_h = 50
-        btn_y = screen_h - btn_h - 15
+        btn_h = 48
+        btn_y = screen_h - btn_h - 10
         gap = 20
         total_w = btn_w * 2 + gap
         x0 = (screen_w - total_w) // 2

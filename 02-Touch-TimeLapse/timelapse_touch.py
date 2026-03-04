@@ -142,10 +142,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 DEFAULT_WIDTH = 480
 DEFAULT_HEIGHT = 320
-PREVIEW_FPS = 6
+PREVIEW_FPS = 2
 BUTTON_WIDTH = 130
 BUTTON_HEIGHT = 60
 BUTTON_GAP = 15
+PREVIEW_INTERVAL = 3.0  # seconds between camera frame grabs
 
 
 def _load_app_config() -> dict:
@@ -249,6 +250,7 @@ class TimeLapseApp:
 
         self._running = False
         self._capture_start_time: float = 0.0
+        self._last_preview_time: float = 0.0
 
         logger.info("TimeLapseApp initialized (%dx%d, fullscreen=%s)",
                      self.screen_w, self.screen_h, self.fullscreen)
@@ -443,10 +445,14 @@ class TimeLapseApp:
     # ── Preview & status ───────────────────────────────────────────────────
 
     def _update_preview(self) -> None:
-        """Grab the latest camera frame and push it to PreviewArea."""
+        """Grab a camera frame at most once per PREVIEW_INTERVAL seconds."""
         if self.camera is None:
             self.preview.update(None)
             return
+        now = time.time()
+        if now - self._last_preview_time < PREVIEW_INTERVAL:
+            return  # reuse the last frame already in PreviewArea
+        self._last_preview_time = now
         frame = self.camera.capture()
         self.preview.update(frame)
 

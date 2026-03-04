@@ -53,7 +53,7 @@ class AppConfig:
     
     # Capture Settings
     # ----------------
-    interval_seconds: int = 10  # Seconds between each photo
+    interval_seconds: int = 30  # Seconds between each photo
     start_delay_seconds: int = 0  # Wait this many seconds before first capture
     duration_limit_seconds: int = 0  # 0 = run until stopped manually
     

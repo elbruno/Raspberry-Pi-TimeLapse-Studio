@@ -8,7 +8,7 @@ camera:
   height: 480
 
 capture:
-  interval_seconds: 1   # time between photos
+  interval_seconds: 30  # time between photos
   quality: 90           # JPEG quality (1-100)
 
 preview:

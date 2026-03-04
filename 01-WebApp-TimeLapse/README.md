@@ -113,7 +113,7 @@ Edit `config.yaml` to customize your setup:
 ```yaml
 camera_mode: opencv          # opencv (USB/built-in) or picamera2 (Pi Camera Module)
 camera_index: 0              # 0 = first camera, 1 = second, etc.
-interval_seconds: 10         # Seconds between photos
+interval_seconds: 30         # Seconds between photos
 output_dir: ./data           # Where photos are saved
 web_host: 0.0.0.0            # 0.0.0.0 = accessible from network, 127.0.0.1 = local only
 web_port: 8000

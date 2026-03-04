@@ -136,7 +136,7 @@ def _load_app_config() -> dict:
         "camera_index": 0,
         "camera_width": 640,
         "camera_height": 480,
-        "interval_seconds": 10,
+        "interval_seconds": 30,
         "photo_quality": 90,
         "fullscreen": False,
     }
@@ -336,7 +336,7 @@ class TimeLapseApp:
             logger.info("Created session %s", self.session.session_id)
 
         capture_config = {
-            "interval_seconds": self.config.get("interval_seconds", 10),
+            "interval_seconds": self.config.get("interval_seconds", 30),
             "photo_quality": self.config.get("photo_quality", 90),
         }
         self.engine.start(self.session, self.camera, self.storage, capture_config)

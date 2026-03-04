@@ -100,7 +100,7 @@ camera:
   height: 480
 
 capture:
-  interval_seconds: 1   # time between photos
+  interval_seconds: 30  # time between photos
   quality: 90           # JPEG quality (1-100)
 
 preview:
@@ -115,7 +115,7 @@ storage:
 | Setting | What it does | Default |
 |---------|-------------|---------|
 | `camera.index` | Which camera to use (0 = first, 1 = second) | `0` |
-| `capture.interval_seconds` | Seconds between photos | `1` |
+| `capture.interval_seconds` | Seconds between photos | `30` |
 | `capture.quality` | JPEG compression quality (1–100) | `90` |
 | `preview.fps` | Live preview refresh rate | `6` |
 | `storage.fallback_path` | Where to save if no USB drive is found | `./data` |

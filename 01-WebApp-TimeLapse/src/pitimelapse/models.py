@@ -39,7 +39,7 @@ class Session:
     id: str
     start_time: datetime
     end_time: Optional[datetime] = None
-    interval_seconds: int = 10
+    interval_seconds: int = 30
     output_folder: str = ""
     total_photos: int = 0
     errors: List[str] = field(default_factory=list)
@@ -94,7 +94,7 @@ class Session:
             id=data.get("id", ""),
             start_time=datetime.fromisoformat(data["start_time"]) if data.get("start_time") else datetime.now(),
             end_time=datetime.fromisoformat(data["end_time"]) if data.get("end_time") else None,
-            interval_seconds=data.get("interval_seconds", 10),
+            interval_seconds=data.get("interval_seconds", 30),
             output_folder=data.get("output_folder", ""),
             total_photos=data.get("total_photos", 0),
             errors=data.get("errors", []),

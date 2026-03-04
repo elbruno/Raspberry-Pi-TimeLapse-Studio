@@ -33,7 +33,7 @@ DEFAULTS: dict = {
         "height": 480,
     },
     "capture": {
-        "interval_seconds": 1,
+        "interval_seconds": 30,
         "quality": 90,
     },
     "preview": {
@@ -133,7 +133,7 @@ def validate_config(config: dict) -> list[str]:
         errors.append(f"camera.mode must be 'opencv' or 'picamera2', got '{cam_mode}'")
 
     # Capture checks
-    interval = get_config_value(config, "capture.interval_seconds", 1)
+    interval = get_config_value(config, "capture.interval_seconds", 30)
     if not isinstance(interval, (int, float)) or interval <= 0:
         errors.append(f"capture.interval_seconds must be > 0, got {interval}")
 

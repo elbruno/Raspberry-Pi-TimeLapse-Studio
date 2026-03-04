@@ -6,7 +6,7 @@ camera_mode: opencv
 camera_index: 0
 resolution_width: 640
 resolution_height: 480
-interval_seconds: 10
+interval_seconds: 30
 start_delay_seconds: 0
 duration_limit_seconds: 0
 output_dir: ./data

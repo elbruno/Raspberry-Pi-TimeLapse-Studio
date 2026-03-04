@@ -26,7 +26,7 @@ def sample_config():
             "height": 720,
         },
         "capture": {
-            "interval_seconds": 10,
+            "interval_seconds": 30,
             "quality": 85,
             "max_photos": 0,
             "duration_minutes": 0,

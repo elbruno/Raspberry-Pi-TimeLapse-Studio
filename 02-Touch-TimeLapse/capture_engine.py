@@ -130,7 +130,7 @@ class CaptureEngine:
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
                       storage: StorageManager, config: dict) -> None:
         """Main loop executed inside the background thread."""
-        interval = get_config_value(config, "capture.interval_seconds", 1)
+        interval = get_config_value(config, "capture.interval_seconds", 30)
         quality = get_config_value(config, "capture.quality", 90)
         retry_delay = get_config_value(config, "capture.retry_delay_seconds", RETRY_DELAY_S)
         consecutive_failures = 0

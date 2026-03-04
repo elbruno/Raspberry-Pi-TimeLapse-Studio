@@ -84,8 +84,11 @@ from ui_components import (
     Button,
     Header,
     PreviewArea,
+    SettingsScreen,
     StatusBar,
     COLOR_BACKGROUND,
+    COLOR_CLOSE,
+    COLOR_SETTINGS,
     COLOR_START,
     COLOR_STOP,
     COLOR_TEXT,
@@ -120,7 +123,7 @@ except ImportError:
     USB_AVAILABLE = False
 
 try:
-    from config import load_config
+    from config import load_config, save_config
     CONFIG_AVAILABLE = True
 except ImportError:
     CONFIG_AVAILABLE = False
@@ -140,8 +143,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_WIDTH = 480
 DEFAULT_HEIGHT = 320
 PREVIEW_FPS = 6
-BUTTON_WIDTH = 180
-BUTTON_HEIGHT = 80
+BUTTON_WIDTH = 130
+BUTTON_HEIGHT = 60
+BUTTON_GAP = 15
 
 
 def _load_app_config() -> dict:
@@ -202,10 +206,14 @@ class TimeLapseApp:
         self._interrupted_session = None
         self._init_backend()
 
+        # ── App state: "main" or "settings" ──
+        self._screen_state: str = "main"
+        self._settings_screen: Optional[SettingsScreen] = None
+
         # ── UI components ──
         header_h = Header.HEIGHT       # 40
         status_h = StatusBar.HEIGHT    # 30
-        button_row_h = BUTTON_HEIGHT + 20  # 100 (80 btn + padding)
+        button_row_h = BUTTON_HEIGHT + 20
 
         preview_y = header_h
         preview_h = self.screen_h - header_h - button_row_h - status_h
@@ -213,20 +221,29 @@ class TimeLapseApp:
         self.header = Header(self.screen_w)
         self.preview = PreviewArea(0, preview_y, self.screen_w, preview_h)
 
+        # Three buttons: [START/STOP] [SETTINGS] [CLOSE]
         btn_y = header_h + preview_h + 10
-        gap = 20
-        total_btn_w = BUTTON_WIDTH * 2 + gap
+        total_btn_w = BUTTON_WIDTH * 3 + BUTTON_GAP * 2
         btn_x = (self.screen_w - total_btn_w) // 2
 
         self.btn_start = Button(
             btn_x, btn_y, BUTTON_WIDTH, BUTTON_HEIGHT,
-            "START", COLOR_START, COLOR_TEXT, 24,
+            "START", COLOR_START, COLOR_TEXT, 20,
         )
         self.btn_stop = Button(
-            btn_x + BUTTON_WIDTH + gap, btn_y, BUTTON_WIDTH, BUTTON_HEIGHT,
-            "STOP", COLOR_STOP, COLOR_TEXT, 24,
+            btn_x, btn_y, BUTTON_WIDTH, BUTTON_HEIGHT,
+            "STOP", COLOR_STOP, COLOR_TEXT, 20,
         )
-        self.btn_stop.visible = False  # hidden until capture starts
+        self.btn_stop.visible = False
+
+        self.btn_settings = Button(
+            btn_x + BUTTON_WIDTH + BUTTON_GAP, btn_y, BUTTON_WIDTH, BUTTON_HEIGHT,
+            "SETTINGS", COLOR_SETTINGS, COLOR_TEXT, 18,
+        )
+        self.btn_close = Button(
+            btn_x + (BUTTON_WIDTH + BUTTON_GAP) * 2, btn_y, BUTTON_WIDTH, BUTTON_HEIGHT,
+            "CLOSE", COLOR_CLOSE, COLOR_TEXT, 20,
+        )
 
         self.status_bar = StatusBar(self.screen_w, self.screen_h)
 
@@ -318,14 +335,40 @@ class TimeLapseApp:
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self._request_quit()
+                    if self._screen_state == "settings":
+                        self._screen_state = "main"
+                    else:
+                        self._request_quit()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 pos = event.pos
-                if self.btn_start.is_pressed(pos):
-                    self._on_start()
-                elif self.btn_stop.is_pressed(pos):
-                    self._on_stop()
+                if self._screen_state == "settings":
+                    self._handle_settings_tap(pos)
+                else:
+                    self._handle_main_tap(pos)
+
+    def _handle_main_tap(self, pos: tuple) -> None:
+        """Handle taps on the main screen buttons."""
+        if self.btn_start.is_pressed(pos):
+            self._on_start()
+        elif self.btn_stop.is_pressed(pos):
+            self._on_stop()
+        elif self.btn_settings.is_pressed(pos):
+            self._on_settings()
+        elif self.btn_close.is_pressed(pos):
+            self._request_quit()
+
+    def _handle_settings_tap(self, pos: tuple) -> None:
+        """Handle taps on the settings screen."""
+        if self._settings_screen is None:
+            return
+        action = self._settings_screen.handle_tap(pos)
+        if action == "save":
+            self._save_settings()
+            self._screen_state = "main"
+        elif action == "back":
+            self._settings_screen = None
+            self._screen_state = "main"
 
     # ── Start / Stop ───────────────────────────────────────────────────────
 
@@ -374,6 +417,29 @@ class TimeLapseApp:
         self.btn_start.visible = True
         self.status_bar.update("Stopped", self._elapsed())
 
+    def _on_settings(self) -> None:
+        """Open the settings screen."""
+        if self.engine is not None and self.engine.is_running:
+            # Don't open settings while capturing
+            self.status_bar.update("Stop capture first", self._elapsed())
+            return
+        self._settings_screen = SettingsScreen(
+            self.screen_w, self.screen_h, self.config,
+        )
+        self._screen_state = "settings"
+
+    def _save_settings(self) -> None:
+        """Save settings from the settings screen to config.yaml and reload."""
+        if self._settings_screen is None:
+            return
+        new_config = self._settings_screen.get_values()
+        if CONFIG_AVAILABLE:
+            save_config(new_config)
+        self.config = _load_app_config()
+        self._settings_screen = None
+        self.status_bar.update("Settings saved", 0)
+        logger.info("Settings saved")
+
     # ── Preview & status ───────────────────────────────────────────────────
 
     def _update_preview(self) -> None:
@@ -419,12 +485,17 @@ class TimeLapseApp:
 
     def _draw(self) -> None:
         """Render all UI components and flip the display."""
-        self.screen.fill(COLOR_BACKGROUND)
-        self.header.draw(self.screen)
-        self.preview.draw(self.screen)
-        self.btn_start.draw(self.screen)
-        self.btn_stop.draw(self.screen)
-        self.status_bar.draw(self.screen)
+        if self._screen_state == "settings" and self._settings_screen is not None:
+            self._settings_screen.draw(self.screen)
+        else:
+            self.screen.fill(COLOR_BACKGROUND)
+            self.header.draw(self.screen)
+            self.preview.draw(self.screen)
+            self.btn_start.draw(self.screen)
+            self.btn_stop.draw(self.screen)
+            self.btn_settings.draw(self.screen)
+            self.btn_close.draw(self.screen)
+            self.status_bar.draw(self.screen)
         pygame.display.flip()
 
     # ── Shutdown ───────────────────────────────────────────────────────────

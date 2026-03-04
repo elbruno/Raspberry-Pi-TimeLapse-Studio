@@ -88,6 +88,25 @@ def load_config(path: str = "config.yaml") -> dict:
     return config
 
 
+def save_config(config: dict, path: str = "config.yaml") -> bool:
+    """
+    Write the configuration dictionary back to a YAML file.
+
+    Returns True on success, False on failure.
+    """
+    if not YAML_AVAILABLE:
+        logger.error("Cannot save config — PyYAML not installed")
+        return False
+    try:
+        with open(path, "w") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        logger.info("Configuration saved to %s", path)
+        return True
+    except Exception as e:
+        logger.error("Failed to save config to %s: %s", path, e)
+        return False
+
+
 def get_config_value(config: dict, key_path: str, default: Any = None) -> Any:
     """
     Retrieve a value using dot-notation (e.g. ``"camera.width"``).

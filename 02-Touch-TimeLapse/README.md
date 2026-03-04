@@ -14,7 +14,8 @@ A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi.
 - 💾 **Auto-detects USB storage** — saves to USB drive when available, falls back to local storage
 - 🖥️ **Dual mode** — fullscreen on Pi LCD, windowed on desktop for development
 - 📷 **OpenCV camera** — works with USB webcams and built-in cameras
-- 🎛️ **On-screen controls** — start/stop, status display, live preview at 6 fps
+- 🎛️ **On-screen controls** — start/stop, settings, close, status display, live preview at 6 fps
+- ⚙️ **In-app settings** — adjust interval, quality, and camera settings from the touchscreen
 
 ---
 
@@ -173,10 +174,23 @@ python timelapse_touch.py
 
 ### On-Screen Controls
 
-- **Start** — begin capturing photos at the configured interval
-- **Stop** — pause the capture session
-- **Live preview** — see what the camera sees in real time (6 fps)
-- **Status bar** — shows capture count, interval, and storage location
+- **START** — begin capturing photos at the configured interval
+- **STOP** — pause the capture session (replaces START while running)
+- **SETTINGS** — open the settings screen to adjust capture parameters
+- **CLOSE** — exit the application cleanly
+- **Live preview** — always-on camera feed (6 fps) whenever a camera is detected
+- **Status bar** — shows capture status, elapsed time, and storage info
+
+### Settings Screen
+
+Tap **SETTINGS** on the main screen (when not capturing) to open the settings form:
+
+- **Interval (s)** — seconds between photos (1–3600)
+- **Quality** — JPEG compression (1–100)
+- **Camera** — camera device index (0–9)
+- **Width / Height** — camera capture resolution
+
+Use the **[–]** and **[+]** stepper buttons to adjust values, then tap **SAVE** to write to `config.yaml` or **BACK** to discard changes.
 
 ### Storage Behavior
 

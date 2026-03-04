@@ -252,6 +252,7 @@ The header shows at a glance:
 |---------|---------|
 | **PiTimeLapse** | App title |
 | **LED** (green) | USB LED light detected and controllable |
+| **LED** (dim gray) | No USB LED detected (check uhubctl installation) |
 | **✓** (green) | USB drive connected |
 | **✗** (red) | No USB drive — saving to local `./data` folder |
 | **14.2G** | Free space on USB drive (when Storage Info is enabled) |
@@ -297,16 +298,16 @@ The bottom bar shows:
 
 ## 8. Using the Settings Screen
 
-Tap **SETTINGS** on the main screen (when not capturing) to open the settings form. Settings are organized into **two tabs**.
+Tap **SETTINGS** on the main screen (when not capturing) to open the settings form. Settings are organized into **three tabs**.
 
 ### 8.1 Switching Tabs
 
-At the top of the settings screen you'll see two tab buttons:
+At the top of the settings screen you'll see three tab buttons:
 
 ```
-┌──────────────────────┬──────────────────────┐
-│       Camera         │      Features        │
-└──────────────────────┴──────────────────────┘
+┌──────────────┬──────────────┬──────────────┐
+│    Camera    │   Features   │     LED      │
+└──────────────┴──────────────┴──────────────┘
 ```
 
 Tap a tab name to switch between them. The **active tab** is highlighted with a green accent line.
@@ -332,23 +333,37 @@ Controls the camera and capture behavior:
 
 ### 8.3 Features Tab
 
-Toggle optional features on or off:
+Toggle optional display features on or off:
 
 | Setting | What it does | Values | Default |
 |---------|-------------|--------|---------|
 | **Countdown** | Show countdown timer to next capture in the status bar | On / Off | On |
 | **Storage Info** | Show free disk space and remaining photos estimate in the header | On / Off | On |
-| **LED Flash** | Enable USB LED relay illumination before each photo | On / Off | On |
-| **LED Warmup** | Seconds to wait after LED turns on before capturing | 0 – 5 | 1 |
 
 **Tips:**
 
 - Turn off **Countdown** if you prefer a simpler "Capturing..." status message.
 - Turn off **Storage Info** for a cleaner header showing just USB status and photo count.
-- Turn off **LED Flash** if you have no LED relay connected or don't want flash.
-- **LED Warmup** = 1 gives the LED time to reach full brightness. Set to 0 for instant capture.
 
-### 8.4 Adjusting Values
+### 8.4 LED Tab
+
+Configure the USB LED flash light. This tab also shows a detection status line:
+
+- **✓ Detected on 1-1.2** (green) — a controllable USB port was found
+- **✗ Not detected** (dim) — no controllable port found; install `uhubctl` if needed
+
+| Setting | What it does | Values | Default |
+|---------|-------------|--------|---------|
+| **LED Flash** | Enable USB LED illumination before each photo | On / Off | On |
+| **LED Warmup** | Seconds to wait after LED turns on before capturing | 0 – 5 | 1 |
+
+**Tips:**
+
+- Turn off **LED Flash** if you have no USB LED connected or don't want flash.
+- **LED Warmup** = 1 gives the LED time to reach full brightness. Set to 0 for instant capture.
+- If the status shows "Not detected", see [Section 10 – USB LED Flash Light](#10-usb-led-flash-light) for setup instructions.
+
+### 8.5 Adjusting Values
 
 Each setting uses stepper controls:
 
@@ -360,7 +375,7 @@ Each setting uses stepper controls:
 - Tap **[+]** to increase the value
 - Boolean settings show **On** or **Off** instead of a number
 
-### 8.5 Saving or Discarding
+### 8.6 Saving or Discarding
 
 | Button | What it does |
 |--------|-------------|
@@ -463,7 +478,7 @@ If no controllable port is detected, the capture cycle runs normally without ste
 2. Plug your USB LED light into a USB port on the Pi
 3. Run `sudo uhubctl` to verify your USB hub supports per-port power switching
 4. The app auto-detects controllable ports on startup
-5. Toggle **LED Flash** on/off in Settings → Features tab
+5. Toggle **LED Flash** on/off in Settings → LED tab
 6. Adjust **LED Warmup** (0–5 seconds) for your light's warm-up time
 
 ### 10.5 Specifying a USB Port

@@ -211,6 +211,7 @@ class TimeLapseApp:
         # ── LED controller ──
         self.led = None
         self.led_detected: bool = False
+        self.led_port_name: str = ""
         self._init_led()
 
         # ── Storage & capture engine ──
@@ -338,6 +339,7 @@ class TimeLapseApp:
         if controller.detect():
             controller.turn_off()  # always ensure LED starts in off state
             self.led_detected = True
+            self.led_port_name = controller.port_name
             logger.info("USB LED detected on %s", controller.port_name)
             if led_cfg.get("enabled", True):
                 self.led = controller
@@ -483,6 +485,8 @@ class TimeLapseApp:
             return
         self._settings_screen = SettingsScreen(
             self.screen_w, self.screen_h, self.config,
+            led_detected=self.led_detected,
+            led_port_name=self.led_port_name,
         )
         self._screen_state = "settings"
 

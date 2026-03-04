@@ -56,3 +56,14 @@
 - Status polling in `_update_status()` checks `engine.get_status()["last_photo_path"]` and updates thumbnail on change
 - Key files: `02-Touch-TimeLapse/ui_components.py` (ThumbnailArea class), `02-Touch-TimeLapse/timelapse_touch.py` (split layout + thumbnail tracking)
 
+## LED Settings Tab & Header Indicator (2026-03-06)
+- Added 3rd "LED" tab to SettingsScreen (Camera / Features / LED) — tabs now 160px each on 480px screen
+- Moved LED Flash and LED Warmup steppers from Features tab to LED tab
+- LED tab shows detection status text below steppers: green "✓ Detected on {port}" or dim "✗ Not detected (install uhubctl)"
+- SettingsScreen accepts `led_detected: bool` and `led_port_name: str` params, passed from timelapse_touch.py
+- `get_values()` collects from all 3 tab row lists (camera_rows + features_rows + led_rows)
+- `handle_tap()` and `draw()` route to `self.led_rows` when `active_tab == 2`
+- Added `font_small` property (monospace 14) for status text rendering
+- Header LED indicator now always renders ("LED" in green if detected, dim gray if not) — no longer hidden when undetected
+- Stored `self.led_port_name` in `_init_led()` from `controller.port_name` for passing to UI
+

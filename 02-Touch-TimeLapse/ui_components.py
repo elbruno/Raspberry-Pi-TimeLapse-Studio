@@ -207,12 +207,10 @@ class Header:
         x -= usb_surf.get_width()
         surface.blit(usb_surf, (x, 12))
 
-        # LED indicator (next to title)
+        # LED indicator (always shown next to title)
         led_color = COLOR_USB_OK if self.led_detected else COLOR_TEXT_DIM
-        led_text = "LED" if self.led_detected else ""
-        if led_text:
-            led_surf = self.font_info.render(f" {led_text}", True, led_color)
-            surface.blit(led_surf, (10 + title.get_width(), 12))
+        led_surf = self.font_info.render(" LED", True, led_color)
+        surface.blit(led_surf, (10 + title.get_width(), 12))
 
 
 # ---------------------------------------------------------------------------
@@ -483,19 +481,24 @@ class SettingsScreen:
 
     TAB_HEIGHT = 34
 
-    def __init__(self, screen_w: int, screen_h: int, config: dict) -> None:
+    def __init__(self, screen_w: int, screen_h: int, config: dict,
+                 led_detected: bool = False, led_port_name: str = "") -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
-        self.active_tab: int = 0  # 0 = Camera, 1 = Features
+        self._font_small: Optional[pygame.font.Font] = None
+        self.active_tab: int = 0  # 0 = Camera, 1 = Features, 2 = LED
+        self.led_detected = led_detected
+        self.led_port_name = led_port_name
 
-        # Tab buttons
-        tab_w = screen_w // 2
+        # Tab buttons — 3 tabs
+        tab_w = screen_w // 3
         self.tab_rects = [
             pygame.Rect(0, 0, tab_w, self.TAB_HEIGHT),
-            pygame.Rect(tab_w, 0, screen_w - tab_w, self.TAB_HEIGHT),
+            pygame.Rect(tab_w, 0, tab_w, self.TAB_HEIGHT),
+            pygame.Rect(tab_w * 2, 0, screen_w - tab_w * 2, self.TAB_HEIGHT),
         ]
-        self.tab_labels = ["Camera", "Features"]
+        self.tab_labels = ["Camera", "Features", "LED"]
 
         row_h = 36
         start_y = self.TAB_HEIGHT + 6
@@ -526,7 +529,7 @@ class SettingsScreen:
                         int(cam.get("height", 480)), 120, 1080, 120),
         ]
 
-        # ── Features tab rows ──
+        # ── Features tab rows (LED settings moved to LED tab) ──
         self.features_rows = [
             _SettingRow(start_y, screen_w, btn_size,
                         "Countdown", "display.show_countdown",
@@ -536,13 +539,19 @@ class SettingsScreen:
                         "Storage Info", "display.show_storage_info",
                         1 if display.get("show_storage_info", True) else 0,
                         0, 1, 1),
-            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+        ]
+
+        # ── LED tab rows ──
+        self.led_rows = [
+            _SettingRow(start_y, screen_w, btn_size,
                         "LED Flash", "led.enabled",
                         1 if led.get("enabled", True) else 0, 0, 1, 1),
-            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
+            _SettingRow(start_y + row_h, screen_w, btn_size,
                         "LED Warmup", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
+        # Y position for LED status text (below the stepper rows)
+        self._led_status_y = start_y + row_h * 2 + 10
 
         # Bottom buttons — positioned below the last row
         btn_w = 140
@@ -561,6 +570,12 @@ class SettingsScreen:
             self._font = pygame.font.SysFont("monospace", 18, bold=True)
         return self._font
 
+    @property
+    def font_small(self) -> pygame.font.Font:
+        if self._font_small is None:
+            self._font_small = pygame.font.SysFont("monospace", 14)
+        return self._font_small
+
     def handle_tap(self, pos: Tuple[int, int]) -> Optional[str]:
         """Handle a touch/click. Returns 'save', 'back', or None."""
         # Tab switching
@@ -570,7 +585,12 @@ class SettingsScreen:
                 return None
 
         # Active tab rows
-        rows = self.camera_rows if self.active_tab == 0 else self.features_rows
+        if self.active_tab == 0:
+            rows = self.camera_rows
+        elif self.active_tab == 1:
+            rows = self.features_rows
+        else:
+            rows = self.led_rows
         for row in rows:
             row.handle_tap(pos)
 
@@ -583,7 +603,7 @@ class SettingsScreen:
     def get_values(self) -> dict:
         """Return current settings as a nested config dict."""
         flat = {}
-        for row in self.camera_rows + self.features_rows:
+        for row in self.camera_rows + self.features_rows + self.led_rows:
             flat[row.key] = row.value
         return {
             "camera": {
@@ -625,9 +645,29 @@ class SettingsScreen:
             surface.blit(tab_txt, tab_txt.get_rect(center=rect.center))
 
         # ── Setting rows for active tab ──
-        rows = self.camera_rows if self.active_tab == 0 else self.features_rows
+        if self.active_tab == 0:
+            rows = self.camera_rows
+        elif self.active_tab == 1:
+            rows = self.features_rows
+        else:
+            rows = self.led_rows
         for row in rows:
             row.draw(surface, self.font)
+
+        # ── LED status text (only on LED tab) ──
+        if self.active_tab == 2:
+            if self.led_detected:
+                status_text = f"\u2713 Detected on {self.led_port_name}"
+                status_color = COLOR_USB_OK
+            else:
+                status_text = "\u2717 Not detected"
+                status_color = COLOR_TEXT_DIM
+            status_surf = self.font_small.render(status_text, True, status_color)
+            surface.blit(status_surf, (14, self._led_status_y))
+            if not self.led_detected:
+                hint_surf = self.font_small.render("(install uhubctl)",
+                                                   True, COLOR_TEXT_DIM)
+                surface.blit(hint_surf, (14, self._led_status_y + 18))
 
         # ── Save button ──
         pygame.draw.rect(surface, COLOR_SAVE, self.btn_save, border_radius=10)

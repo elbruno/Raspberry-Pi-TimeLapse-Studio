@@ -1,0 +1,149 @@
+"""
+config.py - Configuration Loading and Validation for Touch TimeLapse
+
+Loads settings from config.yaml, merges with sensible defaults,
+and validates that all values are within acceptable ranges.
+
+Usage:
+    config = load_config()                          # loads config.yaml
+    width = get_config_value(config, "camera.width", 640)
+"""
+
+import logging
+import os
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# Try to import PyYAML
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+    yaml = None
+    logger.warning("PyYAML is not installed. Install with: pip install pyyaml")
+
+# Sensible defaults — every key that config.yaml may contain
+DEFAULTS: dict = {
+    "camera": {
+        "mode": "opencv",
+        "index": 0,
+        "width": 640,
+        "height": 480,
+    },
+    "capture": {
+        "interval_seconds": 1,
+        "quality": 90,
+    },
+    "preview": {
+        "fps": 6,
+    },
+    "storage": {
+        "fallback_path": "./data",
+    },
+}
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge *override* into a copy of *base*."""
+    merged = base.copy()
+    for key, value in override.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_config(path: str = "config.yaml") -> dict:
+    """
+    Load configuration from a YAML file and merge over defaults.
+
+    Args:
+        path: Path to the YAML config file.
+
+    Returns:
+        Merged configuration dictionary.
+    """
+    config = DEFAULTS.copy()
+
+    if not YAML_AVAILABLE:
+        logger.warning("YAML not available — using built-in defaults")
+        return _deep_merge(DEFAULTS, {})
+
+    if not os.path.exists(path):
+        logger.info(f"Config file not found at {path} — using defaults")
+        return _deep_merge(DEFAULTS, {})
+
+    try:
+        with open(path, "r") as f:
+            loaded = yaml.safe_load(f) or {}
+        config = _deep_merge(DEFAULTS, loaded)
+        logger.info(f"Configuration loaded from {path}")
+    except Exception as e:
+        logger.error(f"Error reading {path}: {e} — using defaults")
+        config = _deep_merge(DEFAULTS, {})
+
+    return config
+
+
+def get_config_value(config: dict, key_path: str, default: Any = None) -> Any:
+    """
+    Retrieve a value using dot-notation (e.g. ``"camera.width"``).
+
+    Args:
+        config:   The configuration dictionary.
+        key_path: Dot-separated key path.
+        default:  Fallback if the key is missing.
+
+    Returns:
+        The configuration value, or *default*.
+    """
+    keys = key_path.split(".")
+    current = config
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
+
+
+def validate_config(config: dict) -> list[str]:
+    """
+    Validate configuration values and return a list of error strings.
+
+    Returns an empty list when everything is valid.
+    """
+    errors: list[str] = []
+
+    # Camera checks
+    cam_index = get_config_value(config, "camera.index", 0)
+    if not isinstance(cam_index, int) or cam_index < 0:
+        errors.append(f"camera.index must be a non-negative integer, got {cam_index}")
+
+    for dim in ("camera.width", "camera.height"):
+        val = get_config_value(config, dim, 0)
+        if not isinstance(val, int) or val <= 0:
+            errors.append(f"{dim} must be a positive integer, got {val}")
+
+    cam_mode = get_config_value(config, "camera.mode", "opencv")
+    if cam_mode not in ("opencv", "picamera2"):
+        errors.append(f"camera.mode must be 'opencv' or 'picamera2', got '{cam_mode}'")
+
+    # Capture checks
+    interval = get_config_value(config, "capture.interval_seconds", 1)
+    if not isinstance(interval, (int, float)) or interval <= 0:
+        errors.append(f"capture.interval_seconds must be > 0, got {interval}")
+
+    quality = get_config_value(config, "capture.quality", 90)
+    if not isinstance(quality, int) or quality < 1 or quality > 100:
+        errors.append(f"capture.quality must be 1-100, got {quality}")
+
+    # Preview checks
+    fps = get_config_value(config, "preview.fps", 6)
+    if not isinstance(fps, (int, float)) or fps <= 0:
+        errors.append(f"preview.fps must be > 0, got {fps}")
+
+    return errors

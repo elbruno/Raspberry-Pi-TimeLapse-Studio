@@ -23,8 +23,8 @@ df -h /
 
 ```bash
 cd ~
-git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git 2>/dev/null || \
-  (cd Raspberry-Pi-TimeLapse-Studio && git pull)
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd Raspberry-Pi-TimeLapse-Studio
 ```
 
 ## 3. Dry run — inspect what would be removed
@@ -96,7 +96,12 @@ python3 main.py validate
 
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-pip3 install -r requirements.txt --break-system-packages
+chmod +x install.sh
+./install.sh --all        # full install: SDL2 + pip + LED + desktop shortcut
+# Other options:
+# ./install.sh              # base install only (SDL2 + pip packages)
+# ./install.sh --with-led   # base + uhubctl for USB LED control
+# ./install.sh --autostart  # base + desktop shortcut + autostart on boot
 ```
 
 ## 7. Start the application
@@ -143,9 +148,9 @@ python3 main.py validate
 # SSH in and run everything in one go
 cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
 sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
-sudo apt update
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-pip3 install -r requirements.txt --break-system-packages
+chmod +x install.sh
+./install.sh --all
 ```
 
 ## What gets cleaned

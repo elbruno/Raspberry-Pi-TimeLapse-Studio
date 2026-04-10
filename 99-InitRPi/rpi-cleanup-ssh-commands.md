@@ -94,6 +94,21 @@ python3 main.py validate
 
 ### For `02-Touch-TimeLapse`
 
+#### Step 1 — LCD driver (first time / after cleanup)
+
+If you have a 3.5" SPI LCD (Kuman SC06 or compatible), install the LCD driver first.
+This switches the Pi to X11 mode, configures SPI, and reboots:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+chmod +x install.sh
+./install.sh --setup-lcd   # installs goodtft driver → reboots the Pi
+```
+
+> ⚠️ The Pi will reboot automatically. Reconnect via SSH after reboot.
+
+#### Step 2 — Software dependencies (after reboot)
+
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 chmod +x install.sh
@@ -149,8 +164,15 @@ python3 main.py validate
 # SSH in and run everything in one go
 cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
 sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
+
+# Step 1: LCD driver — reboots the Pi automatically
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 chmod +x install.sh
+./install.sh --setup-lcd
+# ⚠ Pi reboots here — reconnect via SSH, then continue:
+
+# Step 2: Software dependencies (run after reboot)
+cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 ./install.sh --all
 sudo reboot
 ```

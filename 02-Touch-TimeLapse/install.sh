@@ -10,24 +10,29 @@
 #   ./install.sh                # standard install
 #   ./install.sh --with-led     # also install uhubctl for USB LED control
 #   ./install.sh --autostart    # install + create desktop shortcut + autostart
-#   ./install.sh --all          # all of the above
+#   ./install.sh --all          # all of the above (LED + autostart, no LCD)
+#   ./install.sh --setup-lcd    # first-time LCD driver setup (reboots Pi!)
 # -----------------------------------------------------------
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WITH_LED=0
 AUTOSTART=0
+SETUP_LCD=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --all)        WITH_LED=1; AUTOSTART=1; shift ;;
     --with-led)   WITH_LED=1;  shift ;;
     --autostart)  AUTOSTART=1; shift ;;
+    --setup-lcd)  SETUP_LCD=1; shift ;;
     -h|--help)
-      echo "Usage: ./install.sh [--all] [--with-led] [--autostart]"
+      echo "Usage: ./install.sh [--all] [--with-led] [--autostart] [--setup-lcd]"
       echo "  --all         Install everything (LED + desktop shortcut + autostart)"
       echo "  --with-led    Install uhubctl for USB LED flash control"
       echo "  --autostart   Create desktop shortcut + autostart on boot"
+      echo "  --setup-lcd   First-time 3.5\" SPI LCD driver setup (Kuman SC06 / ILI9486)"
+      echo "                ⚠  Reboots the Pi! Run './install.sh --all' after reboot."
       exit 0
       ;;
     *)
@@ -36,6 +41,47 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# ------------------------------------------------------------------
+# 0. LCD driver setup (first-time only — reboots at the end)
+# ------------------------------------------------------------------
+if [[ $SETUP_LCD -eq 1 ]]; then
+  echo "== LCD Driver Setup (Kuman SC06 / 3.5\" SPI ILI9486) =="
+  echo
+
+  # Check if already installed
+  if [[ -f /boot/firmware/overlays/tft35a.dtbo ]] && grep -q "dtoverlay=tft35a" /boot/firmware/config.txt 2>/dev/null; then
+    echo "LCD driver overlay already installed."
+    echo "If the screen still doesn't work, try: cd /tmp/LCD-show && sudo ./LCD35-show"
+    echo
+  else
+    LCD_SHOW_DIR="/tmp/LCD-show"
+    if [[ -d "$LCD_SHOW_DIR" ]]; then
+      echo "Updating existing LCD-show repository..."
+      cd "$LCD_SHOW_DIR" && git pull 2>/dev/null || true
+    else
+      echo "Cloning goodtft/LCD-show driver..."
+      git clone https://github.com/goodtft/LCD-show.git "$LCD_SHOW_DIR"
+    fi
+    chmod -R 755 "$LCD_SHOW_DIR"
+    cd "$LCD_SHOW_DIR"
+
+    echo
+    echo "Installing LCD35 driver..."
+    echo "⚠  This will:"
+    echo "   • Switch display mode to X11 (required for SPI LCD)"
+    echo "   • Configure SPI and the tft35a overlay"
+    echo "   • Reboot the Pi"
+    echo
+    echo "After reboot, run the full install:"
+    echo "  cd ${SCRIPT_DIR} && ./install.sh --all"
+    echo
+
+    sudo ./LCD35-show
+    # LCD35-show reboots — script won't reach here
+    exit 0
+  fi
+fi
 
 echo "== PiTimeLapse Touch — Install =="
 echo
@@ -93,9 +139,21 @@ if [[ $WITH_LED -eq 1 ]]; then
 fi
 
 echo
+
+# Check LCD driver status
+if [[ -f /boot/firmware/overlays/tft35a.dtbo ]] && grep -q "dtoverlay=tft35a" /boot/firmware/config.txt 2>/dev/null; then
+  echo "  LCD driver (tft35a) ✓"
+else
+  echo "  LCD driver ✗ (3.5\" SPI LCD will show white screen!)"
+  echo "    → Run: ./install.sh --setup-lcd"
+  FAILED=1
+fi
+
 if [[ $FAILED -eq 1 ]]; then
+  echo
   echo "⚠  Some dependencies failed to install. Check the output above."
 else
+  echo
   echo "All dependencies installed successfully."
 fi
 

@@ -116,4 +116,13 @@ echo "========================================="
 echo "Done! Run the app with:"
 echo "  cd ${SCRIPT_DIR}"
 echo "  python3 timelapse_touch.py --fullscreen"
+echo
+if [[ $AUTOSTART -eq 1 ]]; then
+  echo "Reboot recommended so autostart takes effect:"
+  echo "  sudo reboot"
+else
+  echo "A reboot is recommended to ensure display"
+  echo "drivers pick up the new SDL2 libraries:"
+  echo "  sudo reboot"
+fi
 echo "========================================="

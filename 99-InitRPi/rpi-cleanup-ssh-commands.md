@@ -98,6 +98,7 @@ python3 main.py validate
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 chmod +x install.sh
 ./install.sh --all        # full install: SDL2 + pip + LED + desktop shortcut
+sudo reboot               # recommended: ensures display drivers + autostart work
 # Other options:
 # ./install.sh              # base install only (SDL2 + pip packages)
 # ./install.sh --with-led   # base + uhubctl for USB LED control
@@ -151,6 +152,7 @@ sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 chmod +x install.sh
 ./install.sh --all
+sudo reboot
 ```
 
 ## What gets cleaned

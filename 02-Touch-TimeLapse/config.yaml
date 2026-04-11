@@ -1,27 +1,18 @@
-# Touch TimeLapse — Default Configuration
-# Copy this file and adjust settings for your setup.
-
 camera:
-  mode: opencv          # opencv or picamera2 (future)
-  index: 0              # camera device index
+  mode: opencv
+  index: 1
   width: 640
   height: 480
-
 capture:
-  interval_seconds: 30  # time between photos
-  quality: 90           # JPEG quality (1-100)
-
+  interval_seconds: 30
+  quality: 90
 preview:
-  fps: 6                # live preview frame rate
-
+  fps: 6
 storage:
-  fallback_path: ./data  # used when no USB drive found
-
+  fallback_path: ./data
 led:
-  enabled: true          # auto-use USB LED if controllable port found
-  warmup_seconds: 1.0    # seconds to wait after LED on, before capture
-  usb_port: auto         # "auto" to detect, or explicit like "1-1.2"
-
+  enabled: true
+  warmup_seconds: 1
 display:
-  show_countdown: true   # show countdown timer to next photo
-  show_storage_info: true # show free space and remaining photos estimate
+  show_countdown: true
+  show_storage_info: true

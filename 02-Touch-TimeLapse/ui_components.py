@@ -482,7 +482,8 @@ class SettingsScreen:
     TAB_HEIGHT = 34
 
     def __init__(self, screen_w: int, screen_h: int, config: dict,
-                 led_detected: bool = False, led_port_name: str = "") -> None:
+                 led_detected: bool = False, led_port_name: str = "",
+                 camera_options: Optional[list[tuple[int, str]]] = None) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
@@ -510,6 +511,31 @@ class SettingsScreen:
         led = config.get("led", {})
         display = config.get("display", {})
 
+        # Available cameras for combo-style selector, e.g. [(1, "LifeCam"), ...]
+        self.camera_options: list[tuple[int, str]] = sorted(
+            camera_options or [],
+            key=lambda item: item[0],
+        )
+
+        configured_index = int(cam.get("index", 0))
+        if self.camera_options:
+            selected = 0
+            for i, (cam_idx, _) in enumerate(self.camera_options):
+                if cam_idx == configured_index:
+                    selected = i
+                    break
+            self._camera_selected = selected
+        else:
+            # Fallback when no camera is detected: preserve manual index value
+            self._camera_selected = 0
+            self.camera_options = [(configured_index, "Manual")]
+
+        # Camera combo row geometry (same right-side alignment as stepper rows)
+        self.camera_label_y = start_y + row_h * 2 + btn_size // 2 - 8
+        self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
+        self.camera_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
+        self.camera_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
+
         # ── Camera tab rows ──
         self.camera_rows = [
             _SettingRow(start_y, screen_w, btn_size,
@@ -518,9 +544,6 @@ class SettingsScreen:
             _SettingRow(start_y + row_h, screen_w, btn_size,
                         "Quality", "capture.quality",
                         int(cap.get("quality", 90)), 1, 100, 5),
-            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
-                        "Camera", "camera.index",
-                        int(cam.get("index", 0)), 0, 9, 1),
             _SettingRow(start_y + row_h * 3, screen_w, btn_size,
                         "Width", "camera.width",
                         int(cam.get("width", 640)), 160, 1920, 160),
@@ -586,6 +609,12 @@ class SettingsScreen:
 
         # Active tab rows
         if self.active_tab == 0:
+            if self.camera_btn_prev.collidepoint(pos):
+                self._camera_selected = (self._camera_selected - 1) % len(self.camera_options)
+                return None
+            if self.camera_btn_next.collidepoint(pos):
+                self._camera_selected = (self._camera_selected + 1) % len(self.camera_options)
+                return None
             rows = self.camera_rows
         elif self.active_tab == 1:
             rows = self.features_rows
@@ -605,10 +634,11 @@ class SettingsScreen:
         flat = {}
         for row in self.camera_rows + self.features_rows + self.led_rows:
             flat[row.key] = row.value
+        selected_camera_idx = self.camera_options[self._camera_selected][0]
         return {
             "camera": {
                 "mode": "opencv",
-                "index": flat.get("camera.index", 0),
+                "index": selected_camera_idx,
                 "width": flat.get("camera.width", 640),
                 "height": flat.get("camera.height", 480),
             },
@@ -653,6 +683,26 @@ class SettingsScreen:
             rows = self.led_rows
         for row in rows:
             row.draw(surface, self.font)
+
+        # Camera combo-like selector (Camera tab)
+        if self.active_tab == 0:
+            cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
+            surface.blit(cam_lbl, (20, self.camera_label_y))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_prev, border_radius=6)
+            prev_txt = self.font.render("<", True, COLOR_TEXT)
+            surface.blit(prev_txt, prev_txt.get_rect(center=self.camera_btn_prev.center))
+
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.camera_val_rect, border_radius=6)
+            cam_idx, cam_name = self.camera_options[self._camera_selected]
+            short_name = cam_name[:8] if len(cam_name) > 8 else cam_name
+            display = f"{cam_idx}:{short_name}"
+            cam_txt = self.font_small.render(display, True, COLOR_TEXT)
+            surface.blit(cam_txt, cam_txt.get_rect(center=self.camera_val_rect.center))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_next, border_radius=6)
+            next_txt = self.font.render(">", True, COLOR_TEXT)
+            surface.blit(next_txt, next_txt.get_rect(center=self.camera_btn_next.center))
 
         # ── LED status text (only on LED tab) ──
         if self.active_tab == 2:

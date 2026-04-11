@@ -21,6 +21,7 @@ import platform
 import signal
 import sys
 import time
+import glob
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -310,23 +311,68 @@ class TimeLapseApp:
             self.usb_connected = False
 
     def _init_camera(self) -> None:
-        """Open the camera using OpenCV."""
+        """Open the camera using OpenCV (with fallback index probing)."""
         if not CAMERA_AVAILABLE:
             logger.warning("camera_opencv not available — preview disabled")
             return
-        cam = OpenCVCamera()
-        if cam.is_available():
-            cam_cfg = self.config.get("camera", {})
-            idx = cam_cfg.get("index", 0)
-            w = cam_cfg.get("width", 640)
-            h = cam_cfg.get("height", 480)
-            if cam.open(idx, w, h):
-                self.camera = cam
-                logger.info("Camera opened (index=%d, %dx%d)", idx, w, h)
-            else:
-                logger.warning("Camera failed to open")
-        else:
+        # Close existing handle before re-initialising (e.g., after settings save)
+        if self.camera is not None:
+            self.camera.close()
+            self.camera = None
+
+        probe = OpenCVCamera()
+        if not probe.is_available():
             logger.warning("No camera detected")
+            return
+
+        cam_cfg = self.config.get("camera", {})
+        idx = int(cam_cfg.get("index", 0))
+        w = int(cam_cfg.get("width", 640))
+        h = int(cam_cfg.get("height", 480))
+
+        # Try configured index first, then probe discovered /dev/videoN indices.
+        candidate_indices = [idx]
+        for dev in sorted(glob.glob("/dev/video*")):
+            suffix = dev.replace("/dev/video", "")
+            if suffix.isdigit():
+                dev_idx = int(suffix)
+                if dev_idx not in candidate_indices:
+                    candidate_indices.append(dev_idx)
+
+        # Fallback for systems where /dev/video* glob is restricted.
+        for fallback_idx in range(0, 10):
+            if fallback_idx not in candidate_indices:
+                candidate_indices.append(fallback_idx)
+
+        for candidate in candidate_indices:
+            cam = OpenCVCamera()
+            if not cam.open(candidate, w, h):
+                continue
+
+            # Validate that we can fetch a frame (codec devices can open but not stream).
+            frame_ok = False
+            for _ in range(3):
+                frame = cam.capture()
+                if frame is not None:
+                    frame_ok = True
+                    break
+                time.sleep(0.1)
+
+            if frame_ok:
+                self.camera = cam
+                if candidate != idx:
+                    logger.info(
+                        "Configured camera index %d failed; using detected index %d",
+                        idx,
+                        candidate,
+                    )
+                    self.config.setdefault("camera", {})["index"] = candidate
+                logger.info("Camera opened (index=%d, %dx%d)", candidate, w, h)
+                return
+
+            cam.close()
+
+        logger.warning("Camera failed to open on all probed indices")
 
     def _init_led(self) -> None:
         """Auto-detect a USB LED and ensure it starts OFF."""
@@ -366,6 +412,58 @@ class TimeLapseApp:
 
         if CAPTURE_ENGINE_AVAILABLE:
             self.engine = CaptureEngine()
+
+    def _list_available_cameras(self) -> list[tuple[int, str]]:
+        """Return a list of working camera devices as (index, friendly_name)."""
+        if not CAMERA_AVAILABLE:
+            return []
+
+        cam_cfg = self.config.get("camera", {})
+        w = int(cam_cfg.get("width", 640))
+        h = int(cam_cfg.get("height", 480))
+
+        candidate_indices: list[int] = []
+        for dev in sorted(glob.glob("/dev/video*")):
+            suffix = dev.replace("/dev/video", "")
+            if suffix.isdigit():
+                idx = int(suffix)
+                if idx not in candidate_indices:
+                    candidate_indices.append(idx)
+
+        for fallback_idx in range(0, 10):
+            if fallback_idx not in candidate_indices:
+                candidate_indices.append(fallback_idx)
+
+        available: list[tuple[int, str]] = []
+        for idx in candidate_indices:
+            cam = OpenCVCamera()
+            if not cam.open(idx, w, h):
+                continue
+
+            frame_ok = False
+            for _ in range(3):
+                frame = cam.capture()
+                if frame is not None:
+                    frame_ok = True
+                    break
+                time.sleep(0.1)
+            cam.close()
+
+            if not frame_ok:
+                continue
+
+            name_path = f"/sys/class/video4linux/video{idx}/name"
+            name = f"video{idx}"
+            if os.path.exists(name_path):
+                try:
+                    with open(name_path, "r", encoding="utf-8") as f:
+                        name = f.read().strip() or name
+                except Exception:
+                    pass
+
+            available.append((idx, name))
+
+        return available
 
     # ── Main loop ──────────────────────────────────────────────────────────
 
@@ -483,10 +581,12 @@ class TimeLapseApp:
             # Don't open settings while capturing
             self.status_bar.update("Stop capture first", self._elapsed())
             return
+        camera_options = self._list_available_cameras()
         self._settings_screen = SettingsScreen(
             self.screen_w, self.screen_h, self.config,
             led_detected=self.led_detected,
             led_port_name=self.led_port_name,
+            camera_options=camera_options,
         )
         self._screen_state = "settings"
 
@@ -505,6 +605,10 @@ class TimeLapseApp:
         self._show_countdown = display_cfg.get("show_countdown", True)
         self._show_storage_info = display_cfg.get("show_storage_info", True)
         self.header.show_storage_info = self._show_storage_info
+
+        # Re-open camera using updated settings (index, resolution, etc.)
+        self._init_camera()
+        self._last_preview_time = 0.0
 
         self.status_bar.update("Settings saved", 0)
         logger.info("Settings saved")

@@ -296,6 +296,8 @@ class TimeLapseApp:
         self._capture_start_time: float = 0.0
         self._last_preview_time: float = 0.0
         self._last_thumbnail_path: str = ""  # Track last photo for thumbnail updates
+        self._camera_warning: str = ""
+        self._consecutive_preview_failures: int = 0
 
         # Display feature flags
         display_cfg = self.config.get("display", {})
@@ -322,6 +324,7 @@ class TimeLapseApp:
             self.usb_path = "./data"
             self.usb_connected = False
             return
+
         try:
             path = find_first_usb_drive()
             self.usb_path = path
@@ -332,6 +335,79 @@ class TimeLapseApp:
             logger.warning("USB detection failed: %s", exc)
             self.usb_path = "./data"
             self.usb_connected = False
+
+    def _enumerate_camera_candidates(self, configured_index: int) -> list[int]:
+        """Build a stable list of likely camera /dev/video indices.
+
+        On Raspberry Pi, `/dev/video*` often includes codec/ISP nodes that are
+        not real cameras. Probing those can appear to open successfully and then
+        fail during capture with V4L2 timeouts. We therefore:
+
+        1) Keep the configured index first (user intent always wins).
+        2) Prefer sysfs devices that look like actual camera capture nodes.
+        3) Fall back to low numeric indices only as a last resort.
+        """
+
+        candidates: list[int] = [configured_index]
+
+        sysfs_devices: list[tuple[int, int, str]] = []
+        for dev in glob.glob("/sys/class/video4linux/video*"):
+            suffix = dev.replace("/sys/class/video4linux/video", "")
+            if not suffix.isdigit():
+                continue
+
+            dev_idx = int(suffix)
+            name = ""
+            dev_stream_index = 0
+
+            try:
+                with open(f"{dev}/name", "r", encoding="utf-8") as f:
+                    name = f.read().strip().lower()
+            except Exception:
+                name = ""
+
+            try:
+                with open(f"{dev}/index", "r", encoding="utf-8") as f:
+                    dev_stream_index = int(f.read().strip())
+            except Exception:
+                dev_stream_index = 0
+
+            sysfs_devices.append((dev_idx, dev_stream_index, name))
+
+        # Numeric sort (video2 before video10)
+        sysfs_devices.sort(key=lambda item: item[0])
+
+        blocked_tokens = (
+            "bcm2835-codec",
+            "bcm2835-isp",
+            "rpi-hevc",
+            "metadata",
+            "radio",
+            "cec",
+        )
+
+        for dev_idx, dev_stream_index, name in sysfs_devices:
+            if dev_idx in candidates:
+                continue
+
+            # Skip known non-camera nodes. Keep configured index exempt from
+            # filtering because user may intentionally pick a special device.
+            if any(tok in name for tok in blocked_tokens):
+                continue
+
+            # For multi-node devices, only probe the primary stream (index=0)
+            # unless it is the explicitly configured index.
+            if dev_stream_index != 0:
+                continue
+
+            candidates.append(dev_idx)
+
+        # Conservative fallback for environments with limited /sys visibility.
+        for fallback_idx in range(0, 10):
+            if fallback_idx not in candidates:
+                candidates.append(fallback_idx)
+
+        return candidates
 
     def _init_camera(self) -> None:
         """Open the camera using OpenCV (with fallback index probing)."""
@@ -353,19 +429,8 @@ class TimeLapseApp:
         w = int(cam_cfg.get("width", 640))
         h = int(cam_cfg.get("height", 480))
 
-        # Try configured index first, then probe discovered /dev/videoN indices.
-        candidate_indices = [idx]
-        for dev in sorted(glob.glob("/dev/video*")):
-            suffix = dev.replace("/dev/video", "")
-            if suffix.isdigit():
-                dev_idx = int(suffix)
-                if dev_idx not in candidate_indices:
-                    candidate_indices.append(dev_idx)
-
-        # Fallback for systems where /dev/video* glob is restricted.
-        for fallback_idx in range(0, 10):
-            if fallback_idx not in candidate_indices:
-                candidate_indices.append(fallback_idx)
+        # Try configured index first, then probe likely camera nodes.
+        candidate_indices = self._enumerate_camera_candidates(idx)
 
         for candidate in candidate_indices:
             cam = OpenCVCamera()
@@ -383,6 +448,8 @@ class TimeLapseApp:
 
             if frame_ok:
                 self.camera = cam
+                self._camera_warning = ""
+                self._consecutive_preview_failures = 0
                 if candidate != idx:
                     logger.info(
                         "Configured camera index %d failed; using detected index %d",
@@ -395,6 +462,8 @@ class TimeLapseApp:
 
             cam.close()
 
+        self.camera = None
+        self._camera_warning = "No camera detected"
         logger.warning("Camera failed to open on all probed indices")
 
     def _init_led(self) -> None:
@@ -505,17 +574,8 @@ class TimeLapseApp:
         w = int(cam_cfg.get("width", 640))
         h = int(cam_cfg.get("height", 480))
 
-        candidate_indices: list[int] = []
-        for dev in sorted(glob.glob("/dev/video*")):
-            suffix = dev.replace("/dev/video", "")
-            if suffix.isdigit():
-                idx = int(suffix)
-                if idx not in candidate_indices:
-                    candidate_indices.append(idx)
-
-        for fallback_idx in range(0, 10):
-            if fallback_idx not in candidate_indices:
-                candidate_indices.append(fallback_idx)
+        configured_idx = int(cam_cfg.get("index", 0))
+        candidate_indices = self._enumerate_camera_candidates(configured_idx)
 
         available: list[tuple[int, str]] = []
         for idx in candidate_indices:
@@ -711,6 +771,20 @@ class TimeLapseApp:
             return  # reuse the last frame already in PreviewArea
         self._last_preview_time = now
         frame = self.camera.capture()
+
+        if frame is None:
+            self._consecutive_preview_failures += 1
+            self.preview.update(None)
+
+            if self._consecutive_preview_failures >= 3:
+                logger.warning("Camera not responding — disabling camera preview")
+                self._camera_warning = "Camera not responding"
+                self.camera.close()
+                self.camera = None
+            return
+
+        self._consecutive_preview_failures = 0
+        self._camera_warning = ""
         self.preview.update(frame)
 
     def _update_status(self) -> None:
@@ -754,6 +828,8 @@ class TimeLapseApp:
             status_text = "Stopped"
             if self.grove_status_light is not None:
                 self.grove_status_light.set_state("stopped")
+        elif self.camera is None:
+            status_text = self._camera_warning or "No camera detected"
 
         self.header.update(self.usb_connected, photo_count,
                            self._free_gb, self._remaining_photos)

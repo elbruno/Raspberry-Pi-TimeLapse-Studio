@@ -24,10 +24,10 @@ Target platform: **Raspberry Pi 4 + Grove Base Hat + 3.5" touchscreen**.
 flowchart LR
   Pi[Raspberry Pi 4]
   Hat[Grove Base Hat]
-  Btn[Grove Dual Button\n(start/stop)]
-  Led[Grove WS2813 Ring/Stick\n(status light)]
-  DPort[Digital Port\nBCM 5 + BCM 6]
-  PwmPort[PWM Port\nBCM 12]
+  Btn["Grove Dual Button<br/>(start/stop)"]
+  Led["Grove WS2813 Ring/Stick<br/>(status light)"]
+  DPort["Digital Port<br/>BCM 5 + BCM 6"]
+  PwmPort["PWM Port<br/>BCM 12"]
 
   Pi --> Hat
   Hat --> DPort --> Btn

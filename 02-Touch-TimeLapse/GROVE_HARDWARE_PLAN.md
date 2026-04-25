@@ -18,6 +18,31 @@ Target platform: **Raspberry Pi 4 + Grove Base Hat + 3.5" touchscreen**.
 - **Grove Dual Button** → Digital port exposing **BCM 5 + BCM 6**
 - **Grove WS2813 Ring/Stick** → PWM port signal on **BCM 12**
 
+### Visual wiring chart (quick view)
+
+```mermaid
+flowchart LR
+  Pi[Raspberry Pi 4]
+  Hat[Grove Base Hat]
+  Btn[Grove Dual Button\n(start/stop)]
+  Led[Grove WS2813 Ring/Stick\n(status light)]
+  DPort[Digital Port\nBCM 5 + BCM 6]
+  PwmPort[PWM Port\nBCM 12]
+
+  Pi --> Hat
+  Hat --> DPort --> Btn
+  Hat --> PwmPort --> Led
+```
+
+### Port mapping cheat sheet
+
+| Module | Connect to on Grove Base Hat | Signal mapping | App role |
+|---|---|---|---|
+| Grove Dual Button | A digital socket wired to **BCM 5 + BCM 6** | `button1=BCM5`, `button2=BCM6` | Start/Stop trigger (`button1` by default) |
+| Grove WS2813 Ring/Stick | PWM socket wired to **BCM 12** | `pin=BCM12` | Status color + optional capture flash |
+
+> Tip: If your hat revision uses different labels, keep the app config aligned to the **BCM pin mapping** above. The software follows BCM values, not printed port names.
+
 Notes:
 
 - Grove Base Hat is 3.3V logic; use Grove-native modules only.

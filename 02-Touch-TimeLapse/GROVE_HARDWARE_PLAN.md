@@ -18,21 +18,24 @@ Target platform: **Raspberry Pi 4 + Grove Base Hat + 3.5" touchscreen**.
 - **Grove Dual Button** → Digital port exposing **BCM 5 + BCM 6**
 - **Grove WS2813 Ring/Stick** → PWM port signal on **BCM 12**
 
-### Visual wiring chart (quick view)
+### Aerial reference image (port groups)
 
-```mermaid
-flowchart LR
-  Pi[Raspberry Pi 4]
-  Hat[Grove Base Hat]
-  Btn["Grove Dual Button<br/>(start/stop)"]
-  Led["Grove WS2813 Ring/Stick<br/>(status light)"]
-  DPort["Digital Port<br/>BCM 5 + BCM 6"]
-  PwmPort["PWM Port<br/>BCM 12"]
+![Grove Base Hat aerial port map (reference)](https://files.seeedstudio.com/wiki/Grove_Base_Hat_for_Raspberry_Pi/img/pin-out/overview.jpg)
 
-  Pi --> Hat
-  Hat --> DPort --> Btn
-  Hat --> PwmPort --> Led
-```
+### Super simple plug map (row/column)
+
+Count connectors left-to-right using this orientation:
+
+- **Row 1** = top connector row (closest to GPIO header)
+- **Row 2** = middle connector row
+- **Row 3** = bottom connector row (I2C + SWD area)
+
+| Device | Where to plug | Port label to verify on silkscreen |
+|---|---|---|
+| **WS2813 LED (ring/stick)** | **Row 1, Column 1** | **PWM** / BCM **12/13** |
+| **Dual Button** | **Row 1, Column 2** | **D5** (BCM **5/6** pair) |
+
+> If your board revision layout looks slightly different, trust the **printed port label** (`PWM`, `D5`) over row/column.
 
 ### Port mapping cheat sheet
 
@@ -69,8 +72,8 @@ BOTTOM (audio/USB side)
 
 ### Plug points (short version)
 
-- **Dual Button** → socket **D5** (silk shows BCM **5/6**)
-- **WS2813 LED (ring/stick)** → socket **PWM** (silk shows BCM **12/13**)
+- **Dual Button** → **Row 1, Column 2** → socket **D5** (silk shows BCM **5/6**)
+- **WS2813 LED (ring/stick)** → **Row 1, Column 1** → socket **PWM** (silk shows BCM **12/13**)
 
 ### Port groups on the hat (official naming)
 

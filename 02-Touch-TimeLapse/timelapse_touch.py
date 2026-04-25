@@ -137,6 +137,19 @@ except ImportError:
     LED_MODULE_AVAILABLE = False
     LEDController = None  # type: ignore[assignment, misc]
 
+try:
+    from grove_dual_button import GroveDualButton
+    GROVE_BUTTON_AVAILABLE = True
+except ImportError:
+    GROVE_BUTTON_AVAILABLE = False
+    GroveDualButton = None  # type: ignore[assignment, misc]
+
+try:
+    from grove_status_light import GroveStatusLight
+    GROVE_STATUS_LIGHT_AVAILABLE = True
+except ImportError:
+    GROVE_STATUS_LIGHT_AVAILABLE = False
+    GroveStatusLight = None  # type: ignore[assignment, misc]
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -215,6 +228,16 @@ class TimeLapseApp:
         self.led_port_name: str = ""
         self._init_led()
 
+        # ── Grove status light (WS2813) ──
+        self.grove_status_light = None
+        self.grove_status_light_detected: bool = False
+        self._init_grove_status_light()
+
+        # ── Grove dual button ──
+        self.grove_buttons = None
+        self.grove_buttons_detected: bool = False
+        self._start_stop_button: str = "button1"
+        self._init_grove_buttons()
         # ── Storage & capture engine ──
         self.storage = None
         self.engine = None
@@ -475,6 +498,7 @@ class TimeLapseApp:
 
         while self._running:
             self._handle_events()
+            self._poll_hardware_inputs()
             self._update_preview()
             self._update_status()
             self._draw()
@@ -511,6 +535,66 @@ class TimeLapseApp:
         elif self.btn_stop.is_pressed(pos):
             self._on_stop()
         elif self.btn_settings.is_pressed(pos):
+
+                        def _init_grove_status_light(self) -> None:
+                            """Initialize optional Grove WS2813 status light."""
+                            if not GROVE_STATUS_LIGHT_AVAILABLE:
+                                logger.info("grove_status_light module not available")
+                                return
+
+                            cfg = self.config.get("grove_light", {})
+                            if not cfg.get("enabled", True):
+                                logger.info("Grove status light disabled in config")
+                                return
+
+                            pin = int(cfg.get("pin", 12))
+                            pixel_count = int(cfg.get("pixel_count", 10))
+                            brightness = int(cfg.get("brightness", 48))
+
+                            controller = GroveStatusLight(pin=pin, pixel_count=pixel_count, brightness=brightness)
+                            if controller.detect():
+                                self.grove_status_light = controller
+                                self.grove_status_light_detected = True
+                                self.grove_status_light.set_state("idle")
+                                logger.info("Grove WS2813 status light enabled")
+
+                        def _init_grove_buttons(self) -> None:
+                            """Initialize optional Grove dual button input."""
+                            if not GROVE_BUTTON_AVAILABLE:
+                                logger.info("grove_dual_button module not available")
+                                return
+
+                            cfg = self.config.get("grove_button", {})
+                            if not cfg.get("enabled", True):
+                                logger.info("Grove dual button disabled in config")
+                                return
+
+                            button1_pin = int(cfg.get("pin_button1", 5))
+                            button2_pin = int(cfg.get("pin_button2", 6))
+                            debounce_ms = int(cfg.get("debounce_ms", 250))
+                            self._start_stop_button = cfg.get("start_stop_button", "button1")
+
+                            controller = GroveDualButton(
+                                pin_button1=button1_pin,
+                                pin_button2=button2_pin,
+                                debounce_ms=debounce_ms,
+                            )
+                            if controller.detect():
+                                self.grove_buttons = controller
+                                self.grove_buttons_detected = True
+                                logger.info("Grove dual button enabled")
+
+                        def _poll_hardware_inputs(self) -> None:
+                            """Poll Grove hardware inputs and dispatch actions."""
+                            if self.grove_buttons is None or not self.grove_buttons.is_available():
+                                return
+
+                            for event in self.grove_buttons.poll_events():
+                                if event.button == self._start_stop_button:
+                                    if self.engine is not None and self.engine.is_running:
+                                        self._on_stop()
+                                    else:
+                                        self._on_start()
             self._on_settings()
         elif self.btn_close.is_pressed(pos):
             self._request_quit()
@@ -552,9 +636,11 @@ class TimeLapseApp:
             logger.info("Created session %s", self.session.session_id)
 
         self.engine.start(self.session, self.camera, self.storage,
-                          self.config, self.led)
+                          self.config, self.led, self.grove_status_light)
         self._capture_start_time = time.time()
 
+        if self.grove_status_light is not None:
+            self.grove_status_light.set_state("capturing")
         # Swap buttons — only STOP visible while capturing
         self.btn_start.visible = False
         self.btn_stop.visible = True
@@ -590,6 +676,8 @@ class TimeLapseApp:
         )
         self._screen_state = "settings"
 
+                if self.grove_status_light is not None:
+                    self.grove_status_light.set_state("stopped")
     def _save_settings(self) -> None:
         """Save settings from the settings screen to config.yaml and reload."""
         if self._settings_screen is None:
@@ -654,6 +742,8 @@ class TimeLapseApp:
             
             if errors:
                 status_text = f"Error: {errors[-1]}"
+                            if self.grove_status_light is not None:
+                                self.grove_status_light.set_state("error")
             elif self._show_countdown:
                 countdown = int(st.get("next_capture_in", 0))
                 status_text = f"Next: {countdown}s"
@@ -729,6 +819,10 @@ class TimeLapseApp:
             self.engine.stop()
         if self.led is not None:
             self.led.close()
+        if self.grove_status_light is not None:
+            self.grove_status_light.close()
+        if self.grove_buttons is not None:
+            self.grove_buttons.close()
         if self.camera is not None:
             self.camera.close()
         pygame.quit()

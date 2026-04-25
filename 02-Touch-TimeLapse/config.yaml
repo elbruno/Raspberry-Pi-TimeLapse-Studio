@@ -16,3 +16,15 @@ led:
 display:
   show_countdown: true
   show_storage_info: true
+grove_button:
+  enabled: true
+  pin_button1: 5
+  pin_button2: 6
+  debounce_ms: 250
+  start_stop_button: button1
+grove_light:
+  enabled: true
+  pin: 12
+  pixel_count: 10
+  brightness: 48
+  capture_flash: true

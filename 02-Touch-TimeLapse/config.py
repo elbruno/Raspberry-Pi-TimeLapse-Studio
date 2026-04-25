@@ -51,6 +51,20 @@ DEFAULTS: dict = {
         "show_countdown": True,
         "show_storage_info": True,
     },
+    "grove_button": {
+        "enabled": True,
+        "pin_button1": 5,
+        "pin_button2": 6,
+        "debounce_ms": 250,
+        "start_stop_button": "button1",
+    },
+    "grove_light": {
+        "enabled": True,
+        "pin": 12,
+        "pixel_count": 10,
+        "brightness": 48,
+        "capture_flash": True,
+    },
 }
 
 
@@ -188,5 +202,47 @@ def validate_config(config: dict) -> list[str]:
         val = get_config_value(config, key, True)
         if not isinstance(val, bool):
             errors.append(f"{key} must be true or false, got {val}")
+
+    # Grove dual button checks
+    grove_button_enabled = get_config_value(config, "grove_button.enabled", True)
+    if not isinstance(grove_button_enabled, bool):
+        errors.append(f"grove_button.enabled must be true or false, got {grove_button_enabled}")
+
+    for key in ("grove_button.pin_button1", "grove_button.pin_button2"):
+        pin = get_config_value(config, key, 0)
+        if not isinstance(pin, int) or pin < 0:
+            errors.append(f"{key} must be a non-negative integer, got {pin}")
+
+    debounce_ms = get_config_value(config, "grove_button.debounce_ms", 250)
+    if not isinstance(debounce_ms, int) or debounce_ms < 0:
+        errors.append(f"grove_button.debounce_ms must be >= 0, got {debounce_ms}")
+
+    start_stop_button = get_config_value(config, "grove_button.start_stop_button", "button1")
+    if start_stop_button not in ("button1", "button2"):
+        errors.append(
+            "grove_button.start_stop_button must be 'button1' or 'button2', "
+            f"got '{start_stop_button}'"
+        )
+
+    # Grove WS2813 status light checks
+    grove_light_enabled = get_config_value(config, "grove_light.enabled", True)
+    if not isinstance(grove_light_enabled, bool):
+        errors.append(f"grove_light.enabled must be true or false, got {grove_light_enabled}")
+
+    grove_light_pin = get_config_value(config, "grove_light.pin", 12)
+    if not isinstance(grove_light_pin, int) or grove_light_pin < 0:
+        errors.append(f"grove_light.pin must be a non-negative integer, got {grove_light_pin}")
+
+    pixel_count = get_config_value(config, "grove_light.pixel_count", 10)
+    if not isinstance(pixel_count, int) or pixel_count <= 0:
+        errors.append(f"grove_light.pixel_count must be > 0, got {pixel_count}")
+
+    brightness = get_config_value(config, "grove_light.brightness", 48)
+    if not isinstance(brightness, int) or brightness < 0 or brightness > 255:
+        errors.append(f"grove_light.brightness must be 0-255, got {brightness}")
+
+    capture_flash = get_config_value(config, "grove_light.capture_flash", True)
+    if not isinstance(capture_flash, bool):
+        errors.append(f"grove_light.capture_flash must be true or false, got {capture_flash}")
 
     return errors

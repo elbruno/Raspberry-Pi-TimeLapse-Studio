@@ -159,3 +159,44 @@ class TestConfigValidation:
 
         assert index == 0
         assert quality == 85
+
+
+class TestGroveConfigSections:
+    """Tests for Grove button/light configuration defaults and validation."""
+
+    def test_defaults_include_grove_sections(self):
+        """load_config() returns Grove defaults when config file is missing."""
+        from config import load_config
+
+        cfg = load_config("/nonexistent/config.yaml")
+        assert "grove_button" in cfg
+        assert "grove_light" in cfg
+        assert cfg["grove_button"]["pin_button1"] == 5
+        assert cfg["grove_light"]["pixel_count"] > 0
+
+    def test_validate_config_rejects_invalid_grove_values(self, sample_config):
+        """validate_config() returns errors for malformed Grove settings."""
+        from config import validate_config
+
+        sample_config["grove_button"] = {
+            "enabled": True,
+            "pin_button1": -1,
+            "pin_button2": 6,
+            "debounce_ms": -10,
+            "start_stop_button": "invalid",
+        }
+        sample_config["grove_light"] = {
+            "enabled": True,
+            "pin": 12,
+            "pixel_count": 0,
+            "brightness": 999,
+            "capture_flash": "yes",
+        }
+
+        errors = validate_config(sample_config)
+        assert any("grove_button.pin_button1" in e for e in errors)
+        assert any("grove_button.debounce_ms" in e for e in errors)
+        assert any("grove_button.start_stop_button" in e for e in errors)
+        assert any("grove_light.pixel_count" in e for e in errors)
+        assert any("grove_light.brightness" in e for e in errors)
+        assert any("grove_light.capture_flash" in e for e in errors)

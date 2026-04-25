@@ -87,6 +87,27 @@ python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
 
 ---
 
+## 🔧 Raspberry Pi Setup & Space Optimization
+
+Just got a fresh Raspberry Pi and running low on disk space? The default Pi OS install takes ~5.3 GB, leaving only ~1.2 GB on an 8 GB card. Before installing either scenario, **free up space** by removing desktop bloat, unused packages, and caches.
+
+### Quick Links
+
+| I need to... | Go to... |
+|-------------|----------|
+| 📖 **Understand the cleanup plan** | [Cleanup Plan](99-InitRPi/Raspberry-Pi-TimeLapse-Studio-cleanup-plan.md) |
+| 🔗 **Copy-paste SSH commands** | [SSH Commands Guide](99-InitRPi/rpi-cleanup-ssh-commands.md) ⬅️ **Start here!** |
+| 📜 **Run the automated script** | [rpi-timelapse-cleanup.sh](99-InitRPi/rpi-timelapse-cleanup.sh) |
+
+### Two cleanup profiles
+
+- **Web profile** → Removes desktop/X11 for headless setups (works with Scenario 01 — WebApp)
+- **Touch profile** → Keeps desktop/X11 for LCD/touchscreen (works with Scenario 02 — Touch)
+
+Typical savings: **500 MB – 1.5 GB** depending on profile.
+
+---
+
 ## 🎓 New to Programming? Start Here
 
 This project is designed for **beginners**! If you're new to programming or Raspberry Pi:

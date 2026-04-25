@@ -2,6 +2,7 @@
 
 Copy-paste these commands when connected to your Pi via SSH.
 
+> 📌 **Doc split:** [`../02-Touch-TimeLapse/README.md`](../02-Touch-TimeLapse/README.md) is the **quick guide** for the touchscreen scenario. This file is the **detailed bring-up guide** when you want the full provisioning flow and explanations.
 > **Context**: A fresh Raspberry Pi OS install + updates typically uses ~5.3 GB on an 8 GB card,
 > leaving only ~1.2 GB free. This script recovers space by removing desktop bloat, unused locales,
 > docs, old logs, and apt caches.
@@ -47,6 +48,8 @@ bash rpi-timelapse-cleanup.sh --profile touch
 
 Review the output. Nothing is modified during a dry run.  
 Check the **[7/7] Reclaimable filesystem areas** section — it shows how much space locales, docs, man pages, and apt lists use.
+
+If you do not need the detailed cleanup flow, you can skip back to [`../02-Touch-TimeLapse/README.md`](../02-Touch-TimeLapse/README.md) and use the short install path there.
 
 ## 4. Apply the cleanup
 
@@ -101,8 +104,7 @@ This switches the Pi to X11 mode, configures SPI, and reboots:
 
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-chmod +x install.sh
-./install.sh --setup-lcd   # installs goodtft driver → reboots the Pi
+bash install.sh --setup-lcd   # installs goodtft driver → reboots the Pi
 ```
 
 > ⚠️ The Pi will reboot automatically. Reconnect via SSH after reboot.
@@ -111,14 +113,15 @@ chmod +x install.sh
 
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-chmod +x install.sh
-./install.sh --all        # full install: SDL2 + pip + LED + desktop shortcut
+bash install.sh --all        # full install: SDL2 + pip + LED + desktop shortcut
 sudo reboot               # recommended: ensures display drivers + autostart work
 # Other options:
-# ./install.sh              # base install only (SDL2 + pip packages)
-# ./install.sh --with-led   # base + uhubctl for USB LED control
-# ./install.sh --autostart  # base + desktop shortcut + autostart on boot
+# bash install.sh              # base install only (SDL2 + pip packages)
+# bash install.sh --with-led   # base + uhubctl for USB LED control
+# bash install.sh --autostart  # base + desktop shortcut + autostart on boot
 ```
+
+> 💡 The autostart setup in `02-Touch-TimeLapse/install-shortcut.sh` now also creates a **user-level override** for `polkit-mate-authentication-agent-1` when present. This prevents the duplicate PolicyKit popup sometimes seen on mixed LXDE/MATE desktop installs.
 
 ## 7. Start the application
 
@@ -167,13 +170,12 @@ sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
 
 # Step 1: LCD driver — reboots the Pi automatically
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-chmod +x install.sh
-./install.sh --setup-lcd
+bash install.sh --setup-lcd
 # ⚠ Pi reboots here — reconnect via SSH, then continue:
 
 # Step 2: Software dependencies (run after reboot)
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-./install.sh --all
+bash install.sh --all
 sudo reboot
 ```
 

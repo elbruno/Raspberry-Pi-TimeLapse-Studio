@@ -31,6 +31,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --all         Install everything (LED + desktop shortcut + autostart)"
       echo "  --with-led    Install uhubctl for USB LED flash control"
       echo "  --autostart   Create desktop shortcut + autostart on boot"
+      echo "                and disable the duplicate MATE PolicyKit agent when present"
       echo "  --setup-lcd   First-time 3.5\" SPI LCD driver setup (Kuman SC06 / ILI9486)"
       echo "                ⚠  Reboots the Pi! Run './install.sh --all' after reboot."
       exit 0
@@ -178,6 +179,9 @@ echo
 if [[ $AUTOSTART -eq 1 ]]; then
   echo "Reboot recommended so autostart takes effect:"
   echo "  sudo reboot"
+  echo
+  echo "Tip: if your Pi previously showed a PolicyKit popup on boot,"
+  echo "the autostart setup now disables the duplicate MATE agent for your user."
 else
   echo "A reboot is recommended to ensure display"
   echo "drivers pick up the new SDL2 libraries:"

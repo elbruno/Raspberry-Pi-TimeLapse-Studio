@@ -3,6 +3,7 @@
 A complete guide to setting up, configuring, and using the **PiTimeLapse Touch** application on your Raspberry Pi with a 3.5" touchscreen display.
 
 > 📖 Part of [PiTimeLapse Lab](../README.md) · Developer reference → [README.md](README.md) · Labs → [labs/](../labs/README.md)
+> 💡 **How this manual fits with `99-InitRPi`:** use [`README.md`](README.md) in this folder for the **quick path** (`install OS → clone repo → run script → reboot → go`). Use [`../99-InitRPi/rpi-cleanup-ssh-commands.md`](../99-InitRPi/rpi-cleanup-ssh-commands.md) for the **full Raspberry Pi provisioning walkthrough**.
 
 ---
 
@@ -125,6 +126,7 @@ sudo ./LCD35-show    # This reboots the Pi
 After reboot, the Pi desktop should appear on the 3.5" LCD.
 
 > ⚠️ This makes the 3.5" LCD the primary display. To switch back to HDMI later:
+>
 > ```bash
 > cd ~/LCD-show
 > sudo ./LCD-hdmi
@@ -150,6 +152,8 @@ git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 ```
 
+> 💡 **Dedicated touchscreen Pi?** If you want the short version, follow the fast path in [`README.md`](README.md). If you want the expanded walkthrough, use the **touch profile** commands in [`../99-InitRPi/rpi-cleanup-ssh-commands.md`](../99-InitRPi/rpi-cleanup-ssh-commands.md). That path removes unnecessary packages but intentionally keeps the desktop/X11 stack required by Touch TimeLapse.
+
 ### 5.2 Install Python Dependencies
 
 On a dedicated Pi (no virtual environment needed):
@@ -159,9 +163,11 @@ pip install -r requirements.txt
 ```
 
 > ⚠️ **PEP 668 error?** Newer Raspberry Pi OS versions block global pip installs. Add `--break-system-packages`:
+>
 > ```bash
 > pip install -r requirements.txt --break-system-packages
 > ```
+>
 > This is safe on a single-purpose Pi.
 
 ### 5.3 Verify the Camera
@@ -201,9 +207,8 @@ python timelapse_touch.py --fullscreen
 Once everything works via SSH, set up a desktop shortcut for tap-to-launch:
 
 ```bash
-chmod +x install-shortcut.sh
-./install-shortcut.sh              # creates a desktop icon
-./install-shortcut.sh --autostart  # also starts automatically on boot
+bash install-shortcut.sh              # creates a desktop icon
+bash install-shortcut.sh --autostart  # also starts automatically on boot
 ```
 
 After running this:
@@ -211,6 +216,10 @@ After running this:
 - A **PiTimeLapse Touch** icon appears on the Pi desktop
 - Tap the icon on the LCD to launch
 - With `--autostart`, the app launches automatically every time the Pi boots
+
+When you enable autostart, the script also creates a **user override** that hides the duplicate `polkit-mate-authentication-agent-1` entry if it exists. This prevents the PolicyKit popup:
+
+`GDBus.Error: org.freedesktop.PolicyKit1.Error.Failed: An authentication agent already exists for the given subject`
 
 ### 6.3 Option C — Windowed Mode (Desktop Development)
 
@@ -522,8 +531,7 @@ After testing via SSH, set up a one-tap launcher:
 
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-chmod +x install-shortcut.sh
-./install-shortcut.sh
+bash install-shortcut.sh
 ```
 
 This creates a **PiTimeLapse Touch** icon on the Pi's desktop. Just tap it on the LCD!
@@ -533,10 +541,10 @@ This creates a **PiTimeLapse Touch** icon on the Pi's desktop. Just tap it on th
 To have the app start automatically every time the Pi powers on:
 
 ```bash
-./install-shortcut.sh --autostart
+bash install-shortcut.sh --autostart
 ```
 
-This copies the desktop entry to `~/.config/autostart/`, so the app launches after the desktop environment loads.
+This copies the desktop entry to `~/.config/autostart/`, so the app launches after the desktop environment loads. On Raspberry Pi OS LXDE systems, it also hides the duplicate MATE PolicyKit autostart entry when present to avoid the “authentication agent already exists” popup.
 
 ### 11.3 Removing Autostart
 
@@ -625,6 +633,7 @@ Save with `Ctrl+O`, exit with `Ctrl+X`. Changes take effect next time the app st
 | **Black screen on LCD** | The LCD driver may not be installed. See [Section 4](#4-installing-the-lcd-display). Try `sudo ./MHS35-show` as an alternative driver. |
 | **`fbcon not available` error** | SDL 2.32+ removed fbcon support. The app automatically probes `kmsdrm` first. Update to the latest code: `git pull`. |
 | **`SDL video driver: dummy` in logs** | The dummy driver renders nothing. Make sure the Pi desktop is running on the LCD — the app needs X11. |
+| **`GDBus.Error: org.freedesktop.PolicyKit1.Error.Failed: An authentication agent already exists for the given subject`** | The desktop session likely started both `lxpolkit` and `polkit-mate-authentication-agent-1`. Run `bash install-shortcut.sh --autostart` once to create the user override that hides the duplicate MATE auth agent. |
 | **Touch not responding** | Verify the touch device exists: `ls /dev/input/touchscreen`. Test with: `evtest /dev/input/event0`. |
 
 ### Camera Issues

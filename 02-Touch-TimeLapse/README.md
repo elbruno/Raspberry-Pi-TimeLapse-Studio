@@ -52,6 +52,75 @@ Use **Touch TimeLapse** when you want a **standalone capture station** — plug 
 
 ### On Raspberry Pi (with touchscreen)
 
+If you want the **short version**, this is the intended flow:
+
+1. **Install Raspberry Pi OS Desktop** and enable SSH in Raspberry Pi Imager
+2. **Clone this repo** on the Pi
+3. **Run the touch install script** from this folder
+4. **Reboot** and tap the shortcut on the LCD
+
+If you want the **full step-by-step version** with cleanup profiles, LCD notes, and recovery commands, use [`../99-InitRPi/rpi-cleanup-ssh-commands.md`](../99-InitRPi/rpi-cleanup-ssh-commands.md).
+
+#### 5-minute setup
+
+#### Step 1 — Flash the OS
+
+- Use **Raspberry Pi Imager**
+- Choose **Raspberry Pi OS (Desktop)**
+- In the advanced options, enable **SSH** and configure Wi-Fi if needed
+
+#### Step 2 — Connect to the Pi
+
+```bash
+ssh pi@<your-pi-ip>
+```
+
+#### Step 3 — Clone the repo
+
+```bash
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+```
+
+#### Step 4 — Run the install script
+
+```bash
+# first time only: install the LCD driver (reboots the Pi)
+bash install.sh --setup-lcd
+
+# after the Pi reboots and you SSH back in
+cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+bash install.sh --all
+```
+
+#### Step 5 — Reboot
+
+```bash
+sudo reboot
+```
+
+#### Step 6 — Ready to go
+
+After the final reboot, the Pi is ready to go:
+
+- the LCD desktop should load
+- the **PiTimeLapse Touch** shortcut should be on the desktop
+- autostart is configured if you used `--all`
+- you can still launch manually from SSH for debugging
+
+#### Fast path — dedicated Pi setup
+
+The commands above are the recommended fast path for a dedicated touchscreen Pi.
+
+#### Detailed version
+
+Use the **touch profile** guide in [`../99-InitRPi/rpi-cleanup-ssh-commands.md`](../99-InitRPi/rpi-cleanup-ssh-commands.md) when you want:
+
+- disk-space cleanup before installing
+- more cautious step-by-step sequencing
+- the full SSH command history for provisioning a dedicated Pi
+- a deeper explanation of what each script is doing
+
 ```bash
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
@@ -81,12 +150,15 @@ The app will appear on the Pi's touchscreen while you watch the logs in your SSH
 Once everything works, install a shortcut so you (or anyone) can launch with a single tap on the LCD:
 
 ```bash
-chmod +x install-shortcut.sh
-./install-shortcut.sh              # creates a desktop icon
-./install-shortcut.sh --autostart  # also launch automatically on boot
+bash install-shortcut.sh              # creates a desktop icon
+bash install-shortcut.sh --autostart  # also launch automatically on boot
 ```
 
 This creates a **PiTimeLapse Touch** icon on the desktop. Just tap it!
+
+When autostart is enabled, the script also adds a **user-level override** to disable the duplicate `polkit-mate-authentication-agent-1` entry if it exists. This avoids the desktop popup:
+
+`GDBus.Error: org.freedesktop.PolicyKit1.Error.Failed: An authentication agent already exists for the given subject`
 
 > 🎯 **Recommended workflow:** Use **SSH** to install, configure, and test → then run `install-shortcut.sh` to set up one-tap launch for daily use.
 
@@ -319,6 +391,7 @@ pip install -r requirements.txt
 | Black screen on Pi LCD | Check LCD driver install — try `sudo ./MHS35-show` as alternative |
 | **`fbcon not available`** | **SDL 2.32+ removed fbcon. Update to latest code — it now tries `kmsdrm` first automatically** |
 | **`SDL video driver: dummy`** | **The dummy driver renders nothing. Ensure the Pi desktop is active; the app needs X11 via `DISPLAY=:0`** |
+| **PolicyKit popup: `An authentication agent already exists for the given subject`** | **Your desktop session likely has both `lxpolkit` and `polkit-mate-authentication-agent-1`. Run `bash install-shortcut.sh --autostart` once to create the user override that hides the duplicate MATE autostart entry.** |
 | No touch response | Verify `/dev/input/touchscreen` exists; run `evtest /dev/input/event0` |
 | Camera not found | Check `camera.index` in config.yaml; try `0` or `1` |
 | Pygame won't start on Pi | Ensure `SDL_FBDEV=/dev/fb0` is set (the script does this automatically) |

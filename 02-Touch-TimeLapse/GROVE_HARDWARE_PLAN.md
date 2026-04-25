@@ -45,52 +45,32 @@ flowchart LR
 
 ### Shield aerial map (all ports + exact connection marks)
 
-Orientation used below (matches your aerial reference style):
+Orientation (same as Seeed top view):
 
-- **Top** = GPIO header side
-- **Right** = Analog block side (USB/Ethernet are on Pi right edge)
+- **Top** = GPIO header
+- **Right** = Analog side (Pi USB/Ethernet edge is to the right of the board)
 
-```mermaid
-flowchart TB
-  classDef target fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-  classDef group fill:#f7f7f7,stroke:#9e9e9e,stroke-width:1px,color:#333;
-
-  GPIO["GPIO Header (40-pin passthrough)"]
-
-  subgraph TOPROW["Top row sockets"]
-    direction LR
-    PWM["PWM<br/>BCM12/13<br/>[LED TARGET]"]
-    D5["D5<br/>(BCM5/6 pair)<br/>[BUTTON TARGET]"]
-    D16["D16"]
-    D18["D18"]
-    A0["A0"]
-    A2["A2"]
-  end
-
-  subgraph MIDROW["Middle row sockets"]
-    direction LR
-    UART["UART<br/>TX/RX<br/>(BCM14/15)"]
-    D22["D22"]
-    D24["D24"]
-    D26["D26"]
-    A4["A4"]
-    A6["A6"]
-  end
-
-  subgraph BOTROW["Bottom row sockets"]
-    direction LR
-    I2C1["I2C-1<br/>SCL/SDA"]
-    I2C2["I2C-2<br/>SCL/SDA"]
-    I2C3["I2C-3<br/>SCL/SDA"]
-    SWD["SWD + free GPIO 9/10/11"]
-  end
-
-  GPIO --> TOPROW
-  TOPROW --> MIDROW --> BOTROW
-
-  class PWM,D5 target;
-  class TOPROW,MIDROW,BOTROW group;
+```text
+TOP (GPIO HEADER)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ PWM ] [ D5 ] [ D16 ] [ D18 ] [ A0 ] [ A2 ]                              │
+│  BCM12/13  BCM5/6                                                          │
+│  LED ⇩     BUTTON ⇩                                                        │
+│  Plug WS2813 here                                                          │
+│             Plug Dual Button here                                          │
+│                                                                             │
+│ [UART ] [ D22] [ D24] [ D26] [ A4 ] [ A6 ]                                │
+│ 14/15                                                                       │
+│                                                                             │
+│ [I2C-1] [I2C-2] [I2C-3] [ SWD + GPIO 9/10/11 ]                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+BOTTOM (audio/USB side)
 ```
+
+### Plug points (short version)
+
+- **Dual Button** → socket **D5** (silk shows BCM **5/6**)
+- **WS2813 LED (ring/stick)** → socket **PWM** (silk shows BCM **12/13**)
 
 ### Port groups on the hat (official naming)
 

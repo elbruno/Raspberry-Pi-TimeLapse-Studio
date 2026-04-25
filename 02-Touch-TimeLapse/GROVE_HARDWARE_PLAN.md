@@ -43,6 +43,76 @@ flowchart LR
 
 > Tip: If your hat revision uses different labels, keep the app config aligned to the **BCM pin mapping** above. The software follows BCM values, not printed port names.
 
+### Shield aerial map (all ports + exact connection marks)
+
+Orientation used below (matches your aerial reference style):
+
+- **Top** = GPIO header side
+- **Right** = Analog block side (USB/Ethernet are on Pi right edge)
+
+```mermaid
+flowchart TB
+  classDef target fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+  classDef group fill:#f7f7f7,stroke:#9e9e9e,stroke-width:1px,color:#333;
+
+  GPIO["GPIO Header (40-pin passthrough)"]
+
+  subgraph TOPROW["Top row sockets"]
+    direction LR
+    PWM["PWM<br/>BCM12/13<br/>[LED TARGET]"]
+    D5["D5<br/>(BCM5/6 pair)<br/>[BUTTON TARGET]"]
+    D16["D16"]
+    D18["D18"]
+    A0["A0"]
+    A2["A2"]
+  end
+
+  subgraph MIDROW["Middle row sockets"]
+    direction LR
+    UART["UART<br/>TX/RX<br/>(BCM14/15)"]
+    D22["D22"]
+    D24["D24"]
+    D26["D26"]
+    A4["A4"]
+    A6["A6"]
+  end
+
+  subgraph BOTROW["Bottom row sockets"]
+    direction LR
+    I2C1["I2C-1<br/>SCL/SDA"]
+    I2C2["I2C-2<br/>SCL/SDA"]
+    I2C3["I2C-3<br/>SCL/SDA"]
+    SWD["SWD + free GPIO 9/10/11"]
+  end
+
+  GPIO --> TOPROW
+  TOPROW --> MIDROW --> BOTROW
+
+  class PWM,D5 target;
+  class TOPROW,MIDROW,BOTROW group;
+```
+
+### Port groups on the hat (official naming)
+
+- **PWM**: 1 socket → BCM12/13
+- **UART (RPISER)**: 1 socket → BCM14/15
+- **Digital**: 6 sockets → `D5`, `D16`, `D18`, `D22`, `D24`, `D26`
+- **Analog**: 4 sockets → `A0`, `A2`, `A4`, `A6`
+- **I2C**: 3 sockets (shared bus)
+- **SWD**: programming header + free GPIO 9/10/11 area
+
+### Exactly where to connect for this project
+
+1. **Grove Dual Button (start/stop)** → digital socket labeled **D5** (BCM5/6 pair).
+2. **Grove WS2813 Ring/Stick (status light)** → **PWM** socket labeled **BCM12/13**.
+
+### Visual reference (official Seeed top view)
+
+- Seeed product page: https://www.seeedstudio.com/Grove-Base-Hat-for-Raspberry-Pi.html
+- Seeed wiki pin-out overview image: https://files.seeedstudio.com/wiki/Grove_Base_Hat_for_Raspberry_Pi/img/pin-out/overview.jpg
+
+> Important: If silk labels and physical position ever seem inconsistent across board revisions, trust the **printed pin labels beside each socket**.
+
 Notes:
 
 - Grove Base Hat is 3.3V logic; use Grove-native modules only.

@@ -19,6 +19,8 @@ A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi.
 - 💡 **USB LED light support** — auto-detects USB relay modules to illuminate the scene before each capture
 - ⏱️ **Countdown timer** — shows seconds until the next capture (toggleable)
 - 📊 **Storage info** — displays free disk space and estimated remaining photos (toggleable)
+- 🔘 **Grove Dual Button support** — physical start/stop control (BCM 5/6)
+- 🌈 **Grove WS2813 status light** — ring/stick color status and per-capture flash
 
 ---
 
@@ -100,6 +102,7 @@ python timelapse_touch.py
 ```
 
 > 💡 **Virtual environment (optional):** On a shared dev machine, create one first to avoid conflicts:
+>
 > ```bash
 > python3 -m venv venv
 > source venv/bin/activate    # Windows: venv\Scripts\activate
@@ -163,6 +166,8 @@ display:
 ├── camera_opencv.py       # Camera capture via OpenCV
 ├── capture_engine.py      # Background capture loop (LED integration)
 ├── led_controller.py      # USB LED relay auto-detection and control
+├── grove_dual_button.py   # Grove Dual Button GPIO adapter (optional)
+├── grove_status_light.py  # Grove WS2813 Ring/Stick status light (optional)
 ├── storage_manager.py     # File saving & USB detection
 ├── usb_detector.py        # Auto-detect USB storage devices
 ├── config.py              # Configuration loading and saving
@@ -171,6 +176,8 @@ display:
 ├── data/                  # Default local storage for captures
 └── tests/                 # Automated tests (pytest)
 ```
+
+> 📘 Hardware rollout details are in [`GROVE_HARDWARE_PLAN.md`](./GROVE_HARDWARE_PLAN.md).
 
 ---
 
@@ -228,17 +235,20 @@ Use the **[–]** and **[+]** stepper buttons to adjust values, then tap **SAVE*
 The app can automatically control a **USB relay module** to illuminate the scene before each photo. This is ideal for dark environments or consistent lighting in time-lapse sequences.
 
 **How it works:**
+
 1. On startup, the app scans USB serial ports for relay modules (CH340, FTDI, etc.)
 2. If a relay is found and LED is enabled in settings → the capture cycle becomes:
    - **LED ON** → wait warmup (default 1 second) → **capture photo** → **LED OFF**
 3. If no relay is detected → normal capture (no delay, no error)
 
 **Supported hardware:**
+
 - LCUS-1 type USB relay modules (most common, ~$3-5)
 - SainSmart, HiLetgo, or similar single-channel USB relay boards
 - Any USB relay using the standard 0xA0 serial protocol
 
 **Setup:**
+
 ```bash
 # Install the relay module
 pip install pyserial    # already in requirements.txt
@@ -248,6 +258,7 @@ pip install pyserial    # already in requirements.txt
 ```
 
 **Settings (in-app or config.yaml):**
+
 - **LED Light** — On/Off toggle (disable if you don't want LED control)
 - **LED Warmup** — seconds to wait after turning on before capture (0–5)
 

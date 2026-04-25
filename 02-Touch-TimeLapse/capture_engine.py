@@ -31,6 +31,13 @@ except ImportError:
     LED_AVAILABLE = False
     LEDController = None  # type: ignore[assignment, misc]
 
+try:
+    from grove_status_light import GroveStatusLight
+    GROVE_LIGHT_AVAILABLE = True
+except ImportError:
+    GROVE_LIGHT_AVAILABLE = False
+    GroveStatusLight = None  # type: ignore[assignment, misc]
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3          # consecutive capture failures before giving up
@@ -63,7 +70,8 @@ class CaptureEngine:
 
     def start(self, session: Session, camera: OpenCVCamera,
               storage: StorageManager, config: dict,
-              led: Optional["LEDController"] = None) -> None:  # type: ignore[name-defined]
+              led: Optional["LEDController"] = None,
+              status_light: Optional["GroveStatusLight"] = None) -> None:  # type: ignore[name-defined]
         """
         Begin the capture loop in a background thread.
 
@@ -73,6 +81,7 @@ class CaptureEngine:
             storage: StorageManager pointed at the session base path.
             config:  Merged configuration dictionary.
             led:     Optional LEDController for illumination before capture.
+            status_light: Optional GroveStatusLight for visual app state.
         """
         if self._thread is not None and self._thread.is_alive():
             logger.warning("Capture engine is already running")
@@ -89,7 +98,7 @@ class CaptureEngine:
 
         self._thread = threading.Thread(
             target=self._capture_loop,
-            args=(session, camera, storage, config, led),
+            args=(session, camera, storage, config, led, status_light),
             name="capture-engine",
             daemon=True,
         )
@@ -147,7 +156,8 @@ class CaptureEngine:
 
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
                       storage: StorageManager, config: dict,
-                      led: Optional["LEDController"] = None) -> None:  # type: ignore[name-defined]
+                      led: Optional["LEDController"] = None,
+                      status_light: Optional["GroveStatusLight"] = None) -> None:  # type: ignore[name-defined]
         """Main loop executed inside the background thread."""
         interval = get_config_value(config, "capture.interval_seconds", 30)
         quality = get_config_value(config, "capture.quality", 90)
@@ -160,6 +170,15 @@ class CaptureEngine:
         use_led = led_enabled and led is not None and led.is_available()
         if use_led:
             logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
+
+        capture_flash = get_config_value(config, "grove_light.capture_flash", True)
+        use_status_light = (
+            capture_flash
+            and status_light is not None
+            and status_light.is_available()
+        )
+        if use_status_light:
+            status_light.set_state("capturing")  # type: ignore[union-attr]
 
         logger.info("Capture loop running — interval=%ss, quality=%d",
                      interval, quality)
@@ -222,6 +241,8 @@ class CaptureEngine:
                     # -- save the photo --
                     path = storage.save_photo(session, frame, quality)
                     if path:
+                        if use_status_light:
+                            status_light.flash_capture()  # type: ignore[union-attr]
                         with self._lock:
                             self._total_photos = session.total_photos
                             self._last_photo_path = path
@@ -248,6 +269,9 @@ class CaptureEngine:
         session.end_time = datetime.now()
         session.status = "stopped"
         storage.save_session_metadata(session)
+
+        if use_status_light:
+            status_light.set_state("stopped")  # type: ignore[union-attr]
 
         with self._lock:
             self._running = False

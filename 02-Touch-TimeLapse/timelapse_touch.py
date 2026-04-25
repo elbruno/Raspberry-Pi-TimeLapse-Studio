@@ -20,6 +20,7 @@ import os
 import platform
 import signal
 import sys
+import threading
 import time
 import glob
 from typing import Optional
@@ -211,6 +212,8 @@ class TimeLapseApp:
         flags = pygame.FULLSCREEN if self.fullscreen else 0
         self.screen = pygame.display.set_mode((self.screen_w, self.screen_h), flags)
         pygame.display.set_caption("PiTimeLapse Touch")
+        # Keep cursor visible while troubleshooting touch/click input mapping.
+        pygame.mouse.set_visible(True)
         self.clock = pygame.time.Clock()
 
         # ── USB detection ──
@@ -298,6 +301,12 @@ class TimeLapseApp:
         self._last_thumbnail_path: str = ""  # Track last photo for thumbnail updates
         self._camera_warning: str = ""
         self._consecutive_preview_failures: int = 0
+        self._preview_capture_thread: Optional[threading.Thread] = None
+        self._preview_capture_started: float = 0.0
+        self._preview_capture_timeout_s: float = 1.0
+        self._preview_capture_lock = threading.Lock()
+        self._preview_capture_result: Optional[np.ndarray] = None
+        self._preview_capture_ready: bool = False
 
         # Display feature flags
         display_cfg = self.config.get("display", {})
@@ -648,6 +657,16 @@ class TimeLapseApp:
                 else:
                     self._handle_main_tap(pos)
 
+            elif event.type == pygame.FINGERDOWN:
+                # Touch events provide normalized coordinates in [0.0, 1.0].
+                x = max(0, min(self.screen_w - 1, int(event.x * self.screen_w)))
+                y = max(0, min(self.screen_h - 1, int(event.y * self.screen_h)))
+                pos = (x, y)
+                if self._screen_state == "settings":
+                    self._handle_settings_tap(pos)
+                else:
+                    self._handle_main_tap(pos)
+
     def _handle_main_tap(self, pos: tuple) -> None:
         """Handle taps on the main screen buttons."""
         if self.btn_start.is_pressed(pos):
@@ -762,30 +781,68 @@ class TimeLapseApp:
     # ── Preview & status ───────────────────────────────────────────────────
 
     def _update_preview(self) -> None:
-        """Grab a camera frame at most once per PREVIEW_INTERVAL seconds."""
+        """Grab preview frames asynchronously to keep UI responsive."""
         if self.camera is None:
             self.preview.update(None)
             return
+
+        # If a background capture is active, avoid blocking the UI thread.
+        if self._preview_capture_thread is not None and self._preview_capture_thread.is_alive():
+            if (time.time() - self._preview_capture_started) > self._preview_capture_timeout_s:
+                # Don't kill the worker thread (unsafe); just warn and keep UI responsive.
+                self._camera_warning = "Camera timeout"
+            return
+
+        # If a worker has completed, consume its result first.
+        if self._preview_capture_thread is not None and not self._preview_capture_thread.is_alive():
+            frame: Optional[np.ndarray]
+            with self._preview_capture_lock:
+                if not self._preview_capture_ready:
+                    frame = None
+                else:
+                    frame = self._preview_capture_result
+                self._preview_capture_result = None
+                self._preview_capture_ready = False
+
+            self._preview_capture_thread = None
+
+            if frame is None:
+                self._consecutive_preview_failures += 1
+                self.preview.update(None)
+
+                if self._consecutive_preview_failures >= 3:
+                    logger.warning("Camera not responding — disabling camera preview")
+                    self._camera_warning = "Camera not responding"
+                    self.camera.close()
+                    self.camera = None
+                return
+
+            self._consecutive_preview_failures = 0
+            self._camera_warning = ""
+            self.preview.update(frame)
+            return
+
         now = time.time()
         if now - self._last_preview_time < PREVIEW_INTERVAL:
             return  # reuse the last frame already in PreviewArea
         self._last_preview_time = now
-        frame = self.camera.capture()
 
-        if frame is None:
-            self._consecutive_preview_failures += 1
-            self.preview.update(None)
+        def _capture_preview_once() -> None:
+            frame = None
+            cam = self.camera
+            if cam is not None:
+                frame = cam.capture()
+            with self._preview_capture_lock:
+                self._preview_capture_result = frame
+                self._preview_capture_ready = True
 
-            if self._consecutive_preview_failures >= 3:
-                logger.warning("Camera not responding — disabling camera preview")
-                self._camera_warning = "Camera not responding"
-                self.camera.close()
-                self.camera = None
-            return
-
-        self._consecutive_preview_failures = 0
-        self._camera_warning = ""
-        self.preview.update(frame)
+        self._preview_capture_started = now
+        self._preview_capture_thread = threading.Thread(
+            target=_capture_preview_once,
+            name="preview-capture",
+            daemon=True,
+        )
+        self._preview_capture_thread.start()
 
     def _update_status(self) -> None:
         """Refresh header and status bar from engine state."""

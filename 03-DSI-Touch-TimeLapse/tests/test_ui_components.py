@@ -95,3 +95,110 @@ def test_settings_screen_saves_selected_window_size_preset():
 
     assert values["display"]["window_width"] == selected_width
     assert values["display"]["window_height"] == selected_height
+
+
+def test_window_size_options_keep_multiple_presets_when_windowed():
+    """Even when SDL reports 640x360, App Size should still offer bigger presets."""
+    from ui_components import SettingsScreen
+
+    options, _ = SettingsScreen._build_window_size_options((640, 360), (640, 360))
+    assert (640, 360) in options
+    assert (800, 450) in options
+    assert len(options) >= 2
+
+
+def test_display_tab_app_size_next_cycles_option():
+    """Tapping App Size next button should move to another preset."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    config = {
+        "camera": {"index": 0, "width": 640, "height": 480},
+        "capture": {"interval_seconds": 30, "quality": 90},
+        "preview": {"fps": 6},
+        "storage": {"fallback_path": "./data"},
+        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "display": {
+            "show_countdown": True,
+            "show_storage_info": True,
+            "window_width": 640,
+            "window_height": 360,
+            "center_window": True,
+            "fullscreen": False,
+        },
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_light": {"enabled": True, "pin": 12},
+    }
+
+    screen = SettingsScreen(640, 360, config, max_display_size=(640, 360))
+    screen.active_tab = 1
+    before = screen._window_size_selected
+    screen.handle_tap(screen.window_size_btn_next.center)
+    after = screen._window_size_selected
+
+    assert len(screen.window_size_options) >= 2
+    assert after != before
+
+
+def test_camera_selector_is_below_quality_row():
+    """Camera selector should not overlap interval/quality rows."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    config = {
+        "camera": {"index": 0, "width": 640, "height": 480},
+        "capture": {"interval_seconds": 30, "quality": 90},
+        "preview": {"fps": 6},
+        "storage": {"fallback_path": "./data"},
+        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "display": {
+            "show_countdown": True,
+            "show_storage_info": True,
+            "window_width": 640,
+            "window_height": 360,
+            "center_window": True,
+            "fullscreen": False,
+        },
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_light": {"enabled": True, "pin": 12},
+    }
+
+    screen = SettingsScreen(640, 360, config, camera_options=[(0, "USB Cam")])
+    quality_bottom = screen.camera_rows[1].btn_plus.bottom
+
+    assert screen.camera_btn_prev.y > quality_bottom
+
+
+def test_led_tab_draws_hardware_message_without_crashing():
+    """LED diagnostics should render feedback text so actions feel responsive."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    pygame.display.init()
+    surface = pygame.Surface((640, 360))
+
+    config = {
+        "camera": {"index": 0, "width": 640, "height": 480},
+        "capture": {"interval_seconds": 30, "quality": 90},
+        "preview": {"fps": 6},
+        "storage": {"fallback_path": "./data"},
+        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "display": {
+            "show_countdown": True,
+            "show_storage_info": True,
+            "window_width": 640,
+            "window_height": 360,
+            "center_window": True,
+            "fullscreen": False,
+        },
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_light": {"enabled": True, "pin": 12},
+    }
+
+    screen = SettingsScreen(640, 360, config)
+    screen.active_tab = 2
+    screen.set_hardware_message("Grove needs sudo", False)
+
+    screen.draw(surface)
+
+    pygame.display.quit()

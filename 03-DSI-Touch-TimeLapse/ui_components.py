@@ -492,6 +492,11 @@ class SettingsScreen:
     ) -> tuple[list[tuple[int, int]], int]:
         """Return 16:9 window presets up to the current display resolution."""
         max_w, max_h = max_size
+        # Some SDL backends report current window size instead of full desktop size
+        # when running windowed. Keep at least a practical baseline so the user can
+        # still cycle presets (e.g., 640x360 -> 800x450 on DSI screens).
+        max_w = max(max_w, 800)
+        max_h = max(max_h, 450)
         current_w, current_h = current_size
 
         preset_candidates = [
@@ -613,11 +618,12 @@ class SettingsScreen:
                 self._start_stop_selected = idx_opt
                 break
 
-        # Camera combo row geometry (standard right-aligned)
-        self.camera_label_y = start_y - 5
-        self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y, btn_size, btn_size)
-        self.camera_val_rect = pygame.Rect(screen_w - 146, start_y, 100, btn_size)
-        self.camera_btn_next = pygame.Rect(screen_w - 40, start_y, btn_size, btn_size)
+        # Camera combo row geometry (placed below Interval/Quality rows).
+        camera_selector_y = start_y + row_h * 2
+        self.camera_label_y = camera_selector_y + btn_size // 2 - 8
+        self.camera_btn_prev = pygame.Rect(screen_w - 190, camera_selector_y, btn_size, btn_size)
+        self.camera_val_rect = pygame.Rect(screen_w - 146, camera_selector_y, 100, btn_size)
+        self.camera_btn_next = pygame.Rect(screen_w - 40, camera_selector_y, btn_size, btn_size)
 
         self.window_size_label_y = start_y + row_h * 2 + btn_size // 2 - 8
         self.window_size_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
@@ -690,7 +696,7 @@ class SettingsScreen:
         self.button_rows = []
 
         # Diagnostic buttons and status blocks
-        self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 3 - 4, 160, 36)
+        self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 3 + 2, 160, 36)
         self.btn_led_test = pygame.Rect(20, start_y + row_h * 2, 105, 36)
         self.btn_led_detect = pygame.Rect(135, start_y + row_h * 2, 105, 36)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
@@ -971,9 +977,9 @@ class SettingsScreen:
 
             # Large camera preview area (center-right)
             preview_x = 210
-            preview_y = start_y + row_h + 10
+            preview_y = start_y + row_h + 4
             preview_w = 260
-            preview_h = 200
+            preview_h = 148
             preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
             pygame.draw.rect(surface, COLOR_FIELD_BG, preview_rect, border_radius=8)
             pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_rect, width=2, border_radius=8)
@@ -1078,6 +1084,10 @@ class SettingsScreen:
             surface.blit(status_surf, (status_x, status_y))
             detail_surf = self.font_small.render(status_detail, True, status_color)
             surface.blit(detail_surf, (status_x, status_y + 22))
+
+            if self.hardware_message:
+                msg_surf = self.font_small.render(self.hardware_message[:46], True, self.hardware_message_color)
+                surface.blit(msg_surf, (20, self._led_status_y + 18))
 
         # ── Buttons diagnostics (only on Buttons tab) ──
         if self.active_tab == 3:

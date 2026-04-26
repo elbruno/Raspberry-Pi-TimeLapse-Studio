@@ -1,0 +1,30 @@
+camera:
+  mode: opencv
+  index: 0
+  width: 640
+  height: 480
+capture:
+  interval_seconds: 30
+  quality: 90
+preview:
+  fps: 6
+storage:
+  fallback_path: ./data
+led:
+  enabled: true
+  warmup_seconds: 1
+display:
+  show_countdown: true
+  show_storage_info: true
+grove_button:
+  enabled: true
+  pin_button1: 5
+  pin_button2: 6
+  debounce_ms: 250
+  start_stop_button: button1
+grove_light:
+  enabled: true
+  pin: 12
+  pixel_count: 10
+  brightness: 48
+  capture_flash: true

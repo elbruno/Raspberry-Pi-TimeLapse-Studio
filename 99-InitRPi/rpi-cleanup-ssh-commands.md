@@ -123,6 +123,30 @@ sudo reboot               # recommended: ensures display drivers + autostart wor
 
 > 💡 The autostart setup in `02-Touch-TimeLapse/install-shortcut.sh` now also creates a **user-level override** for `polkit-mate-authentication-agent-1` when present. This prevents the duplicate PolicyKit popup sometimes seen on mixed LXDE/MATE desktop installs.
 
+### For `03-DSI-Touch-TimeLapse`
+
+Scenario 03 uses the same **touch** cleanup profile because it still needs the desktop/X11 stack.
+
+The difference is important:
+
+- **keep** Raspberry Pi OS Desktop
+- **do not** install any SPI/GPIO LCD driver
+- **do not** run `LCD-show` or `install.sh --setup-lcd`
+- the DSI display is expected to be **plug and play**
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+bash install.sh --all
+sudo reboot
+```
+
+After reboot, test from SSH first:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+python3 timelapse_touch.py --fullscreen
+```
+
 ## 7. Start the application
 
 ### Web app
@@ -138,6 +162,13 @@ Open `http://<pi-hostname>:5000` in your browser.
 
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
+python3 timelapse_touch.py --fullscreen
+```
+
+### DSI touch app
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
 python3 timelapse_touch.py --fullscreen
 ```
 
@@ -179,10 +210,26 @@ bash install.sh --all
 sudo reboot
 ```
 
+## Quick reference — all-in-one (Scenario 03 DSI touch)
+
+```bash
+# SSH in and run everything in one go
+cd ~
+git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
+cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
+sudo apt update
+
+# DSI display: no LCD driver install step
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+bash install.sh --all
+sudo reboot
+```
+
 ## What gets cleaned
 
 | Area | Estimated savings | Details |
-|------|------------------|---------|
+| ---- | ----------------- | ------- |
 | Desktop packages | 200-800 MB | LibreOffice, Wolfram, Chromium, Thonny, VLC, etc. |
 | Unused locales | 100-200 MB | Keeps only `en`, `en_US`, `en_GB` |
 | Package docs | 50-150 MB | Keeps copyright files for license compliance |

@@ -83,6 +83,16 @@ ls /tmp/.X11-unix
 
 A fresh Raspberry Pi OS Desktop install still carries extra packages and caches. For Scenario 03, use the existing cleanup flow with the **touch** profile.
 
+From the Scenario 03 folder, you can use the local helper script:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+bash cleanup.sh            # dry run
+bash cleanup.sh --apply --yes
+```
+
+This helper forwards to the shared cleanup engine with the correct `touch` profile.
+
 ### Dry run first
 
 ```bash

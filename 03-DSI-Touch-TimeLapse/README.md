@@ -49,7 +49,17 @@ git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
 ```
 
-1. Install dependencies:
+1. Clean disk space (optional but highly recommended):
+
+```bash
+# Dry run first (shows what would be removed)
+bash cleanup.sh
+
+# Apply cleanup
+bash cleanup.sh --apply --yes
+```
+
+1. Install the requirements for Scenario 03:
 
 ```bash
 bash install.sh --all
@@ -92,6 +102,7 @@ Everything else matches Scenario 02 defaults.
 
 ```text
 03-DSI-Touch-TimeLapse/
+├── cleanup.sh          # Scenario 03 cleanup helper (keeps desktop/X11)
 ├── timelapse_touch.py   # Launcher that reuses Scenario 02 app code
 ├── config.yaml          # Scenario 03 local config
 ├── install.sh           # DSI-focused installer
@@ -108,3 +119,4 @@ Use Scenario 03 + Scenario 02 documentation together:
 - [Scenario 03 User Manual](USER_MANUAL.md)
 - [Scenario 02 README](../02-Touch-TimeLapse/README.md)
 - [Scenario 02 User Manual](../02-Touch-TimeLapse/USER_MANUAL.md)
+- [Cleanup SSH guide](../99-InitRPi/rpi-cleanup-ssh-commands.md)

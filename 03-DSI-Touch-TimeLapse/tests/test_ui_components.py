@@ -202,3 +202,55 @@ def test_led_tab_draws_hardware_message_without_crashing():
     screen.draw(surface)
 
     pygame.display.quit()
+
+
+def test_camera_tab_draws_rows_after_panels(monkeypatch):
+    """Camera config rows must remain visible after panel styling is rendered."""
+    from ui_components import SettingsScreen, _SettingRow
+
+    pygame.font.init()
+    surface = pygame.Surface((800, 450))
+
+    config = {
+        "camera": {"index": 0, "width": 640, "height": 480},
+        "capture": {"interval_seconds": 30, "quality": 90},
+        "preview": {"fps": 6},
+        "storage": {"fallback_path": "./data"},
+        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "display": {
+            "show_countdown": True,
+            "show_storage_info": True,
+            "window_width": 800,
+            "window_height": 450,
+            "center_window": True,
+            "fullscreen": False,
+        },
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_light": {"enabled": True, "pin": 12},
+    }
+
+    screen = SettingsScreen(800, 450, config, camera_options=[(0, "Manual idx")])
+    screen.active_tab = 0
+
+    draw_order = []
+    original_row_draw = _SettingRow.draw
+
+    def _tracked_row_draw(self, surface, font):
+        draw_order.append("row")
+        return original_row_draw(self, surface, font)
+
+    monkeypatch.setattr(_SettingRow, "draw", _tracked_row_draw)
+
+    original_panel_draw = screen._draw_section_panel
+
+    def _tracked_panel(*args, **kwargs):
+        draw_order.append("panel")
+        return original_panel_draw(*args, **kwargs)
+
+    monkeypatch.setattr(screen, "_draw_section_panel", _tracked_panel)
+
+    screen.draw(surface)
+
+    assert "panel" in draw_order
+    assert "row" in draw_order
+    assert draw_order.index("panel") < draw_order.index("row")

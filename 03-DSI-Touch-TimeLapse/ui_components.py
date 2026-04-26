@@ -1033,9 +1033,7 @@ class SettingsScreen:
             surface.blit(tab_txt, tab_txt.get_rect(center=rect.center))
 
         # ── Setting rows for active tab ──
-        if self.active_tab == 0:
-            rows = self.camera_rows
-        elif self.active_tab == 1:
+        if self.active_tab == 1:
             rows = self.display_rows
         elif self.active_tab == 2:
             rows = self.led_rows
@@ -1066,6 +1064,10 @@ class SettingsScreen:
                 (divider_x, self.camera_general_rect.bottom - 14),
                 1,
             )
+
+            # Draw camera config rows after panel backgrounds so rows stay visible.
+            for row in self.camera_rows:
+                row.draw(surface, self.font)
 
             # Camera selector on right (standard position)
             cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
@@ -1124,7 +1126,8 @@ class SettingsScreen:
 
             if self.hardware_message:
                 msg = self.font_small.render(self.hardware_message[:52], True, self.hardware_message_color)
-                surface.blit(msg, (preview_x, list_y + 44))
+                message_y = min(list_y + 44, self.btn_save.y - 20)
+                surface.blit(msg, (preview_x, message_y))
 
         if self.active_tab == 1:
             size_lbl = self.font.render("App Size", True, COLOR_TEXT)

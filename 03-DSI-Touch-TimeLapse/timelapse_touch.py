@@ -446,6 +446,8 @@ class TimeLapseApp:
             "cec",
         )
 
+        secondary_candidates: list[int] = []
+
         for dev_idx, dev_stream_index, name in sysfs_devices:
             if dev_idx in candidates:
                 continue
@@ -455,15 +457,20 @@ class TimeLapseApp:
             if any(tok in name for tok in blocked_tokens):
                 continue
 
-            # For multi-node devices, only probe the primary stream (index=0)
-            # unless it is the explicitly configured index.
-            if dev_stream_index != 0:
-                continue
+            # Prefer primary stream nodes first, but keep secondary streams as
+            # fallback because some camera stacks expose the usable stream on
+            # non-zero indices.
+            if dev_stream_index == 0:
+                candidates.append(dev_idx)
+            else:
+                secondary_candidates.append(dev_idx)
 
-            candidates.append(dev_idx)
+        for dev_idx in secondary_candidates:
+            if dev_idx not in candidates:
+                candidates.append(dev_idx)
 
         # Conservative fallback for environments with limited /sys visibility.
-        for fallback_idx in range(0, 10):
+        for fallback_idx in range(0, 20):
             if fallback_idx not in candidates:
                 candidates.append(fallback_idx)
 

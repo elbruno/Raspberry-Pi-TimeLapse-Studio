@@ -153,3 +153,63 @@ def test_set_preview_updates_enabled_resets_timer_when_reenabled():
 
     assert app._preview_updates_enabled is True
     assert app._last_preview_time == 0.0
+
+
+def test_enumerate_camera_candidates_keeps_secondary_stream_nodes(monkeypatch):
+    """Camera probing should include non-primary stream nodes as fallback candidates."""
+    from timelapse_touch import TimeLapseApp
+    import timelapse_touch as mod
+
+    app = TimeLapseApp.__new__(TimeLapseApp)
+
+    fake_glob = [
+        "/sys/class/video4linux/video0",
+        "/sys/class/video4linux/video2",
+    ]
+
+    monkeypatch.setattr(mod.glob, "glob", lambda pattern: fake_glob)
+
+    def _fake_exists(path):
+        return path in {
+            "/sys/class/video4linux/video0/name",
+            "/sys/class/video4linux/video0/index",
+            "/sys/class/video4linux/video2/name",
+            "/sys/class/video4linux/video2/index",
+        }
+
+    monkeypatch.setattr(mod.os.path, "exists", _fake_exists)
+
+    import builtins
+    real_open = builtins.open
+
+    class _FakeFile:
+        def __init__(self, text):
+            self._text = text
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return self._text
+
+    def _fake_open(path, mode="r", encoding=None):
+        mapping = {
+            "/sys/class/video4linux/video0/name": "USB Camera",
+            "/sys/class/video4linux/video0/index": "0",
+            "/sys/class/video4linux/video2/name": "USB Camera Secondary",
+            "/sys/class/video4linux/video2/index": "1",
+        }
+        if path in mapping:
+            return _FakeFile(mapping[path])
+        return real_open(path, mode=mode, encoding=encoding)
+
+    monkeypatch.setattr(builtins, "open", _fake_open)
+
+    candidates = TimeLapseApp._enumerate_camera_candidates(app, configured_index=0)
+
+    assert 0 in candidates
+    assert 2 in candidates
+    assert candidates.index(0) < candidates.index(2)

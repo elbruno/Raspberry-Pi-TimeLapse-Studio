@@ -12,11 +12,41 @@ or GPIO PWM access is unavailable, this controller gracefully disables itself.
 from __future__ import annotations
 
 import logging
+import os
 import platform
+import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def _inject_sudo_user_site_packages() -> None:
+    """Expose the invoking user's site-packages when running under sudo.
+
+    On Raspberry Pi setups this project is commonly launched with ``sudo`` so the
+    WS281x library can access the required hardware interfaces. If ``rpi_ws281x``
+    was installed with ``pip install --user`` for the regular ``pi`` account,
+    root's Python environment will not normally see it.
+
+    By prepending the original user's ``~/.local`` site-packages path, both the
+    standalone LED tester and the main app can import the dependency without
+    forcing a second installation just for root.
+    """
+    sudo_user = os.environ.get("SUDO_USER")
+    if not sudo_user or sudo_user == "root":
+        return
+
+    version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    user_site = Path("/home") / sudo_user / ".local" / "lib" / version / "site-packages"
+    user_site_str = str(user_site)
+
+    if user_site.exists() and user_site_str not in sys.path:
+        sys.path.insert(0, user_site_str)
+
+
+_inject_sudo_user_site_packages()
 
 try:
     from rpi_ws281x import Color, PixelStrip

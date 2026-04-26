@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "platform": "Linux",
+    "python": "3.13.5",
+    "running_as_root": true,
+    "rpi_ws281x_available": false,
+    "configured_backend": "grove",
+    "current_grove_light": {
+      "enabled": true,
+      "pin": 12,
+      "pixel_count": 20,
+      "brightness": 48,
+      "state_palette": "warm",
+      "capture_flash_duration_ms": 80
+    },
+    "supported_options": {
+      "led.backend": [
+        "usb",
+        "grove"
+      ],
+      "grove_light.pin_common_values": [
+        12,
+        18
+      ],
+      "grove_light.pixel_count_common_values": [
+        20,
+        10
+      ],
+      "grove_light.brightness_range": [
+        0,
+        255
+      ],
+      "grove_light.brightness_suggested_test_values": [
+        32,
+        64,
+        128,
+        255
+      ],
+      "grove_light.state_palette": [
+        "classic",
+        "high_contrast",
+        "warm"
+      ]
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "name": "Current config",
+      "pin": 12,
+      "pixel_count": 20,
+      "brightness": 48,
+      "state_palette": "warm",
+      "detected": false,
+      "observed": "off",
+      "note": "Baseline from config.yaml"
+    },
+    {
+      "index": 2,
+      "name": "Current pin + brighter classic",
+      "pin": 12,
+      "pixel_count": 20,
+      "brightness": 64,
+      "state_palette": "classic",
+      "detected": false,
+      "observed": "quit",
+      "note": "Same wiring, classic palette, slightly brighter"
+    }
+  ],
+  "saved_at_epoch": 1777213478.3989134
+}

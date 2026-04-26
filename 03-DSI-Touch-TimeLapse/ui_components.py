@@ -574,7 +574,7 @@ class SettingsScreen:
         ]
         self.tab_labels = ["Camera", "Display", "LED", "Buttons"]
 
-        row_h = 36
+        row_h = 48
         start_y = self.TAB_HEIGHT + 6
         btn_size = 32
 
@@ -756,12 +756,6 @@ class SettingsScreen:
 
         # Active tab rows
         if self.active_tab == 0:
-            if self.camera_btn_prev.collidepoint(pos):
-                self._camera_selected = (self._camera_selected - 1) % len(self.camera_options)
-                return None
-            if self.camera_btn_next.collidepoint(pos):
-                self._camera_selected = (self._camera_selected + 1) % len(self.camera_options)
-                return None
             if self.btn_camera_detect.collidepoint(pos):
                 return "detect_camera"
             rows = self.camera_rows
@@ -876,13 +870,6 @@ class SettingsScreen:
             row.btn_minus = pygame.Rect(minus_x, row.btn_minus.y, stepper_size, stepper_size)
             row.val_rect = pygame.Rect(val_x, row.val_rect.y, val_w, stepper_size)
             row.btn_plus = pygame.Rect(plus_x, row.btn_plus.y, stepper_size, stepper_size)
-
-        # Camera selector stays below quality row in section 1.
-        camera_selector_y = start_y + row_h * 2
-        self.camera_label_y = camera_selector_y + stepper_size // 2 - 8
-        self.camera_btn_prev = pygame.Rect(minus_x, camera_selector_y, stepper_size, stepper_size)
-        self.camera_val_rect = pygame.Rect(val_x, camera_selector_y, val_w, stepper_size)
-        self.camera_btn_next = pygame.Rect(plus_x, camera_selector_y, stepper_size, stepper_size)
 
         # Section 2: detect button + preview + list.
         detect_x = camera_preview_panel_rect.x + 12
@@ -1019,7 +1006,7 @@ class SettingsScreen:
 
         # Local layout constants used by tab-specific custom sections.
         # Keep these in sync with __init__ geometry baselines.
-        row_h = 36
+        row_h = 48
         start_y = self.TAB_HEIGHT + 6
         screen_w = self.screen_w
 
@@ -1072,25 +1059,6 @@ class SettingsScreen:
             # Draw camera config rows after panel backgrounds so rows stay visible.
             for row in self.camera_rows:
                 row.draw(surface, self.font)
-
-            # Camera selector on right (standard position)
-            cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
-            surface.blit(cam_lbl, (20, self.camera_label_y))
-
-            pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_prev, border_radius=6)
-            prev_txt = self.font.render("<", True, COLOR_TEXT)
-            surface.blit(prev_txt, prev_txt.get_rect(center=self.camera_btn_prev.center))
-
-            pygame.draw.rect(surface, COLOR_FIELD_BG, self.camera_val_rect, border_radius=6)
-            cam_idx, cam_name = self.camera_options[self._camera_selected]
-            short_name = cam_name[:6] if len(cam_name) > 6 else cam_name
-            display = f"{cam_idx}:{short_name}"
-            cam_txt = self.font_small.render(display, True, COLOR_TEXT)
-            surface.blit(cam_txt, cam_txt.get_rect(center=self.camera_val_rect.center))
-
-            pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_next, border_radius=6)
-            next_txt = self.font.render(">", True, COLOR_TEXT)
-            surface.blit(next_txt, next_txt.get_rect(center=self.camera_btn_next.center))
 
             # Detect camera button
             camera_detect_color = COLOR_TEST

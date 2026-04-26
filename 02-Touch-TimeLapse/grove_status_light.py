@@ -120,6 +120,16 @@ class GroveStatusLight:
         time.sleep(max(0.0, duration_seconds))
         self.set_state("capturing")
 
+    def flash_test(self, duration_seconds: float = 0.25) -> None:
+        """Brief bright flash used by the settings diagnostics button."""
+        if not self._available:
+            return
+
+        previous_state = self._last_state
+        self._fill(RGBColor(120, 120, 120))
+        time.sleep(max(0.0, duration_seconds))
+        self.set_state(previous_state)
+
     def close(self) -> None:
         """Turn off all pixels and release runtime state."""
         if self._available:

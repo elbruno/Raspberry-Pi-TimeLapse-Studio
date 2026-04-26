@@ -43,6 +43,7 @@ DEFAULTS: dict = {
         "fallback_path": "./data",
     },
     "led": {
+        "backend": "usb",
         "enabled": True,
         "warmup_seconds": 1.0,
         "usb_port": "auto",
@@ -50,6 +51,10 @@ DEFAULTS: dict = {
     "display": {
         "show_countdown": True,
         "show_storage_info": True,
+        "window_width": 480,
+        "window_height": 320,
+        "center_window": True,
+        "fullscreen": False,
     },
     "grove_button": {
         "enabled": True,
@@ -193,15 +198,29 @@ def validate_config(config: dict) -> list[str]:
     if not isinstance(led_enabled, bool):
         errors.append(f"led.enabled must be true or false, got {led_enabled}")
 
+    led_backend = get_config_value(config, "led.backend", "usb")
+    if led_backend not in ("usb", "grove"):
+        errors.append(f"led.backend must be 'usb' or 'grove', got '{led_backend}'")
+
     led_warmup = get_config_value(config, "led.warmup_seconds", 1.0)
     if not isinstance(led_warmup, (int, float)) or led_warmup < 0:
         errors.append(f"led.warmup_seconds must be >= 0, got {led_warmup}")
 
     # Display checks
-    for key in ("display.show_countdown", "display.show_storage_info"):
+    for key in (
+        "display.show_countdown",
+        "display.show_storage_info",
+        "display.center_window",
+        "display.fullscreen",
+    ):
         val = get_config_value(config, key, True)
         if not isinstance(val, bool):
             errors.append(f"{key} must be true or false, got {val}")
+
+    for key in ("display.window_width", "display.window_height"):
+        val = get_config_value(config, key, 0)
+        if not isinstance(val, int) or val <= 0:
+            errors.append(f"{key} must be a positive integer, got {val}")
 
     # Grove dual button checks
     grove_button_enabled = get_config_value(config, "grove_button.enabled", True)

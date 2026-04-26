@@ -208,3 +208,30 @@ class TestCaptureEngineCapture:
         time.sleep(0.1)
 
         assert engine.is_running is False
+
+    def test_led_turns_on_before_capture(
+        self, mock_session, mock_camera, mock_storage, capture_config
+    ):
+        """LED illumination wraps the capture in the expected order."""
+        from capture_engine import CaptureEngine
+
+        order = []
+        mock_led = MagicMock()
+        mock_led.is_available.return_value = True
+        mock_led.turn_on.side_effect = lambda: order.append("led_on") or True
+        mock_led.turn_off.side_effect = lambda: order.append("led_off") or True
+        mock_camera.capture.side_effect = lambda: order.append("capture") or np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_storage.save_photo.side_effect = lambda *args, **kwargs: order.append("save") or "photo.jpg"
+
+        engine = CaptureEngine()
+        engine.start(mock_session, mock_camera, mock_storage, capture_config, led=mock_led)
+
+        try:
+            time.sleep(0.35)
+        finally:
+            engine.stop()
+
+        assert "led_on" in order
+        assert "capture" in order
+        assert "led_off" in order
+        assert order.index("led_on") < order.index("capture") < order.index("led_off") < order.index("save")

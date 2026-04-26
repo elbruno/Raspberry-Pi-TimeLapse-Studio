@@ -10,6 +10,7 @@ Color scheme: dark theme optimized for long timelapse monitoring sessions.
 
 from __future__ import annotations
 
+import copy
 import time
 from typing import Optional, Tuple
 
@@ -39,6 +40,7 @@ COLOR_STEPPER = (60, 80, 120)          # stepper +/- buttons
 COLOR_FIELD_BG = (35, 35, 55)          # value field background
 COLOR_TAB_ACTIVE = (15, 52, 96)        # active tab (matches status bar)
 COLOR_TAB_INACTIVE = (30, 30, 50)      # inactive tab
+COLOR_TEST = (125, 96, 196)            # diagnostic action buttons
 
 
 def _darken(color: Tuple[int, ...], amount: int = 40) -> Tuple[int, ...]:
@@ -471,9 +473,10 @@ class _SettingRow:
 class SettingsScreen:
     """Full-screen settings form with tabs for 480×320 displays.
 
-    Two tabs:
+        Three tabs:
       * **Camera** — capture interval, quality, camera index, resolution.
-      * **Features** — countdown, storage info, LED flash, LED warmup.
+            * **Display** — app window size, centering, fullscreen, header toggles.
+            * **Hardware** — LED flash, LED warmup, LED/button diagnostics.
 
     Uses stepper controls ([–] value [+]) instead of text input —
     much easier on a small touchscreen.
@@ -483,14 +486,26 @@ class SettingsScreen:
 
     def __init__(self, screen_w: int, screen_h: int, config: dict,
                  led_detected: bool = False, led_port_name: str = "",
-                 camera_options: Optional[list[tuple[int, str]]] = None) -> None:
+                 camera_options: Optional[list[tuple[int, str]]] = None,
+                 grove_buttons_detected: bool = False,
+                 led_backend: str = "usb",
+                 grove_light_detected: bool = False) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
         self._font_small: Optional[pygame.font.Font] = None
-        self.active_tab: int = 0  # 0 = Camera, 1 = Features, 2 = LED
+        self.active_tab: int = 0  # 0 = Camera, 1 = Display, 2 = Hardware
         self.led_detected = led_detected
         self.led_port_name = led_port_name
+        self.grove_buttons_detected = grove_buttons_detected
+        self.led_backend = led_backend
+        self.grove_light_detected = grove_light_detected
+        self.button_test_active = False
+        self.button_test_counts = {"button1": 0, "button2": 0}
+        self.button_flash_until = {"button1": 0.0, "button2": 0.0}
+        self.last_button_pressed = ""
+        self.hardware_message = ""
+        self.hardware_message_color = COLOR_TEXT_DIM
 
         # Tab buttons — 3 tabs
         tab_w = screen_w // 3
@@ -499,7 +514,7 @@ class SettingsScreen:
             pygame.Rect(tab_w, 0, tab_w, self.TAB_HEIGHT),
             pygame.Rect(tab_w * 2, 0, screen_w - tab_w * 2, self.TAB_HEIGHT),
         ]
-        self.tab_labels = ["Camera", "Features", "LED"]
+        self.tab_labels = ["Camera", "Display", "Hardware"]
 
         row_h = 36
         start_y = self.TAB_HEIGHT + 6
@@ -552,8 +567,8 @@ class SettingsScreen:
                         int(cam.get("height", 480)), 120, 1080, 120),
         ]
 
-        # ── Features tab rows (LED settings moved to LED tab) ──
-        self.features_rows = [
+        # ── Display tab rows ──
+        self.display_rows = [
             _SettingRow(start_y, screen_w, btn_size,
                         "Countdown", "display.show_countdown",
                         1 if display.get("show_countdown", True) else 0,
@@ -562,10 +577,24 @@ class SettingsScreen:
                         "Storage Info", "display.show_storage_info",
                         1 if display.get("show_storage_info", True) else 0,
                         0, 1, 1),
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+                        "App Width", "display.window_width",
+                        int(display.get("window_width", 480)), 320, 1920, 40),
+            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
+                        "App Height", "display.window_height",
+                        int(display.get("window_height", 320)), 240, 1080, 40),
+            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
+                        "Center Window", "display.center_window",
+                        1 if display.get("center_window", True) else 0,
+                        0, 1, 1),
+            _SettingRow(start_y + row_h * 5, screen_w, btn_size,
+                        "Fullscreen", "display.fullscreen",
+                        1 if display.get("fullscreen", False) else 0,
+                        0, 1, 1),
         ]
 
-        # ── LED tab rows ──
-        self.led_rows = [
+        # ── Hardware tab rows ──
+        self.hardware_rows = [
             _SettingRow(start_y, screen_w, btn_size,
                         "LED Flash", "led.enabled",
                         1 if led.get("enabled", True) else 0, 0, 1, 1),
@@ -573,8 +602,12 @@ class SettingsScreen:
                         "LED Warmup", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
-        # Y position for LED status text (below the stepper rows)
-        self._led_status_y = start_y + row_h * 2 + 10
+        # Diagnostic buttons and status blocks on the hardware tab.
+        diag_y = start_y + row_h * 2 + 8
+        self.btn_led_test = pygame.Rect(20, diag_y, screen_w - 40, 40)
+        self.btn_button_test = pygame.Rect(20, diag_y + 50, screen_w - 40, 40)
+        self._led_status_y = diag_y + 96
+        self._button_status_y = self._led_status_y + 40
 
         # Bottom buttons — positioned below the last row
         btn_w = 140
@@ -617,9 +650,18 @@ class SettingsScreen:
                 return None
             rows = self.camera_rows
         elif self.active_tab == 1:
-            rows = self.features_rows
+            rows = self.display_rows
         else:
-            rows = self.led_rows
+            if self.btn_led_test.collidepoint(pos):
+                return "test_led"
+            if self.btn_button_test.collidepoint(pos):
+                self.button_test_active = not self.button_test_active
+                if self.button_test_active:
+                    self.set_hardware_message("Button test enabled — press the physical buttons", True)
+                else:
+                    self.set_hardware_message("Button test stopped", False)
+                return None
+            rows = self.hardware_rows
         for row in rows:
             row.handle_tap(pos)
 
@@ -629,34 +671,101 @@ class SettingsScreen:
             return "back"
         return None
 
-    def get_values(self) -> dict:
+    def set_hardware_message(self, message: str, success: bool) -> None:
+        """Update the diagnostic status message shown on the hardware tab."""
+        self.hardware_message = message
+        self.hardware_message_color = COLOR_USB_OK if success else COLOR_TEXT_DIM
+
+    def register_hardware_button(self, button_name: str) -> None:
+        """Record a physical button press while the settings screen is open."""
+        if not self.button_test_active:
+            return
+
+        if button_name not in self.button_test_counts:
+            return
+
+        self.button_test_counts[button_name] += 1
+        self.button_flash_until[button_name] = time.time() + 1.0
+        self.last_button_pressed = button_name
+        self.set_hardware_message(f"Detected {button_name}", True)
+
+    def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
         flat = {}
-        for row in self.camera_rows + self.features_rows + self.led_rows:
+        for row in self.camera_rows + self.display_rows + self.hardware_rows:
             flat[row.key] = row.value
+
+        config = copy.deepcopy(base_config or {})
+        config.setdefault("camera", {})
+        config.setdefault("capture", {})
+        config.setdefault("preview", {"fps": 6})
+        config.setdefault("storage", {"fallback_path": "./data"})
+        config.setdefault("led", {})
+        config.setdefault("display", {})
+        config.setdefault("grove_button", config.get("grove_button", {}))
+        config.setdefault("grove_light", config.get("grove_light", {}))
+
         selected_camera_idx = self.camera_options[self._camera_selected][0]
-        return {
-            "camera": {
-                "mode": "opencv",
-                "index": selected_camera_idx,
-                "width": flat.get("camera.width", 640),
-                "height": flat.get("camera.height", 480),
-            },
-            "capture": {
-                "interval_seconds": flat.get("capture.interval_seconds", 30),
-                "quality": flat.get("capture.quality", 90),
-            },
-            "preview": {"fps": 6},
-            "storage": {"fallback_path": "./data"},
-            "led": {
-                "enabled": bool(flat.get("led.enabled", 1)),
-                "warmup_seconds": flat.get("led.warmup_seconds", 1),
-            },
-            "display": {
-                "show_countdown": bool(flat.get("display.show_countdown", 1)),
-                "show_storage_info": bool(flat.get("display.show_storage_info", 1)),
-            },
-        }
+
+        config["camera"].update({
+            "mode": "opencv",
+            "index": selected_camera_idx,
+            "width": flat.get("camera.width", 640),
+            "height": flat.get("camera.height", 480),
+        })
+        config["capture"].update({
+            "interval_seconds": flat.get("capture.interval_seconds", 30),
+            "quality": flat.get("capture.quality", 90),
+        })
+        config["led"].update({
+            "backend": config["led"].get("backend", "usb"),
+            "enabled": bool(flat.get("led.enabled", 1)),
+            "warmup_seconds": flat.get("led.warmup_seconds", 1),
+            "usb_port": config["led"].get("usb_port", "auto"),
+        })
+        config["display"].update({
+            "show_countdown": bool(flat.get("display.show_countdown", 1)),
+            "show_storage_info": bool(flat.get("display.show_storage_info", 1)),
+            "window_width": flat.get("display.window_width", 480),
+            "window_height": flat.get("display.window_height", 320),
+            "center_window": bool(flat.get("display.center_window", 1)),
+            "fullscreen": bool(flat.get("display.fullscreen", 0)),
+        })
+
+        return config
+
+    def _draw_action_button(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        label: str,
+        color: Tuple[int, int, int],
+    ) -> None:
+        """Render a wide diagnostics button."""
+        pygame.draw.rect(surface, color, rect, border_radius=10)
+        pygame.draw.rect(surface, _lighten(color, 30), rect, width=2, border_radius=10)
+        text = self.font.render(label, True, COLOR_TEXT)
+        surface.blit(text, text.get_rect(center=rect.center))
+
+    def _draw_button_state(
+        self,
+        surface: pygame.Surface,
+        label: str,
+        key: str,
+        x: int,
+        y: int,
+    ) -> None:
+        """Render a compact status tile for a physical button."""
+        active = time.time() < self.button_flash_until.get(key, 0.0)
+        tile = pygame.Rect(x, y, 140, 54)
+        color = COLOR_USB_OK if active else COLOR_FIELD_BG
+        pygame.draw.rect(surface, color, tile, border_radius=8)
+        pygame.draw.rect(surface, _lighten(color, 25), tile, width=2, border_radius=8)
+
+        title = self.font_small.render(label, True, COLOR_TEXT)
+        count = self.font.render(str(self.button_test_counts.get(key, 0)), True, COLOR_TEXT)
+        surface.blit(title, (tile.x + 10, tile.y + 8))
+        surface.blit(count, (tile.x + 10, tile.y + 24))
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(COLOR_BACKGROUND)
@@ -678,9 +787,9 @@ class SettingsScreen:
         if self.active_tab == 0:
             rows = self.camera_rows
         elif self.active_tab == 1:
-            rows = self.features_rows
+            rows = self.display_rows
         else:
-            rows = self.led_rows
+            rows = self.hardware_rows
         for row in rows:
             row.draw(surface, self.font)
 
@@ -704,20 +813,45 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.camera_btn_next.center))
 
-        # ── LED status text (only on LED tab) ──
+        # ── Hardware diagnostics (only on Hardware tab) ──
         if self.active_tab == 2:
-            if self.led_detected:
-                status_text = f"\u2713 Detected on {self.led_port_name}"
-                status_color = COLOR_USB_OK
+            self._draw_action_button(surface, self.btn_led_test, "TEST LED", COLOR_TEST)
+            button_test_label = "STOP BUTTON TEST" if self.button_test_active else "TEST BUTTONS"
+            button_color = COLOR_STOP if self.button_test_active else COLOR_SETTINGS
+            self._draw_action_button(surface, self.btn_button_test, button_test_label, button_color)
+
+            if self.led_backend == "grove":
+                if self.grove_light_detected:
+                    status_text = "\u2713 Grove LED ready"
+                    status_color = COLOR_USB_OK
+                else:
+                    status_text = "\u2717 Grove LED not detected"
+                    status_color = COLOR_TEXT_DIM
             else:
-                status_text = "\u2717 Not detected"
-                status_color = COLOR_TEXT_DIM
+                if self.led_detected:
+                    status_text = f"\u2713 USB LED on {self.led_port_name}"
+                    status_color = COLOR_USB_OK
+                else:
+                    status_text = "\u2717 USB LED not detected"
+                    status_color = COLOR_TEXT_DIM
             status_surf = self.font_small.render(status_text, True, status_color)
             surface.blit(status_surf, (14, self._led_status_y))
-            if not self.led_detected:
+            if self.led_backend == "usb" and not self.led_detected:
                 hint_surf = self.font_small.render("(install uhubctl)",
                                                    True, COLOR_TEXT_DIM)
                 surface.blit(hint_surf, (14, self._led_status_y + 18))
+
+            button_detected_text = "\u2713 Grove buttons ready" if self.grove_buttons_detected else "\u2717 Grove buttons not detected"
+            button_detected_color = COLOR_USB_OK if self.grove_buttons_detected else COLOR_TEXT_DIM
+            button_detected = self.font_small.render(button_detected_text, True, button_detected_color)
+            surface.blit(button_detected, (14, self._button_status_y))
+
+            self._draw_button_state(surface, "Button 1", "button1", 20, self._button_status_y + 24)
+            self._draw_button_state(surface, "Button 2", "button2", 170, self._button_status_y + 24)
+
+            if self.hardware_message:
+                message = self.font_small.render(self.hardware_message, True, self.hardware_message_color)
+                surface.blit(message, (20, self._button_status_y + 86))
 
         # ── Save button ──
         pygame.draw.rect(surface, COLOR_SAVE, self.btn_save, border_radius=10)

@@ -125,6 +125,14 @@ class LEDController:
 
     def _validate_explicit_port(self, port_spec: str) -> bool:
         """Validate that an explicitly configured port exists and is controllable."""
+        hub_location, separator, port_number = port_spec.rpartition(".")
+        if not separator or not hub_location or not port_number.isdigit():
+            logger.warning(
+                "Configured USB port %s is invalid. Expected format like '1-1.2'",
+                port_spec,
+            )
+            return False
+
         try:
             result = subprocess.run(
                 ["uhubctl"],
@@ -145,6 +153,8 @@ class LEDController:
                     # Check if this matches our port spec
                     # Port spec format: "hub_location" (e.g., "1-1") with port number
                     # We'll store both and construct commands later
+                    self._hub_location = hub_location
+                    self._port_number = port_number
                     self._usb_port = port_spec
                     self._available = True
                     logger.info("Using configured USB port: %s", port_spec)

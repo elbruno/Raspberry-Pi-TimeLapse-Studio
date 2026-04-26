@@ -200,3 +200,58 @@ class TestGroveConfigSections:
         assert any("grove_light.pixel_count" in e for e in errors)
         assert any("grove_light.brightness" in e for e in errors)
         assert any("grove_light.capture_flash" in e for e in errors)
+
+
+class TestDisplayConfigSections:
+    """Tests for display window sizing defaults and validation."""
+
+    def test_defaults_include_display_window_settings(self):
+        """load_config() returns display sizing defaults when config is missing."""
+        from config import load_config
+
+        cfg = load_config("/nonexistent/config.yaml")
+        assert cfg["display"]["window_width"] == 480
+        assert cfg["display"]["window_height"] == 320
+        assert cfg["display"]["center_window"] is True
+        assert cfg["display"]["fullscreen"] is False
+
+    def test_validate_config_rejects_invalid_display_values(self, sample_config):
+        """validate_config() returns errors for malformed display settings."""
+        from config import validate_config
+
+        sample_config["display"] = {
+            "show_countdown": True,
+            "show_storage_info": False,
+            "window_width": 0,
+            "window_height": -10,
+            "center_window": "yes",
+            "fullscreen": "no",
+        }
+
+        errors = validate_config(sample_config)
+        assert any("display.window_width" in e for e in errors)
+        assert any("display.window_height" in e for e in errors)
+        assert any("display.center_window" in e for e in errors)
+        assert any("display.fullscreen" in e for e in errors)
+
+
+class TestLedBackendConfig:
+    """Tests for selecting USB vs Grove LED backends."""
+
+    def test_defaults_include_led_backend(self):
+        from config import load_config
+
+        cfg = load_config("/nonexistent/config.yaml")
+        assert cfg["led"]["backend"] == "usb"
+
+    def test_validate_config_rejects_invalid_led_backend(self, sample_config):
+        from config import validate_config
+
+        sample_config["led"] = {
+            "backend": "banana",
+            "enabled": True,
+            "warmup_seconds": 1,
+        }
+
+        errors = validate_config(sample_config)
+        assert any("led.backend" in e for e in errors)

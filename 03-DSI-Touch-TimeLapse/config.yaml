@@ -11,6 +11,7 @@ preview:
 storage:
   fallback_path: ./data
 led:
+  backend: grove
   enabled: true
   warmup_seconds: 1
 display:

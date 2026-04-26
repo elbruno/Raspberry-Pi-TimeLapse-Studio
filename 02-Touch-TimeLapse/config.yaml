@@ -16,6 +16,10 @@ led:
 display:
   show_countdown: true
   show_storage_info: true
+  window_width: 480
+  window_height: 320
+  center_window: true
+  fullscreen: false
 grove_button:
   enabled: true
   pin_button1: 5

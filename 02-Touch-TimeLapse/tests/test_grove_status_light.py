@@ -31,3 +31,23 @@ def test_detect_set_state_and_close(monkeypatch):
 
     light.close()
     assert light.is_available() is False
+
+
+def test_flash_test_restores_previous_state(monkeypatch):
+    import grove_status_light as mod
+
+    strip = MagicMock()
+    strip.numPixels.return_value = 2
+
+    monkeypatch.setattr(mod.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(mod, "WS281X_AVAILABLE", True)
+    monkeypatch.setattr(mod, "PixelStrip", MagicMock(return_value=strip))
+    monkeypatch.setattr(mod, "Color", lambda r, g, b: (r, g, b))
+
+    light = mod.GroveStatusLight(pin=12, pixel_count=2, brightness=10)
+    assert light.detect() is True
+    light.set_state("capturing")
+
+    light.flash_test(0)
+
+    assert light._last_state == "capturing"

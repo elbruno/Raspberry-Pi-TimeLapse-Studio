@@ -187,6 +187,20 @@ class GroveStatusLight:
         time.sleep(max(0.0, duration))
         self.set_state("capturing")
 
+    def set_capture_active(self, active: bool) -> None:
+        """Turn the LED bright white (active=True) or back to capturing/off.
+
+        Used by the capture engine to signal the photo moment: ON 1s before
+        the snapshot and OFF 1s after, providing a clear visual indicator.
+        """
+        if not self._available:
+            return
+        if active:
+            self._fill(RGBColor(120, 120, 120))
+            self._last_state = "capture_flash"
+        else:
+            self.set_state("capturing")
+
     def flash_test(self, duration_seconds: float = 0.25) -> None:
         """Brief bright flash used by the settings diagnostics button."""
         if not self._available:

@@ -179,6 +179,10 @@ class CaptureEngine:
         )
         if use_status_light:
             status_light.set_state("capturing")  # type: ignore[union-attr]
+            logger.info(
+                "Grove status light flash enabled — warmup %.1fs before each capture",
+                led_warmup,
+            )
 
         logger.info("Capture loop running — interval=%ss, quality=%d",
                      interval, quality)
@@ -195,8 +199,16 @@ class CaptureEngine:
                     self._next_capture_mono = next_capture
 
                 # -- LED ON before capture --
+                # Both the USB LEDController (illumination) and the Grove
+                # status light (visual indicator) turn ON `led_warmup` seconds
+                # before the snapshot, then OFF again after.
                 if use_led:
                     led.turn_on()  # type: ignore[union-attr]
+                if use_status_light:
+                    # Bright white pre-flash so the user sees the snapshot moment
+                    status_light.set_capture_active(True)  # type: ignore[union-attr]
+
+                if use_led or use_status_light:
                     # Wait for warmup (interruptible)
                     warmup_end = time.monotonic() + led_warmup
                     while not self._stop_event.is_set():
@@ -205,7 +217,10 @@ class CaptureEngine:
                             break
                         self._stop_event.wait(timeout=min(remaining, 0.25))
                     if self._stop_event.is_set():
-                        led.turn_off()  # type: ignore[union-attr]
+                        if use_led:
+                            led.turn_off()  # type: ignore[union-attr]
+                        if use_status_light:
+                            status_light.set_state("off")  # type: ignore[union-attr]
                         break
 
                 # -- attempt to capture a frame --
@@ -219,9 +234,22 @@ class CaptureEngine:
                                    attempt, MAX_RETRIES)
                     time.sleep(retry_delay)
 
-                # -- LED OFF after capture --
+                # -- LED stays ON briefly after capture, then OFF --
+                # Wait `led_warmup` seconds with LED still on so the user sees
+                # a clear "flash" duration around each snapshot.
+                if use_led or use_status_light:
+                    post_end = time.monotonic() + led_warmup
+                    while not self._stop_event.is_set():
+                        remaining = post_end - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        self._stop_event.wait(timeout=min(remaining, 0.25))
+
                 if use_led:
                     led.turn_off()  # type: ignore[union-attr]
+                if use_status_light:
+                    # Return to the "capturing" steady state between shots
+                    status_light.set_capture_active(False)  # type: ignore[union-attr]
 
                 if frame is None:
                     consecutive_failures += 1
@@ -241,8 +269,6 @@ class CaptureEngine:
                     # -- save the photo --
                     path = storage.save_photo(session, frame, quality)
                     if path:
-                        if use_status_light:
-                            status_light.flash_capture()  # type: ignore[union-attr]
                         with self._lock:
                             self._total_photos = session.total_photos
                             self._last_photo_path = path

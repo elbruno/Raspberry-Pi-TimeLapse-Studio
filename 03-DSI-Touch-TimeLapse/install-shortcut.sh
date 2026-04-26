@@ -30,7 +30,7 @@ cat > "$DESKTOP_FILE_SUDO" << EOF
 [Desktop Entry]
 Name=PiTimeLapse DSI Touch (sudo)
 Comment=Time-lapse capture app with elevated permissions for Grove WS281x LED
-Exec=sudo -E /usr/bin/python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen
+Exec=/bin/bash -lc "export DISPLAY=:0; export XAUTHORITY=/home/pi/.Xauthority; exec sudo --preserve-env=DISPLAY,XAUTHORITY /usr/bin/python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen"
 Path=${SCRIPT_DIR}
 Icon=camera-photo
 Terminal=true

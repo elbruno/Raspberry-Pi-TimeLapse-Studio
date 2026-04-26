@@ -6,6 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DESKTOP_FILE="$HOME/Desktop/pitimelapse-dsi-touch.desktop"
+DESKTOP_FILE_SUDO="$HOME/Desktop/pitimelapse-dsi-touch-sudo.desktop"
 AUTOSTART_DIR="$HOME/.config/autostart"
 POLKIT_MATE_SYSTEM_FILE="/etc/xdg/autostart/polkit-mate-authentication-agent-1.desktop"
 POLKIT_MATE_USER_OVERRIDE="$AUTOSTART_DIR/polkit-mate-authentication-agent-1.desktop"
@@ -25,6 +26,21 @@ EOF
 chmod 644 "$DESKTOP_FILE"
 echo "✅ Desktop shortcut created: $DESKTOP_FILE"
 
+cat > "$DESKTOP_FILE_SUDO" << EOF
+[Desktop Entry]
+Name=PiTimeLapse DSI Touch (sudo)
+Comment=Time-lapse capture app with elevated permissions for Grove WS281x LED
+Exec=sudo -E /usr/bin/python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen
+Path=${SCRIPT_DIR}
+Icon=camera-photo
+Terminal=true
+Type=Application
+Categories=Photography;
+EOF
+
+chmod 644 "$DESKTOP_FILE_SUDO"
+echo "✅ Elevated desktop shortcut created: $DESKTOP_FILE_SUDO"
+
 if [ "${1:-}" = "--autostart" ]; then
     mkdir -p "$AUTOSTART_DIR"
     cp "$DESKTOP_FILE" "$AUTOSTART_DIR/pitimelapse-dsi-touch.desktop"
@@ -40,9 +56,11 @@ if [ "${1:-}" = "--autostart" ]; then
     fi
 
     echo "✅ Autostart enabled — app will launch on boot"
+    echo "   (Autostart uses the standard non-sudo launcher.)"
 fi
 
 echo ""
 echo "You can now:"
 echo "  • Double-tap the 'PiTimeLapse DSI Touch' icon on your desktop"
+echo "  • Use 'PiTimeLapse DSI Touch (sudo)' when Grove WS281x LED needs elevated access"
 echo "  • Or run:  python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen"

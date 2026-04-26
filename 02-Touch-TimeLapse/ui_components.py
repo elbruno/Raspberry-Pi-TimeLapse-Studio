@@ -473,10 +473,11 @@ class _SettingRow:
 class SettingsScreen:
     """Full-screen settings form with tabs for 480×320 displays.
 
-        Three tabs:
+                Four tabs:
       * **Camera** — capture interval, quality, camera index, resolution.
             * **Display** — app window size, centering, fullscreen, header toggles.
-            * **Hardware** — LED flash, LED warmup, LED/button diagnostics.
+            * **LED** — LED settings + LED diagnostics.
+            * **Buttons** — physical button mapping + diagnostics.
 
     Uses stepper controls ([–] value [+]) instead of text input —
     much easier on a small touchscreen.
@@ -532,7 +533,7 @@ class SettingsScreen:
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
         self._font_small: Optional[pygame.font.Font] = None
-        self.active_tab: int = 0  # 0 = Camera, 1 = Display, 2 = Hardware
+        self.active_tab: int = 0  # 0=Camera, 1=Display, 2=LED, 3=Buttons
         self.led_detected = led_detected
         self.led_port_name = led_port_name
         self.grove_buttons_detected = grove_buttons_detected
@@ -545,14 +546,15 @@ class SettingsScreen:
         self.hardware_message = ""
         self.hardware_message_color = COLOR_TEXT_DIM
 
-        # Tab buttons — 3 tabs
-        tab_w = screen_w // 3
+        # Tab buttons — 4 tabs
+        tab_w = screen_w // 4
         self.tab_rects = [
             pygame.Rect(0, 0, tab_w, self.TAB_HEIGHT),
             pygame.Rect(tab_w, 0, tab_w, self.TAB_HEIGHT),
-            pygame.Rect(tab_w * 2, 0, screen_w - tab_w * 2, self.TAB_HEIGHT),
+            pygame.Rect(tab_w * 2, 0, tab_w, self.TAB_HEIGHT),
+            pygame.Rect(tab_w * 3, 0, screen_w - tab_w * 3, self.TAB_HEIGHT),
         ]
-        self.tab_labels = ["Camera", "Display", "Hardware"]
+        self.tab_labels = ["Camera", "Display", "LED", "Buttons"]
 
         row_h = 36
         start_y = self.TAB_HEIGHT + 6
@@ -592,6 +594,18 @@ class SettingsScreen:
             self._camera_selected = 0
             self.camera_options = [(configured_index, "Manual")]
 
+        grove_button = config.get("grove_button", {})
+        self._start_stop_options: list[tuple[str, str]] = [
+            ("button1", "Btn1"),
+            ("button2", "Btn2"),
+        ]
+        configured_start_stop = str(grove_button.get("start_stop_button", "button1"))
+        self._start_stop_selected = 0
+        for idx_opt, (value, _) in enumerate(self._start_stop_options):
+            if value == configured_start_stop:
+                self._start_stop_selected = idx_opt
+                break
+
         # Camera combo row geometry (same right-side alignment as stepper rows)
         self.camera_label_y = start_y + row_h * 2 + btn_size // 2 - 8
         self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
@@ -602,6 +616,11 @@ class SettingsScreen:
         self.window_size_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
         self.window_size_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
         self.window_size_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
+
+        self.start_stop_label_y = start_y + row_h + btn_size // 2 - 8
+        self.start_stop_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h, btn_size, btn_size)
+        self.start_stop_val_rect = pygame.Rect(screen_w - 146, start_y + row_h, 100, btn_size)
+        self.start_stop_btn_next = pygame.Rect(screen_w - 40, start_y + row_h, btn_size, btn_size)
 
         # ── Camera tab rows ──
         self.camera_rows = [
@@ -639,8 +658,8 @@ class SettingsScreen:
                         0, 1, 1),
         ]
 
-        # ── Hardware tab rows ──
-        self.hardware_rows = [
+        # ── LED tab rows ──
+        self.led_rows = [
             _SettingRow(start_y, screen_w, btn_size,
                         "LED Flash", "led.enabled",
                         1 if led.get("enabled", True) else 0, 0, 1, 1),
@@ -648,12 +667,16 @@ class SettingsScreen:
                         "LED Warmup", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
+
+        # ── Buttons tab rows ──
+        self.button_rows = []
+
         # Diagnostic buttons and status blocks on the hardware tab.
         diag_y = start_y + row_h * 2 + 8
         self.btn_led_test = pygame.Rect(20, diag_y, screen_w - 40, 40)
-        self.btn_button_test = pygame.Rect(20, diag_y + 50, screen_w - 40, 40)
+        self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
         self._led_status_y = diag_y + 96
-        self._button_status_y = self._led_status_y + 40
+        self._button_status_y = start_y + row_h * 3 + 10
 
         # Bottom buttons — positioned below the last row
         btn_w = 140
@@ -703,9 +726,17 @@ class SettingsScreen:
                 self._window_size_selected = (self._window_size_selected + 1) % len(self.window_size_options)
                 return None
             rows = self.display_rows
-        else:
+        elif self.active_tab == 2:
             if self.btn_led_test.collidepoint(pos):
                 return "test_led"
+            rows = self.led_rows
+        else:
+            if self.start_stop_btn_prev.collidepoint(pos):
+                self._start_stop_selected = (self._start_stop_selected - 1) % len(self._start_stop_options)
+                return None
+            if self.start_stop_btn_next.collidepoint(pos):
+                self._start_stop_selected = (self._start_stop_selected + 1) % len(self._start_stop_options)
+                return None
             if self.btn_button_test.collidepoint(pos):
                 self.button_test_active = not self.button_test_active
                 if self.button_test_active:
@@ -713,7 +744,7 @@ class SettingsScreen:
                 else:
                     self.set_hardware_message("Button test stopped", False)
                 return None
-            rows = self.hardware_rows
+            rows = self.button_rows
         for row in rows:
             row.handle_tap(pos)
 
@@ -744,7 +775,7 @@ class SettingsScreen:
     def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
         flat = {}
-        for row in self.camera_rows + self.display_rows + self.hardware_rows:
+        for row in self.camera_rows + self.display_rows + self.led_rows + self.button_rows:
             flat[row.key] = row.value
 
         config = copy.deepcopy(base_config or {})
@@ -783,6 +814,9 @@ class SettingsScreen:
             "window_height": window_height,
             "center_window": bool(flat.get("display.center_window", 1)),
             "fullscreen": bool(flat.get("display.fullscreen", 0)),
+        })
+        config["grove_button"].update({
+            "start_stop_button": self._start_stop_options[self._start_stop_selected][0],
         })
 
         return config
@@ -841,8 +875,10 @@ class SettingsScreen:
             rows = self.camera_rows
         elif self.active_tab == 1:
             rows = self.display_rows
+        elif self.active_tab == 2:
+            rows = self.led_rows
         else:
-            rows = self.hardware_rows
+            rows = self.button_rows
         for row in rows:
             row.draw(surface, self.font)
 
@@ -883,12 +919,9 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.window_size_btn_next.center))
 
-        # ── Hardware diagnostics (only on Hardware tab) ──
+        # ── LED diagnostics (only on LED tab) ──
         if self.active_tab == 2:
             self._draw_action_button(surface, self.btn_led_test, "TEST LED", COLOR_TEST)
-            button_test_label = "STOP BUTTON TEST" if self.button_test_active else "TEST BUTTONS"
-            button_color = COLOR_STOP if self.button_test_active else COLOR_SETTINGS
-            self._draw_action_button(surface, self.btn_button_test, button_test_label, button_color)
 
             if self.led_backend == "grove":
                 if self.grove_light_detected:
@@ -910,6 +943,32 @@ class SettingsScreen:
                 hint_surf = self.font_small.render("(install uhubctl)",
                                                    True, COLOR_TEXT_DIM)
                 surface.blit(hint_surf, (14, self._led_status_y + 18))
+            if self.led_backend == "grove" and not self.grove_light_detected:
+                hint_surf = self.font_small.render("(install rpi_ws281x)",
+                                                   True, COLOR_TEXT_DIM)
+                surface.blit(hint_surf, (14, self._led_status_y + 18))
+
+        # ── Buttons diagnostics (only on Buttons tab) ──
+        if self.active_tab == 3:
+            mapping_lbl = self.font.render("Start/Stop", True, COLOR_TEXT)
+            surface.blit(mapping_lbl, (20, self.start_stop_label_y))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.start_stop_btn_prev, border_radius=6)
+            prev_txt = self.font.render("<", True, COLOR_TEXT)
+            surface.blit(prev_txt, prev_txt.get_rect(center=self.start_stop_btn_prev.center))
+
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.start_stop_val_rect, border_radius=6)
+            mapped_text = self._start_stop_options[self._start_stop_selected][1]
+            map_txt = self.font_small.render(mapped_text, True, COLOR_TEXT)
+            surface.blit(map_txt, map_txt.get_rect(center=self.start_stop_val_rect.center))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.start_stop_btn_next, border_radius=6)
+            next_txt = self.font.render(">", True, COLOR_TEXT)
+            surface.blit(next_txt, next_txt.get_rect(center=self.start_stop_btn_next.center))
+
+            button_test_label = "STOP BUTTON TEST" if self.button_test_active else "TEST BUTTONS"
+            button_color = COLOR_STOP if self.button_test_active else COLOR_SETTINGS
+            self._draw_action_button(surface, self.btn_button_test, button_test_label, button_color)
 
             button_detected_text = "\u2713 Grove buttons ready" if self.grove_buttons_detected else "\u2717 Grove buttons not detected"
             button_detected_color = COLOR_USB_OK if self.grove_buttons_detected else COLOR_TEXT_DIM

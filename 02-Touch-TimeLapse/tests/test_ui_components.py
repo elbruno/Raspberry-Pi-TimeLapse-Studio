@@ -22,15 +22,17 @@ def test_settings_screen_preserves_existing_nested_config_values():
             "center_window": True,
             "fullscreen": False,
         },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6, "start_stop_button": "button2"},
         "grove_light": {"enabled": True, "pin": 12},
     }
 
     screen = SettingsScreen(480, 320, config, camera_options=[(1, "USB Cam")])
     values = screen.get_values(base_config=config)
 
+    assert screen.tab_labels == ["Camera", "Display", "LED", "Buttons"]
     assert values["led"]["backend"] == "grove"
     assert values["led"]["usb_port"] == "1-1.2"
+    assert values["grove_button"]["start_stop_button"] == "button2"
     assert values["grove_button"]["pin_button1"] == 5
     assert values["grove_light"]["pin"] == 12
 

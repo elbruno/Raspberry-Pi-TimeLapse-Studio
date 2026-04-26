@@ -639,6 +639,7 @@ class TimeLapseApp:
             return
 
         for event in self.grove_buttons.poll_events():
+            logger.info("Grove button event: %s", event.button)
             if self._screen_state == "settings" and self._settings_screen is not None:
                 self._settings_screen.register_hardware_button(event.button)
                 continue

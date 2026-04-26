@@ -549,6 +549,8 @@ class SettingsScreen:
         self.led_test_flash_until = 0.0
         self.camera_detect_running = False
         self.led_detect_running = False
+        self.camera_preview_frame: Optional[pygame.Surface] = None
+        self.camera_preview_timestamp: float = 0.0
 
         # Tab buttons — 4 tabs
         tab_w = screen_w // 4
@@ -825,6 +827,11 @@ class SettingsScreen:
         """Update visual state for the LED detect action button."""
         self.led_detect_running = running
 
+    def set_camera_preview_frame(self, frame: Optional[pygame.Surface]) -> None:
+        """Update the camera preview frame displayed on the Camera tab."""
+        self.camera_preview_frame = frame
+        self.camera_preview_timestamp = time.time()
+
     def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
         flat = {}
@@ -966,6 +973,34 @@ class SettingsScreen:
             if self.camera_detect_running:
                 camera_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_camera_detect, "DETECT CAM", camera_detect_color)
+
+            # Camera preview area (bottom right)
+            preview_x = 200
+            preview_y = 100
+            preview_w = 240
+            preview_h = 180
+            preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
+            pygame.draw.rect(surface, COLOR_FIELD_BG, preview_rect, border_radius=8)
+            pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_rect, width=1, border_radius=8)
+            
+            if self.camera_preview_frame is not None:
+                # Scale frame to fit preview area
+                frame_scaled = pygame.transform.scale(self.camera_preview_frame, (preview_w - 4, preview_h - 4))
+                surface.blit(frame_scaled, (preview_x + 2, preview_y + 2))
+            else:
+                # Show placeholder text
+                placeholder = self.font_small.render("No frame", True, COLOR_TEXT_DIM)
+                surface.blit(placeholder, placeholder.get_rect(center=preview_rect.center))
+            
+            # Camera list below preview
+            list_y = preview_y + preview_h + 10
+            if self.camera_options:
+                cameras_text = self.font_small.render(f"Available: {len(self.camera_options)}", True, COLOR_TEXT)
+                surface.blit(cameras_text, (preview_x, list_y))
+                for i, (idx, name) in enumerate(self.camera_options[:3]):  # Show first 3
+                    short_name = name[:15] if len(name) > 15 else name
+                    cam_item = self.font_small.render(f"  [{idx}] {short_name}", True, COLOR_TEXT if i == self._camera_selected else COLOR_TEXT_DIM)
+                    surface.blit(cam_item, (preview_x + 10, list_y + 16 + i * 14))
 
         if self.active_tab == 1:
             size_lbl = self.font.render("App Size", True, COLOR_TEXT)

@@ -995,9 +995,30 @@ class TimeLapseApp:
                         cam = OpenCVCamera()
                         if cam.open(idx, w, h):
                             self.camera = cam
-                            found_count = len(available_cameras)
-                            msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {name}"
-                            self._settings_screen.set_hardware_message(msg, True)
+                            
+                            # Capture a frame to display as preview
+                            frame = None
+                            for attempt in range(3):
+                                frame = cam.capture()
+                                if frame is not None:
+                                    break
+                                time.sleep(0.1)
+                            
+                            if frame is not None:
+                                # Convert BGR to RGB for display
+                                import cv2
+                                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                # Convert numpy array to pygame surface
+                                pygame_frame = pygame.surfarray.make_surface(
+                                    np.transpose(rgb_frame, (1, 0, 2))
+                                )
+                                self._settings_screen.set_camera_preview_frame(pygame_frame)
+                                
+                                found_count = len(available_cameras)
+                                msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {name}"
+                                self._settings_screen.set_hardware_message(msg, True)
+                            else:
+                                self._settings_screen.set_hardware_message(f"Camera found but frame capture failed: {name}", False)
                         else:
                             self._settings_screen.set_hardware_message(f"Found cameras but failed to open: {name}", False)
                     else:

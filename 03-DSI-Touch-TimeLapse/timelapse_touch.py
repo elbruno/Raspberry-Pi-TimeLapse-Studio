@@ -20,6 +20,7 @@ import logging
 import os
 import platform
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -472,6 +473,7 @@ class TimeLapseApp:
         """Open the camera using OpenCV (with fallback index probing)."""
         if not CAMERA_AVAILABLE:
             logger.warning("camera_opencv not available — preview disabled")
+            self._camera_warning = "Camera module unavailable"
             return
         # Close existing handle before re-initialising (e.g., after settings save)
         if self.camera is not None:
@@ -481,6 +483,7 @@ class TimeLapseApp:
         probe = OpenCVCamera()
         if not probe.is_available():
             logger.warning("No camera detected")
+            self._camera_warning = self._camera_detection_hint()
             return
 
         cam_cfg = self.config.get("camera", {})
@@ -522,8 +525,42 @@ class TimeLapseApp:
             cam.close()
 
         self.camera = None
-        self._camera_warning = "No camera detected"
+        self._camera_warning = self._camera_detection_hint()
         logger.warning("Camera failed to open on all probed indices")
+
+    def _camera_detection_hint(self) -> str:
+        """Return a user-facing hint for camera detection failures."""
+        # Default message (safe on all platforms)
+        fallback = "No camera detected — check camera cable/power"
+
+        if platform.system() != "Linux":
+            return fallback
+
+        try:
+            result = subprocess.run(
+                ["lsusb"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            lines = (result.stdout or "").lower().splitlines()
+        except Exception:
+            return fallback
+
+        usb_camera_tokens = (
+            "camera",
+            "webcam",
+            "uvc",
+            "logitech",
+            "microsoft",
+            "sonix",
+            "realtek",
+            "imaging",
+        )
+        if any(any(tok in line for tok in usb_camera_tokens) for line in lines):
+            return "Camera found on USB but stream failed — try another index"
+
+        return fallback
 
     def _init_led(self) -> None:
         """Auto-detect a USB LED and ensure it starts OFF."""

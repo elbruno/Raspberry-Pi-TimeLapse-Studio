@@ -60,6 +60,61 @@ class TestFindFirstUsbDrive:
 
     @patch("usb_detector.platform")
     @patch("usb_detector.psutil")
+    @patch("usb_detector.subprocess.run")
+    @patch("usb_detector._command_exists")
+    def test_linux_attempts_automount_when_partition_unmounted(
+        self,
+        mock_command_exists,
+        mock_run,
+        mock_psutil,
+        mock_platform,
+    ):
+        """When /dev/sdX is present but unmounted, udisksctl mount is attempted."""
+        mock_platform.system.return_value = "Linux"
+        part = MagicMock()
+        part.mountpoint = ""
+        part.device = "/dev/sda1"
+        part.fstype = "ntfs"
+        mock_psutil.disk_partitions.return_value = [part]
+
+        mock_command_exists.return_value = True
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="Mounted /dev/sda1 at /media/pi/USB_DRIVE.\n",
+            stderr="",
+        )
+
+        from usb_detector import find_first_usb_drive
+
+        result = find_first_usb_drive()
+        assert result == "/media/pi/USB_DRIVE"
+
+    @patch("usb_detector.platform")
+    @patch("usb_detector.psutil")
+    @patch("usb_detector._command_exists")
+    def test_linux_automount_skipped_without_udisksctl(
+        self,
+        mock_command_exists,
+        mock_psutil,
+        mock_platform,
+    ):
+        """Without udisksctl, detector falls back to local path."""
+        mock_platform.system.return_value = "Linux"
+        part = MagicMock()
+        part.mountpoint = ""
+        part.device = "/dev/sda1"
+        part.fstype = "ntfs"
+        mock_psutil.disk_partitions.return_value = [part]
+
+        mock_command_exists.return_value = False
+
+        from usb_detector import find_first_usb_drive
+
+        result = find_first_usb_drive()
+        assert result == "./data"
+
+    @patch("usb_detector.platform")
+    @patch("usb_detector.psutil")
     def test_fallback_when_only_system_partitions(self, mock_psutil, mock_platform):
         """System partitions (/, /boot, C:\\) are not treated as USB."""
         mock_platform.system.return_value = "Linux"

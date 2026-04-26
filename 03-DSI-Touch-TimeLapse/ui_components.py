@@ -41,6 +41,10 @@ COLOR_FIELD_BG = (35, 35, 55)          # value field background
 COLOR_TAB_ACTIVE = (15, 52, 96)        # active tab (matches status bar)
 COLOR_TAB_INACTIVE = (30, 30, 50)      # inactive tab
 COLOR_TEST = (125, 96, 196)            # diagnostic action buttons
+COLOR_PANEL_BG = (31, 34, 58)
+COLOR_PANEL_BORDER = (95, 108, 142)
+COLOR_PANEL_TITLE_BG = (38, 63, 102)
+COLOR_PANEL_ACCENT = (87, 196, 170)
 
 
 def _darken(color: Tuple[int, ...], amount: int = 40) -> Tuple[int, ...]:
@@ -977,6 +981,35 @@ class SettingsScreen:
         surface.blit(title, (tile.x + 10, tile.y + 8))
         surface.blit(count, (tile.x + 10, tile.y + 24))
 
+    def _draw_section_panel(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        title: str,
+        title_y: int,
+    ) -> None:
+        """Render a card-like section container with an accent title badge."""
+        shadow = rect.move(0, 2)
+        pygame.draw.rect(surface, _darken(COLOR_PANEL_BG, 10), shadow, border_radius=10)
+        pygame.draw.rect(surface, COLOR_PANEL_BG, rect, border_radius=10)
+        pygame.draw.rect(surface, COLOR_PANEL_BORDER, rect, width=2, border_radius=10)
+
+        chip_text = self.font_small.render(title, True, COLOR_TEXT)
+        chip_w = chip_text.get_width() + 18
+        chip_h = 18
+        chip_rect = pygame.Rect(rect.x + 10, title_y, chip_w, chip_h)
+        pygame.draw.rect(surface, COLOR_PANEL_TITLE_BG, chip_rect, border_radius=8)
+        pygame.draw.rect(surface, _lighten(COLOR_PANEL_TITLE_BG, 25), chip_rect, width=1, border_radius=8)
+        surface.blit(chip_text, chip_text.get_rect(center=chip_rect.center))
+
+        pygame.draw.line(
+            surface,
+            COLOR_PANEL_ACCENT,
+            (rect.x + 10, rect.y + 10),
+            (rect.x + min(70, rect.width - 10), rect.y + 10),
+            2,
+        )
+
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(COLOR_BACKGROUND)
 
@@ -1020,17 +1053,19 @@ class SettingsScreen:
                 self.camera_preview_rect.width + 24,
                 self.camera_general_rect.height,
             )
-            pygame.draw.rect(surface, COLOR_FIELD_BG, self.camera_general_rect, border_radius=10)
-            pygame.draw.rect(surface, COLOR_TEXT_DIM, self.camera_general_rect, width=2, border_radius=10)
-            pygame.draw.rect(surface, COLOR_FIELD_BG, preview_panel_rect, border_radius=10)
-            pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_panel_rect, width=2, border_radius=10)
-
-            section1 = self.font_small.render("General Config", True, COLOR_TEXT_DIM)
-            section2 = self.font_small.render("Camera Preview & Detect", True, COLOR_TEXT_DIM)
             title1_y = max(self.TAB_HEIGHT + 2, self.camera_general_rect.y - 14)
             title2_y = max(self.TAB_HEIGHT + 2, preview_panel_rect.y - 14)
-            surface.blit(section1, (self.camera_general_rect.x + 10, title1_y))
-            surface.blit(section2, (preview_panel_rect.x + 10, title2_y))
+            self._draw_section_panel(surface, self.camera_general_rect, "General Config", title1_y)
+            self._draw_section_panel(surface, preview_panel_rect, "Camera Preview & Detect", title2_y)
+
+            divider_x = (self.camera_general_rect.right + preview_panel_rect.x) // 2
+            pygame.draw.line(
+                surface,
+                _darken(COLOR_PANEL_BORDER, 10),
+                (divider_x, self.camera_general_rect.y + 14),
+                (divider_x, self.camera_general_rect.bottom - 14),
+                1,
+            )
 
             # Camera selector on right (standard position)
             cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
@@ -1077,6 +1112,8 @@ class SettingsScreen:
             # Available cameras list below preview
             preview_x, list_y = self.camera_list_pos
             if self.camera_options:
+                list_bg = pygame.Rect(preview_x - 4, list_y - 2, preview_rect.width + 8, 38)
+                pygame.draw.rect(surface, _darken(COLOR_PANEL_BG, 4), list_bg, border_radius=6)
                 cameras_text = self.font_small.render(f"Available ({len(self.camera_options)}):", True, COLOR_TEXT)
                 surface.blit(cameras_text, (preview_x, list_y))
                 for i, (idx, name) in enumerate(self.camera_options[:2]):  # Show first 2

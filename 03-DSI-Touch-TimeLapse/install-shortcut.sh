@@ -81,6 +81,8 @@ chmod 644 "$DESKTOP_FILE"
 if [[ $AUTOSTART -eq 1 ]]; then
 	cp "$DESKTOP_FILE" "$AUTOSTART_FILE"
 	chmod 644 "$AUTOSTART_FILE"
+else
+	rm -f "$AUTOSTART_FILE"
 fi
 
 rm -f "$LEGACY_DESKTOP_FILE" "$LEGACY_AUTOSTART_FILE"
@@ -89,6 +91,8 @@ echo "✅ Desktop shortcut created: $DESKTOP_FILE"
 echo "✅ Launcher script created: $LAUNCHER_SCRIPT"
 if [[ $AUTOSTART -eq 1 ]]; then
 	echo "✅ Autostart entry created: $AUTOSTART_FILE"
+else
+	echo "✅ Autostart entry removed (startup launch disabled by default)"
 fi
 echo ""
 echo "You can now:"

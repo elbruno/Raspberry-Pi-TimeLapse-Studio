@@ -148,8 +148,16 @@ What `--all` does here:
 
 - installs SDL2 and Python dependencies
 - optionally includes LED tooling support
-- creates desktop shortcut + autostart
+- creates the desktop shortcut
 - **does not install any LCD driver**
+
+Autostart is now **disabled by default**. If you want the app to launch on
+boot, enable it explicitly later with:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+bash install.sh --autostart
+```
 
 ### Important
 
@@ -217,7 +225,14 @@ The shortcut uses a smart launcher that:
 
 ### Autostart
 
-If you used `bash install.sh --all`, autostart is already configured.
+Autostart is **not** enabled by default.
+
+Enable it only when you want boot-time launch:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
+bash install.sh --autostart
+```
 
 ---
 

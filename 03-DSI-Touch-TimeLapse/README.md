@@ -73,6 +73,10 @@ sudo bash ../99-InitRPi/rpi-timelapse-cleanup.sh --profile touch --apply --yes -
 bash install.sh --all
 ```
 
+`--all` now installs dependencies plus the desktop shortcut, but **does not**
+enable launch-on-boot. Use `bash install.sh --autostart` only if you explicitly
+want the app to start automatically when the device boots.
+
 1. Reboot and launch:
 
 ```bash
@@ -119,7 +123,7 @@ common `800x480` DSI touchscreens.
 ├── timelapse_touch.py   # Launcher that reuses Scenario 02 app code
 ├── config.yaml          # Scenario 03 local config
 ├── install.sh           # DSI-focused installer
-├── install-shortcut.sh  # Desktop shortcut + optional autostart
+├── install-shortcut.sh  # Desktop shortcut + optional opt-in autostart
 └── requirements.txt     # Reuses Scenario 02 Python dependencies
 ```
 

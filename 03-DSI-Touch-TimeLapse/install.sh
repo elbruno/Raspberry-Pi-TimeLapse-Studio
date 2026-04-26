@@ -9,24 +9,28 @@
 #   chmod +x install.sh
 #   ./install.sh                # standard install
 #   ./install.sh --with-led     # also install uhubctl for USB LED control
-#   ./install.sh --autostart    # install + create desktop shortcut + autostart
-#   ./install.sh --all          # all of the above
+#   ./install.sh --shortcut     # create desktop shortcut only (no autostart)
+#   ./install.sh --autostart    # create desktop shortcut + autostart
+#   ./install.sh --all          # dependencies + desktop shortcut (no autostart)
 # -----------------------------------------------------------
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WITH_LED=0
+SHORTCUT=0
 AUTOSTART=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all)        WITH_LED=1; AUTOSTART=1; shift ;;
+    --all)        WITH_LED=1; SHORTCUT=1; shift ;;
     --with-led)   WITH_LED=1; shift ;;
-    --autostart)  AUTOSTART=1; shift ;;
+    --shortcut)   SHORTCUT=1; shift ;;
+    --autostart)  SHORTCUT=1; AUTOSTART=1; shift ;;
     -h|--help)
-      echo "Usage: ./install.sh [--all] [--with-led] [--autostart]"
-      echo "  --all         Install everything (LED + desktop shortcut + autostart)"
+      echo "Usage: ./install.sh [--all] [--with-led] [--shortcut] [--autostart]"
+      echo "  --all         Install dependencies + desktop shortcut (no autostart)"
       echo "  --with-led    Install uhubctl for USB LED flash control"
+      echo "  --shortcut    Create desktop shortcut only"
       echo "  --autostart   Create desktop shortcut + autostart on boot"
       echo "                and disable the duplicate MATE PolicyKit agent when present"
       exit 0
@@ -99,15 +103,20 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 4. Optional: desktop shortcut + autostart
+# 4. Optional: desktop shortcut / autostart
 # ------------------------------------------------------------------
-if [[ $AUTOSTART -eq 1 ]]; then
+if [[ $SHORTCUT -eq 1 ]]; then
   echo
-  echo "[4/4] Setting up desktop shortcut + autostart..."
-  bash "${SCRIPT_DIR}/install-shortcut.sh" --autostart
+  if [[ $AUTOSTART -eq 1 ]]; then
+    echo "[4/4] Setting up desktop shortcut + autostart..."
+    bash "${SCRIPT_DIR}/install-shortcut.sh" --autostart
+  else
+    echo "[4/4] Setting up desktop shortcut (autostart remains disabled)..."
+    bash "${SCRIPT_DIR}/install-shortcut.sh"
+  fi
 else
   echo
-  echo "[4/4] Skipping desktop shortcut (use --autostart to enable)."
+  echo "[4/4] Skipping desktop shortcut (use --shortcut or --autostart to enable)."
 fi
 
 echo
@@ -116,6 +125,12 @@ echo "Done! Run the app with:"
 echo "  cd ${SCRIPT_DIR}"
 echo "  python3 timelapse_touch.py --fullscreen"
 echo
+if [[ $AUTOSTART -eq 0 ]]; then
+  echo "Autostart is disabled by default."
+  echo "To enable it later:"
+  echo "  bash install.sh --autostart"
+  echo
+fi
 echo "Notes for DSI displays:"
 echo "  • No SPI LCD driver script is required for Freenove DSI displays"
 echo "  • Ensure Raspberry Pi OS Desktop is running on the DSI panel"

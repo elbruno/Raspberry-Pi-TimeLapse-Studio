@@ -911,6 +911,12 @@ class SettingsScreen:
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(COLOR_BACKGROUND)
 
+        # Local layout constants used by tab-specific custom sections.
+        # Keep these in sync with __init__ geometry baselines.
+        row_h = 36
+        start_y = self.TAB_HEIGHT + 6
+        screen_w = self.screen_w
+
         # ── Tab bar ──
         for i, (rect, label) in enumerate(zip(self.tab_rects, self.tab_labels)):
             color = COLOR_TAB_ACTIVE if i == self.active_tab else COLOR_TAB_INACTIVE

@@ -33,6 +33,10 @@ If you're starting from a **brand-new SD card**, use this order:
 4. Install Scenario 03
 5. Reboot and test from SSH first
 
+For trusted/internal devices, step 3 can also enable the new
+**elevated defaults** mode so future SSH sessions start in a root shell and the
+desktop launcher can use passwordless elevation automatically.
+
 📖 Full walkthrough → [**USER_MANUAL.md**](USER_MANUAL.md)
 
 > ✅ For this scenario, **do not install any LCD driver package or SPI LCD script**.
@@ -57,6 +61,10 @@ bash cleanup.sh
 
 # Apply cleanup
 bash cleanup.sh --apply --yes
+
+# Optional for trusted/internal devices:
+# enable passwordless sudo + auto-root shells during first-use cleanup
+sudo bash ../99-InitRPi/rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
 ```
 
 1. Install the requirements for Scenario 03:
@@ -72,6 +80,10 @@ sudo reboot
 # or run manually after reboot
 python3 timelapse_touch.py --fullscreen
 ```
+
+The desktop shortcut now uses a smart launcher: it runs directly when already
+root, uses passwordless `sudo` when configured, and otherwise falls back to a
+normal user launch with a warning that Grove WS281x LED access may be limited.
 
 ---
 
@@ -121,3 +133,4 @@ Use Scenario 03 + Scenario 02 documentation together:
 - [Scenario 02 README](../02-Touch-TimeLapse/README.md)
 - [Scenario 02 User Manual](../02-Touch-TimeLapse/USER_MANUAL.md)
 - [Cleanup SSH guide](../99-InitRPi/rpi-cleanup-ssh-commands.md)
+- [Internal-device elevation helper](../99-InitRPi/enable-device-elevation.sh)

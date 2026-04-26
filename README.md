@@ -95,6 +95,7 @@ Just got a fresh Raspberry Pi and running low on disk space? The default Pi OS i
 |-------------|----------|
 | 📖 **Understand the cleanup plan** | [Cleanup Plan](99-InitRPi/Raspberry-Pi-TimeLapse-Studio-cleanup-plan.md) |
 | 🔗 **Copy-paste SSH commands** | [SSH Commands Guide](99-InitRPi/rpi-cleanup-ssh-commands.md) ⬅️ **Start here!** |
+| 🔐 **Enable internal-device auto-root defaults** | [enable-device-elevation.sh](99-InitRPi/enable-device-elevation.sh) |
 | 📜 **Run the automated script** | [rpi-timelapse-cleanup.sh](99-InitRPi/rpi-timelapse-cleanup.sh) |
 
 ### Two cleanup profiles
@@ -103,6 +104,11 @@ Just got a fresh Raspberry Pi and running low on disk space? The default Pi OS i
 - **Touch profile** → Keeps desktop/X11 for LCD/touchscreen (works with Scenario 03 — DSI Touch)
 
 Typical savings: **500 MB – 1.5 GB** depending on profile.
+
+For trusted/internal devices, the first-use flow can also enable
+**passwordless sudo + automatic root shells** so day-to-day operation no longer
+requires typing `sudo` repeatedly. See the SSH guide and
+`99-InitRPi/enable-device-elevation.sh`.
 
 ---
 

@@ -110,6 +110,25 @@ sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
 sudo apt update
 ```
 
+### Optional — internal-device elevated defaults
+
+If this Pi is a trusted internal device and you want interactive logins to land
+in a root shell automatically, fold that into the same first-use step:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
+sudo apt update
+```
+
+This enables:
+
+- passwordless `sudo` for the selected user
+- automatic root shells on interactive login/SSH
+- access to the original user's `~/.local` Python packages while running as root
+
+Use this mode only on dedicated/internal devices.
+
 Why `touch` profile?
 
 - it keeps the desktop/X11 stack required by the touchscreen app
@@ -161,6 +180,10 @@ cd ~/Raspberry-Pi-TimeLapse-Studio/03-DSI-Touch-TimeLapse
 python3 timelapse_touch.py --fullscreen
 ```
 
+If you enabled internal-device elevated defaults during cleanup, reconnecting by
+SSH should already place you in a root shell, so later maintenance commands no
+longer need manual `sudo`.
+
 This is the best first test because:
 
 - the app renders on the touchscreen
@@ -185,6 +208,12 @@ python3 timelapse_touch.py --fullscreen
 The installer creates a desktop icon named:
 
 - **PiTimeLapse DSI Touch**
+
+The shortcut uses a smart launcher that:
+
+- runs the app directly when the session is already root
+- uses passwordless `sudo` automatically when available
+- falls back to a normal user launch with a warning if elevation is unavailable
 
 ### Autostart
 

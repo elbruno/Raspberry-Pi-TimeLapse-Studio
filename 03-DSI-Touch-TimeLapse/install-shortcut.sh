@@ -5,17 +5,70 @@ set -euo pipefail
 # (DSI Touch TimeLapse).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DESKTOP_FILE_SUDO="$HOME/Desktop/pitimelapse-dsi-touch-sudo.desktop"
+AUTOSTART=0
 
-# Note: Only the sudo launcher is created. The Grove WS281x LED requires /dev/mem access,
-# which is only available with elevated permissions. Using a non-sudo launcher would silently
-# fail with "Grove LED not detected" without providing clear feedback to the user.
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--autostart)
+			AUTOSTART=1
+			shift
+			;;
+		-h|--help)
+			echo "Usage: ./install-shortcut.sh [--autostart]"
+			exit 0
+			;;
+		*)
+			echo "Unknown option: $1" >&2
+			exit 1
+			;;
+	esac
+done
 
-cat > "$DESKTOP_FILE_SUDO" << EOF
+DESKTOP_DIR="$HOME/Desktop"
+AUTOSTART_DIR="$HOME/.config/autostart"
+LAUNCHER_SCRIPT="$SCRIPT_DIR/launch_dsi_touch.sh"
+DESKTOP_FILE="$DESKTOP_DIR/pitimelapse-dsi-touch.desktop"
+AUTOSTART_FILE="$AUTOSTART_DIR/pitimelapse-dsi-touch.desktop"
+LEGACY_DESKTOP_FILE="$DESKTOP_DIR/pitimelapse-dsi-touch-sudo.desktop"
+LEGACY_AUTOSTART_FILE="$AUTOSTART_DIR/pitimelapse-dsi-touch-sudo.desktop"
+USER_NAME="${SUDO_USER:-${USER:-pi}}"
+USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
+if [[ -z "$USER_HOME" ]]; then
+	USER_HOME="$HOME"
+fi
+XAUTHORITY_PATH="$USER_HOME/.Xauthority"
+
+mkdir -p "$DESKTOP_DIR"
+mkdir -p "$AUTOSTART_DIR"
+
+cat > "$LAUNCHER_SCRIPT" << EOF
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+export DISPLAY="\${DISPLAY:-:0}"
+export XAUTHORITY="\${XAUTHORITY:-$XAUTHORITY_PATH}"
+
+if [[ "\${EUID:-\$(id -u)}" == "0" ]]; then
+	exec /usr/bin/python3 "\${SCRIPT_DIR}/timelapse_touch.py" --fullscreen
+fi
+
+if sudo -n true >/dev/null 2>&1; then
+	exec sudo -n --preserve-env=DISPLAY,XAUTHORITY /usr/bin/python3 "\${SCRIPT_DIR}/timelapse_touch.py" --fullscreen
+fi
+
+echo "Warning: passwordless sudo is not configured for this user." >&2
+echo "Launching without elevation; Grove WS281x LED access may be unavailable." >&2
+exec /usr/bin/python3 "\${SCRIPT_DIR}/timelapse_touch.py" --fullscreen
+EOF
+
+chmod 755 "$LAUNCHER_SCRIPT"
+
+cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
-Name=PiTimeLapse DSI Touch (sudo)
-Comment=Time-lapse capture app with elevated permissions for Grove WS281x LED
-Exec=/bin/bash -lc "export DISPLAY=:0; export XAUTHORITY=/home/pi/.Xauthority; exec sudo --preserve-env=DISPLAY,XAUTHORITY /usr/bin/python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen"
+Name=PiTimeLapse DSI Touch
+Comment=Time-lapse capture app for DSI screens with smart elevation support
+Exec=${LAUNCHER_SCRIPT}
 Path=${SCRIPT_DIR}
 Icon=camera-photo
 Terminal=true
@@ -23,11 +76,26 @@ Type=Application
 Categories=Photography;
 EOF
 
-chmod 644 "$DESKTOP_FILE_SUDO"
-echo "✅ Desktop shortcut created: $DESKTOP_FILE_SUDO"
+chmod 644 "$DESKTOP_FILE"
+
+if [[ $AUTOSTART -eq 1 ]]; then
+	cp "$DESKTOP_FILE" "$AUTOSTART_FILE"
+	chmod 644 "$AUTOSTART_FILE"
+fi
+
+rm -f "$LEGACY_DESKTOP_FILE" "$LEGACY_AUTOSTART_FILE"
+
+echo "✅ Desktop shortcut created: $DESKTOP_FILE"
+echo "✅ Launcher script created: $LAUNCHER_SCRIPT"
+if [[ $AUTOSTART -eq 1 ]]; then
+	echo "✅ Autostart entry created: $AUTOSTART_FILE"
+fi
 echo ""
 echo "You can now:"
-echo "  • Double-tap the 'PiTimeLapse DSI Touch (sudo)' icon on your desktop"
-echo "  • Or run:  sudo python3 ${SCRIPT_DIR}/timelapse_touch.py --fullscreen"
+echo "  • Double-tap the 'PiTimeLapse DSI Touch' icon on your desktop"
+echo "  • Or run:  ${LAUNCHER_SCRIPT}"
 echo ""
-echo "Note: This app requires sudo for Grove WS281x LED access (/dev/mem permission required)."
+echo "Launcher behavior:"
+echo "  • Uses the current root shell directly when already elevated"
+echo "  • Uses passwordless sudo automatically when available"
+echo "  • Falls back to a normal user launch with a warning if elevation is unavailable"

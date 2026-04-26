@@ -545,6 +545,8 @@ class SettingsScreen:
         self.last_button_pressed = ""
         self.hardware_message = ""
         self.hardware_message_color = COLOR_TEXT_DIM
+        self.led_test_running = False
+        self.led_test_flash_until = 0.0
 
         # Tab buttons — 4 tabs
         tab_w = screen_w // 4
@@ -757,6 +759,7 @@ class SettingsScreen:
                 self._palette_selected = (self._palette_selected + 1) % len(self._palette_options)
                 return None
             if self.btn_led_test.collidepoint(pos):
+                self.led_test_flash_until = time.time() + 0.18
                 return "test_led"
             rows = self.led_rows
         else:
@@ -800,6 +803,10 @@ class SettingsScreen:
         self.button_flash_until[button_name] = time.time() + 1.0
         self.last_button_pressed = button_name
         self.set_hardware_message(f"Detected {button_name}", True)
+
+    def set_led_test_running(self, running: bool) -> None:
+        """Update visual state for the LED test action button."""
+        self.led_test_running = running
 
     def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
@@ -972,7 +979,12 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.palette_btn_next.center))
 
-            self._draw_action_button(surface, self.btn_led_test, "TEST LED", COLOR_TEST)
+            led_test_color = COLOR_TEST
+            if self.led_test_running:
+                led_test_color = COLOR_STOP
+            elif time.time() < self.led_test_flash_until:
+                led_test_color = _lighten(COLOR_TEST, 35)
+            self._draw_action_button(surface, self.btn_led_test, "TEST LED", led_test_color)
 
             if self.led_backend == "grove":
                 if self.grove_light_detected:

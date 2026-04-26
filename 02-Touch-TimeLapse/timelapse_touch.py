@@ -931,6 +931,7 @@ class TimeLapseApp:
             self._led_test_active = True
 
         self._settings_screen.set_hardware_message("Testing LED…", True)
+        self._settings_screen.set_led_test_running(True)
 
         def _worker() -> None:
             success = False
@@ -949,6 +950,8 @@ class TimeLapseApp:
                     else:
                         self._settings_screen.set_hardware_message("LED test failed", False)
             finally:
+                if self._settings_screen is not None:
+                    self._settings_screen.set_led_test_running(False)
                 with self._led_test_lock:
                     self._led_test_active = False
 

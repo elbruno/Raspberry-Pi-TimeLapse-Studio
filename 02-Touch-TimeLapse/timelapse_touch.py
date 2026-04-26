@@ -354,6 +354,8 @@ class TimeLapseApp:
         self._preview_capture_result: Optional[np.ndarray] = None
         self._preview_capture_ready: bool = False
         self._preview_updates_enabled: bool = True
+        self._camera_reconnect_interval_s: float = 5.0
+        self._last_camera_reconnect_attempt: float = 0.0
 
         # Display feature flags
         display_cfg = self.config.get("display", {})
@@ -586,8 +588,16 @@ class TimeLapseApp:
         pin = int(cfg.get("pin", 12))
         pixel_count = int(cfg.get("pixel_count", 10))
         brightness = int(cfg.get("brightness", 48))
+        state_palette = str(cfg.get("state_palette", "classic"))
+        capture_flash_duration_ms = int(cfg.get("capture_flash_duration_ms", 80))
 
-        controller = GroveStatusLight(pin=pin, pixel_count=pixel_count, brightness=brightness)
+        controller = GroveStatusLight(
+            pin=pin,
+            pixel_count=pixel_count,
+            brightness=brightness,
+            state_palette=state_palette,
+            capture_flash_duration_s=max(0.02, min(1.0, capture_flash_duration_ms / 1000.0)),
+        )
         if controller.detect():
             self.grove_status_light = controller
             self.grove_status_light_detected = True
@@ -795,6 +805,8 @@ class TimeLapseApp:
             self.status_bar.update("Error: backend missing", 0)
             return
         if self.camera is None:
+            self._init_camera()
+        if self.camera is None:
             logger.error("No camera available — cannot start capture")
             self.status_bar.update("Error: no camera", 0)
             return
@@ -924,7 +936,8 @@ class TimeLapseApp:
             success = False
             try:
                 if self.led_backend == "grove":
-                    grove_light.flash_test()  # type: ignore[union-attr]
+                    flash_ms = int(self.config.get("grove_light", {}).get("capture_flash_duration_ms", 80))
+                    grove_light.flash_test(max(0.02, min(1.0, flash_ms / 1000.0)))  # type: ignore[union-attr]
                     success = True
                 else:
                     warmup = max(0.5, float(self.config.get("led", {}).get("warmup_seconds", 1.0)))
@@ -977,6 +990,12 @@ class TimeLapseApp:
             return
 
         if self.camera is None:
+            if self._screen_state != "settings" and not (self.engine and self.engine.is_running):
+                now = time.time()
+                if now - self._last_camera_reconnect_attempt >= self._camera_reconnect_interval_s:
+                    self._last_camera_reconnect_attempt = now
+                    logger.info("Camera unavailable — attempting reconnect")
+                    self._init_camera()
             self.preview.update(None)
             return
 
@@ -1009,6 +1028,7 @@ class TimeLapseApp:
                     self._camera_warning = "Camera not responding"
                     self.camera.close()
                     self.camera = None
+                    self._last_camera_reconnect_attempt = 0.0
                 return
 
             self._consecutive_preview_failures = 0

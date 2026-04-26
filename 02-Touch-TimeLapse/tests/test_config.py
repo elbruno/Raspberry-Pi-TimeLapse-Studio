@@ -173,6 +173,8 @@ class TestGroveConfigSections:
         assert "grove_light" in cfg
         assert cfg["grove_button"]["pin_button1"] == 5
         assert cfg["grove_light"]["pixel_count"] > 0
+        assert cfg["grove_light"]["state_palette"] == "classic"
+        assert cfg["grove_light"]["capture_flash_duration_ms"] == 80
 
     def test_validate_config_rejects_invalid_grove_values(self, sample_config):
         """validate_config() returns errors for malformed Grove settings."""
@@ -190,7 +192,9 @@ class TestGroveConfigSections:
             "pin": 12,
             "pixel_count": 0,
             "brightness": 999,
+            "state_palette": "neon",
             "capture_flash": "yes",
+            "capture_flash_duration_ms": 5,
         }
 
         errors = validate_config(sample_config)
@@ -199,7 +203,9 @@ class TestGroveConfigSections:
         assert any("grove_button.start_stop_button" in e for e in errors)
         assert any("grove_light.pixel_count" in e for e in errors)
         assert any("grove_light.brightness" in e for e in errors)
+        assert any("grove_light.state_palette" in e for e in errors)
         assert any("grove_light.capture_flash" in e for e in errors)
+        assert any("grove_light.capture_flash_duration_ms" in e for e in errors)
 
 
 class TestDisplayConfigSections:

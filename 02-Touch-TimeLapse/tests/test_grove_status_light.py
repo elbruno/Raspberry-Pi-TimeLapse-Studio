@@ -51,3 +51,26 @@ def test_flash_test_restores_previous_state(monkeypatch):
     light.flash_test(0)
 
     assert light._last_state == "capturing"
+
+
+def test_palette_and_capture_flash_defaults(monkeypatch):
+    import grove_status_light as mod
+
+    strip = MagicMock()
+    strip.numPixels.return_value = 2
+
+    monkeypatch.setattr(mod.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(mod, "WS281X_AVAILABLE", True)
+    monkeypatch.setattr(mod, "PixelStrip", MagicMock(return_value=strip))
+    monkeypatch.setattr(mod, "Color", lambda r, g, b: (r, g, b))
+
+    light = mod.GroveStatusLight(
+        pin=12,
+        pixel_count=2,
+        brightness=10,
+        state_palette="high_contrast",
+        capture_flash_duration_s=0.12,
+    )
+    assert light.detect() is True
+    assert light.state_palette == "high_contrast"
+    assert abs(light.capture_flash_duration_s - 0.12) < 0.001

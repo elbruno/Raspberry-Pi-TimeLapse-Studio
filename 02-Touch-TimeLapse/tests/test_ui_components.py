@@ -23,7 +23,13 @@ def test_settings_screen_preserves_existing_nested_config_values():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6, "start_stop_button": "button2"},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_light": {
+            "enabled": True,
+            "pin": 12,
+            "brightness": 64,
+            "state_palette": "warm",
+            "capture_flash_duration_ms": 120,
+        },
     }
 
     screen = SettingsScreen(480, 320, config, camera_options=[(1, "USB Cam")])
@@ -35,6 +41,9 @@ def test_settings_screen_preserves_existing_nested_config_values():
     assert values["grove_button"]["start_stop_button"] == "button2"
     assert values["grove_button"]["pin_button1"] == 5
     assert values["grove_light"]["pin"] == 12
+    assert values["grove_light"]["brightness"] == 64
+    assert values["grove_light"]["state_palette"] == "warm"
+    assert values["grove_light"]["capture_flash_duration_ms"] == 120
 
 
 def test_window_size_options_are_16_by_9_and_capped_to_display():

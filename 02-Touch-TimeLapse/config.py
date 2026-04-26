@@ -68,7 +68,9 @@ DEFAULTS: dict = {
         "pin": 12,
         "pixel_count": 10,
         "brightness": 48,
+        "state_palette": "classic",
         "capture_flash": True,
+        "capture_flash_duration_ms": 80,
     },
 }
 
@@ -260,8 +262,26 @@ def validate_config(config: dict) -> list[str]:
     if not isinstance(brightness, int) or brightness < 0 or brightness > 255:
         errors.append(f"grove_light.brightness must be 0-255, got {brightness}")
 
+    state_palette = get_config_value(config, "grove_light.state_palette", "classic")
+    if state_palette not in ("classic", "high_contrast", "warm"):
+        errors.append(
+            "grove_light.state_palette must be 'classic', 'high_contrast', or 'warm', "
+            f"got '{state_palette}'"
+        )
+
     capture_flash = get_config_value(config, "grove_light.capture_flash", True)
     if not isinstance(capture_flash, bool):
         errors.append(f"grove_light.capture_flash must be true or false, got {capture_flash}")
+
+    capture_flash_duration_ms = get_config_value(config, "grove_light.capture_flash_duration_ms", 80)
+    if (
+        not isinstance(capture_flash_duration_ms, int)
+        or capture_flash_duration_ms < 20
+        or capture_flash_duration_ms > 1000
+    ):
+        errors.append(
+            "grove_light.capture_flash_duration_ms must be 20-1000, "
+            f"got {capture_flash_duration_ms}"
+        )
 
     return errors

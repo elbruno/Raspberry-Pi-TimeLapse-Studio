@@ -595,6 +595,7 @@ class SettingsScreen:
             self.camera_options = [(configured_index, "Manual")]
 
         grove_button = config.get("grove_button", {})
+        grove_light = config.get("grove_light", {})
         self._start_stop_options: list[tuple[str, str]] = [
             ("button1", "Btn1"),
             ("button2", "Btn2"),
@@ -621,6 +622,22 @@ class SettingsScreen:
         self.start_stop_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h, btn_size, btn_size)
         self.start_stop_val_rect = pygame.Rect(screen_w - 146, start_y + row_h, 100, btn_size)
         self.start_stop_btn_next = pygame.Rect(screen_w - 40, start_y + row_h, btn_size, btn_size)
+
+        self._palette_options: list[tuple[str, str]] = [
+            ("classic", "Classic"),
+            ("high_contrast", "Contrast"),
+            ("warm", "Warm"),
+        ]
+        configured_palette = str(grove_light.get("state_palette", "classic"))
+        self._palette_selected = 0
+        for idx_opt, (value, _) in enumerate(self._palette_options):
+            if value == configured_palette:
+                self._palette_selected = idx_opt
+                break
+        self.palette_label_y = start_y + row_h * 4 + btn_size // 2 - 8
+        self.palette_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 4, btn_size, btn_size)
+        self.palette_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 4, 100, btn_size)
+        self.palette_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 4, btn_size, btn_size)
 
         # ── Camera tab rows ──
         self.camera_rows = [
@@ -664,6 +681,12 @@ class SettingsScreen:
                         "LED Flash", "led.enabled",
                         1 if led.get("enabled", True) else 0, 0, 1, 1),
             _SettingRow(start_y + row_h, screen_w, btn_size,
+                        "Brightness", "grove_light.brightness",
+                        int(grove_light.get("brightness", 48)), 0, 255, 16),
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+                        "Flash ms", "grove_light.capture_flash_duration_ms",
+                        int(grove_light.get("capture_flash_duration_ms", 80)), 20, 1000, 20),
+            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
                         "LED Warmup", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
@@ -672,10 +695,10 @@ class SettingsScreen:
         self.button_rows = []
 
         # Diagnostic buttons and status blocks on the hardware tab.
-        diag_y = start_y + row_h * 2 + 8
-        self.btn_led_test = pygame.Rect(20, diag_y, screen_w - 40, 40)
+        diag_y = start_y + row_h * 4 + 8
+        self.btn_led_test = pygame.Rect(20, diag_y, screen_w - 40, 36)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
-        self._led_status_y = diag_y + 96
+        self._led_status_y = diag_y + 42
         self._button_status_y = start_y + row_h * 3 + 10
 
         # Bottom buttons — positioned below the last row
@@ -727,6 +750,12 @@ class SettingsScreen:
                 return None
             rows = self.display_rows
         elif self.active_tab == 2:
+            if self.palette_btn_prev.collidepoint(pos):
+                self._palette_selected = (self._palette_selected - 1) % len(self._palette_options)
+                return None
+            if self.palette_btn_next.collidepoint(pos):
+                self._palette_selected = (self._palette_selected + 1) % len(self._palette_options)
+                return None
             if self.btn_led_test.collidepoint(pos):
                 return "test_led"
             rows = self.led_rows
@@ -817,6 +846,12 @@ class SettingsScreen:
         })
         config["grove_button"].update({
             "start_stop_button": self._start_stop_options[self._start_stop_selected][0],
+        })
+        config["grove_light"].update({
+            "brightness": flat.get("grove_light.brightness", 48),
+            "capture_flash": bool(config["grove_light"].get("capture_flash", True)),
+            "capture_flash_duration_ms": flat.get("grove_light.capture_flash_duration_ms", 80),
+            "state_palette": self._palette_options[self._palette_selected][0],
         })
 
         return config
@@ -921,6 +956,22 @@ class SettingsScreen:
 
         # ── LED diagnostics (only on LED tab) ──
         if self.active_tab == 2:
+            palette_lbl = self.font.render("Palette", True, COLOR_TEXT)
+            surface.blit(palette_lbl, (20, self.palette_label_y))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_prev, border_radius=6)
+            prev_txt = self.font.render("<", True, COLOR_TEXT)
+            surface.blit(prev_txt, prev_txt.get_rect(center=self.palette_btn_prev.center))
+
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.palette_val_rect, border_radius=6)
+            palette_text = self._palette_options[self._palette_selected][1]
+            palette_txt = self.font_small.render(palette_text, True, COLOR_TEXT)
+            surface.blit(palette_txt, palette_txt.get_rect(center=self.palette_val_rect.center))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_next, border_radius=6)
+            next_txt = self.font.render(">", True, COLOR_TEXT)
+            surface.blit(next_txt, next_txt.get_rect(center=self.palette_btn_next.center))
+
             self._draw_action_button(surface, self.btn_led_test, "TEST LED", COLOR_TEST)
 
             if self.led_backend == "grove":
@@ -940,13 +991,11 @@ class SettingsScreen:
             status_surf = self.font_small.render(status_text, True, status_color)
             surface.blit(status_surf, (14, self._led_status_y))
             if self.led_backend == "usb" and not self.led_detected:
-                hint_surf = self.font_small.render("(install uhubctl)",
-                                                   True, COLOR_TEXT_DIM)
-                surface.blit(hint_surf, (14, self._led_status_y + 18))
+                hint_surf = self.font_small.render("(install uhubctl)", True, COLOR_TEXT_DIM)
+                surface.blit(hint_surf, (260, self._led_status_y))
             if self.led_backend == "grove" and not self.grove_light_detected:
-                hint_surf = self.font_small.render("(install rpi_ws281x)",
-                                                   True, COLOR_TEXT_DIM)
-                surface.blit(hint_surf, (14, self._led_status_y + 18))
+                hint_surf = self.font_small.render("(install rpi_ws281x)", True, COLOR_TEXT_DIM)
+                surface.blit(hint_surf, (230, self._led_status_y))
 
         # ── Buttons diagnostics (only on Buttons tab) ──
         if self.active_tab == 3:

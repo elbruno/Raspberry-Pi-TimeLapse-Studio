@@ -547,6 +547,8 @@ class SettingsScreen:
         self.hardware_message_color = COLOR_TEXT_DIM
         self.led_test_running = False
         self.led_test_flash_until = 0.0
+        self.camera_detect_running = False
+        self.led_detect_running = False
 
         # Tab buttons — 4 tabs
         tab_w = screen_w // 4
@@ -699,9 +701,12 @@ class SettingsScreen:
         # Diagnostic buttons and status blocks on the hardware tab.
         diag_y = start_y + row_h * 5 + 4
         self.btn_led_test = pygame.Rect(20, diag_y, 170, 34)
+        self.btn_led_detect = pygame.Rect(200, diag_y, 170, 34)
+        self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 5 + 4, 170, 34)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
         self._led_status_y = diag_y + 9
         self._button_status_y = start_y + row_h * 3 + 10
+        self._camera_status_y = start_y + row_h * 5 + 10
 
         # Bottom buttons — positioned below the last row
         btn_w = 140
@@ -742,6 +747,8 @@ class SettingsScreen:
             if self.camera_btn_next.collidepoint(pos):
                 self._camera_selected = (self._camera_selected + 1) % len(self.camera_options)
                 return None
+            if self.btn_camera_detect.collidepoint(pos):
+                return "detect_camera"
             rows = self.camera_rows
         elif self.active_tab == 1:
             if self.window_size_btn_prev.collidepoint(pos):
@@ -761,6 +768,8 @@ class SettingsScreen:
             if self.btn_led_test.collidepoint(pos):
                 self.led_test_flash_until = time.time() + 0.18
                 return "test_led"
+            if self.btn_led_detect.collidepoint(pos):
+                return "detect_led"
             rows = self.led_rows
         else:
             if self.start_stop_btn_prev.collidepoint(pos):
@@ -807,6 +816,14 @@ class SettingsScreen:
     def set_led_test_running(self, running: bool) -> None:
         """Update visual state for the LED test action button."""
         self.led_test_running = running
+
+    def set_camera_detect_running(self, running: bool) -> None:
+        """Update visual state for the camera detect action button."""
+        self.camera_detect_running = running
+
+    def set_led_detect_running(self, running: bool) -> None:
+        """Update visual state for the LED detect action button."""
+        self.led_detect_running = running
 
     def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
@@ -944,6 +961,12 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.camera_btn_next.center))
 
+            # Detect camera button
+            camera_detect_color = COLOR_TEST
+            if self.camera_detect_running:
+                camera_detect_color = COLOR_STOP
+            self._draw_action_button(surface, self.btn_camera_detect, "DETECT CAM", camera_detect_color)
+
         if self.active_tab == 1:
             size_lbl = self.font.render("App Size", True, COLOR_TEXT)
             surface.blit(size_lbl, (20, self.window_size_label_y))
@@ -985,6 +1008,12 @@ class SettingsScreen:
             elif time.time() < self.led_test_flash_until:
                 led_test_color = _lighten(COLOR_TEST, 35)
             self._draw_action_button(surface, self.btn_led_test, "TEST LED", led_test_color)
+
+            # Detect LED button
+            led_detect_color = COLOR_TEST
+            if self.led_detect_running:
+                led_detect_color = COLOR_STOP
+            self._draw_action_button(surface, self.btn_led_detect, "DETECT LED", led_detect_color)
 
             if self.led_backend == "grove":
                 if self.grove_light_detected:

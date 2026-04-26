@@ -791,6 +791,10 @@ class TimeLapseApp:
             self._screen_state = "main"
         elif action == "test_led":
             self._run_led_test()
+        elif action == "detect_camera":
+            self._run_camera_detect()
+        elif action == "detect_led":
+            self._run_led_detect()
         elif action == "back":
             self._set_preview_updates_enabled(True)
             self._settings_screen = None
@@ -956,6 +960,87 @@ class TimeLapseApp:
                     self._led_test_active = False
 
         threading.Thread(target=_worker, name="led-test", daemon=True).start()
+
+    def _run_camera_detect(self) -> None:
+        """Attempt to detect/reconnect the camera from the settings screen."""
+        if self._settings_screen is None:
+            return
+
+        self._settings_screen.set_hardware_message("Detecting camera…", True)
+        self._settings_screen.set_camera_detect_running(True)
+
+        def _worker() -> None:
+            try:
+                # Attempt to close existing camera
+                if self.camera is not None:
+                    try:
+                        self.camera.close()
+                    except Exception as e:
+                        logger.warning("Error closing existing camera: %s", e)
+                
+                # Re-initialize camera
+                self._init_camera()
+                
+                if self._settings_screen is not None:
+                    if self.camera is not None and self.camera.is_available():
+                        self._settings_screen.set_hardware_message("Camera detected ✓", True)
+                    else:
+                        self._settings_screen.set_hardware_message("Camera not found", False)
+            except Exception as e:
+                logger.error("Camera detection error: %s", e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message(f"Detection error: {str(e)[:30]}", False)
+            finally:
+                if self._settings_screen is not None:
+                    self._settings_screen.set_camera_detect_running(False)
+
+        threading.Thread(target=_worker, name="camera-detect", daemon=True).start()
+
+    def _run_led_detect(self) -> None:
+        """Attempt to detect/reinitialize the LED from the settings screen."""
+        if self._settings_screen is None:
+            return
+
+        self._settings_screen.set_hardware_message("Detecting LED…", True)
+        self._settings_screen.set_led_detect_running(True)
+
+        def _worker() -> None:
+            try:
+                if self.led_backend == "grove":
+                    grove_light = self.grove_status_light
+                    if grove_light is not None:
+                        # Attempt re-initialization
+                        grove_light.detect()
+                        if self._settings_screen is not None:
+                            if grove_light.is_available():
+                                self._settings_screen.set_hardware_message("Grove LED detected ✓", True)
+                            else:
+                                self._settings_screen.set_hardware_message("Grove LED not accessible (needs sudo)", False)
+                    else:
+                        if self._settings_screen is not None:
+                            self._settings_screen.set_hardware_message("Grove LED module not initialized", False)
+                else:
+                    controller = self.led_controller
+                    if controller is not None:
+                        # Attempt to detect USB LED
+                        available = controller.detect()
+                        if self._settings_screen is not None:
+                            if available:
+                                self._settings_screen.set_hardware_message("USB LED detected ✓", True)
+                            else:
+                                self._settings_screen.set_hardware_message("USB LED not found", False)
+                    else:
+                        if self._settings_screen is not None:
+                            self._settings_screen.set_hardware_message("LED module not initialized", False)
+            except Exception as e:
+                logger.error("LED detection error: %s", e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message(f"Detection error: {str(e)[:30]}", False)
+            finally:
+                if self._settings_screen is not None:
+                    self._settings_screen.set_led_detect_running(False)
+
+        threading.Thread(target=_worker, name="led-detect", daemon=True).start()
 
     # ── Preview & status ───────────────────────────────────────────────────
 

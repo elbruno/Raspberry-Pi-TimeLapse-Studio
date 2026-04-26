@@ -5,8 +5,9 @@ PiTimeLapse Touch — Graphical timelapse capture app for Raspberry Pi touchscre
 Main entry point.  Wires together the camera, capture engine, storage, USB
 detection, and pygame UI into a single event-loop application.
 
-Designed for 480×320 Pi touchscreen (Waveshare / Kuman) but also runs
-windowed on any desktop for development and testing.
+Designed for Raspberry Pi touchscreens, with Scenario 03 defaulting to an
+800×450 window that fits comfortably on 800×480 DSI displays while also
+running windowed on any desktop for development and testing.
 
 Usage:
     python timelapse_touch.py              # windowed (desktop)
@@ -163,8 +164,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
-DEFAULT_WIDTH = 480
-DEFAULT_HEIGHT = 320
+DEFAULT_WIDTH = 800
+DEFAULT_HEIGHT = 450
 PREVIEW_FPS = 2
 BUTTON_WIDTH = 130
 BUTTON_HEIGHT = 60

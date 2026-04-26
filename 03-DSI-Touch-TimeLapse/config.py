@@ -51,8 +51,8 @@ DEFAULTS: dict = {
     "display": {
         "show_countdown": True,
         "show_storage_info": True,
-        "window_width": 480,
-        "window_height": 320,
+        "window_width": 800,
+        "window_height": 450,
         "center_window": True,
         "fullscreen": False,
     },

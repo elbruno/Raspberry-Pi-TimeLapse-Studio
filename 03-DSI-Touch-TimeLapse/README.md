@@ -94,7 +94,8 @@ A practical first tweak for many single-camera Pi setups:
 
 - `camera.index: 0`
 
-Everything else matches Scenario 02 defaults.
+Scenario 03 now defaults to an `800x450` app window so it fits nicely on
+common `800x480` DSI touchscreens.
 
 ---
 

@@ -216,8 +216,8 @@ class TestDisplayConfigSections:
         from config import load_config
 
         cfg = load_config("/nonexistent/config.yaml")
-        assert cfg["display"]["window_width"] == 480
-        assert cfg["display"]["window_height"] == 320
+        assert cfg["display"]["window_width"] == 800
+        assert cfg["display"]["window_height"] == 450
         assert cfg["display"]["center_window"] is True
         assert cfg["display"]["fullscreen"] is False
 

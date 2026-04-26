@@ -31,6 +31,6 @@ grove_button:
 grove_light:
   enabled: true
   pin: 12
-  pixel_count: 10
+  pixel_count: 20
   brightness: 48
   capture_flash: true

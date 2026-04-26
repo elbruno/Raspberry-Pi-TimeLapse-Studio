@@ -1,1 +1,2 @@
 -r ../02-Touch-TimeLapse/requirements.txt
+RPi.GPIO>=0.7.1

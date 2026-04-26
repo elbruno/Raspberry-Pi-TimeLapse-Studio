@@ -786,6 +786,7 @@ class TimeLapseApp:
             self._poll_hardware_inputs()
             self._update_preview()
             self._update_status()
+            self._check_camera_index_validation()  # Real-time camera index feedback in settings
             self._draw()
             self.clock.tick(self.preview_fps)
 
@@ -1103,6 +1104,76 @@ class TimeLapseApp:
                     self._settings_screen.set_camera_detect_running(False)
 
         threading.Thread(target=_worker, name="camera-detect", daemon=True).start()
+
+    def _check_camera_index_validation(self) -> None:
+        """Check if camera index has changed in settings and validate it.
+        
+        Runs in the background to provide live per-index feedback while the user
+        adjusts the index selector in the settings screen.
+        """
+        if self._settings_screen is None or self._camera_index_validation_running:
+            return
+
+        # Find the camera index row in camera_rows
+        camera_index_row = None
+        for row in self._settings_screen.camera_rows:
+            if row.key == "camera.index":
+                camera_index_row = row
+                break
+
+        if camera_index_row is None:
+            return
+
+        current_index = camera_index_row.value
+        if current_index == self._last_validated_camera_index:
+            return  # No change
+
+        self._last_validated_camera_index = current_index
+        self._camera_index_validation_running = True
+
+        def _validate_worker() -> None:
+            try:
+                cam_cfg = self.config.get("camera", {})
+                w = int(cam_cfg.get("width", 640))
+                h = int(cam_cfg.get("height", 480))
+
+                cam = OpenCVCamera()
+                if cam.open(current_index, w, h):
+                    # Try to capture a frame to validate the camera works
+                    frame = None
+                    for attempt in range(2):
+                        frame = cam.capture()
+                        if frame is not None:
+                            break
+                        time.sleep(0.05)
+
+                    cam.close()
+
+                    if frame is not None:
+                        if self._settings_screen is not None:
+                            self._settings_screen.set_hardware_message(
+                                f"Index {current_index}: ✓ OK", True
+                            )
+                    else:
+                        if self._settings_screen is not None:
+                            self._settings_screen.set_hardware_message(
+                                f"Index {current_index}: ✗ No frame", False
+                            )
+                else:
+                    if self._settings_screen is not None:
+                        self._settings_screen.set_hardware_message(
+                            f"Index {current_index}: ✗ Failed to open", False
+                        )
+            except Exception as e:
+                logger.warning("Camera index validation error for index %d: %s", current_index, e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message(
+                        f"Index {current_index}: ✗ Error", False
+                    )
+            finally:
+                self._camera_index_validation_running = False
+
+        threading.Thread(target=_validate_worker, name="camera-index-validate", daemon=True).start()
 
     def _run_led_detect(self) -> None:
         """Attempt to detect/reinitialize the LED from the settings screen."""

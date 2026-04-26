@@ -166,7 +166,7 @@ class CaptureEngine:
 
         # LED settings
         led_enabled = get_config_value(config, "led.enabled", True)
-        led_warmup = get_config_value(config, "led.warmup_seconds", 1.0)
+        led_warmup = get_config_value(config, "led.warmup_seconds", 1.5)
         use_led = led_enabled and led is not None and led.is_available()
         if use_led:
             logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
@@ -178,7 +178,10 @@ class CaptureEngine:
             and status_light.is_available()
         )
         if use_status_light:
-            status_light.set_state("capturing")  # type: ignore[union-attr]
+            # Keep the LED off between captures; it only turns on during the
+            # warmup -> capture -> post-warmup window so the user gets a clear
+            # visual cue around each snapshot.
+            status_light.set_state("off")  # type: ignore[union-attr]
             logger.info(
                 "Grove status light flash enabled — warmup %.1fs before each capture",
                 led_warmup,
@@ -248,8 +251,8 @@ class CaptureEngine:
                 if use_led:
                     led.turn_off()  # type: ignore[union-attr]
                 if use_status_light:
-                    # Return to the "capturing" steady state between shots
-                    status_light.set_capture_active(False)  # type: ignore[union-attr]
+                    # Turn the LED fully off between shots (no green during countdown)
+                    status_light.set_state("off")  # type: ignore[union-attr]
 
                 if frame is None:
                     consecutive_failures += 1

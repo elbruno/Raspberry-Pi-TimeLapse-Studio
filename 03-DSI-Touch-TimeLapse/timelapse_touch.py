@@ -192,7 +192,7 @@ def _load_app_config() -> dict:
         "led": {
             "backend": "usb",
             "enabled": True,
-            "warmup_seconds": 1.0,
+            "warmup_seconds": 1.5,
             "usb_port": "auto",
         },
         "display": {

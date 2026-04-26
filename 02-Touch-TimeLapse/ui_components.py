@@ -613,11 +613,11 @@ class SettingsScreen:
                 self._start_stop_selected = idx_opt
                 break
 
-        # Camera combo row geometry (same right-side alignment as stepper rows)
-        self.camera_label_y = start_y + row_h * 2 + btn_size // 2 - 8
-        self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
-        self.camera_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
-        self.camera_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
+        # Camera combo row geometry (narrow left column)
+        self.camera_label_y = start_y - 5
+        self.camera_btn_prev = pygame.Rect(20, start_y, btn_size, btn_size)
+        self.camera_val_rect = pygame.Rect(55, start_y, 105, btn_size)
+        self.camera_btn_next = pygame.Rect(165, start_y, btn_size, btn_size)
 
         self.window_size_label_y = start_y + row_h * 2 + btn_size // 2 - 8
         self.window_size_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
@@ -640,25 +640,20 @@ class SettingsScreen:
             if value == configured_palette:
                 self._palette_selected = idx_opt
                 break
-        self.palette_label_y = start_y + row_h * 4 + btn_size // 2 - 8
-        self.palette_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 4, btn_size, btn_size)
-        self.palette_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 4, 100, btn_size)
-        self.palette_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 4, btn_size, btn_size)
+        # Palette selector positioning (left column for LED tab)
+        self.palette_label_y = start_y + row_h * 3 + 5
+        self.palette_btn_prev = pygame.Rect(20, start_y + row_h * 3, btn_size, btn_size)
+        self.palette_val_rect = pygame.Rect(55, start_y + row_h * 3, 105, btn_size)
+        self.palette_btn_next = pygame.Rect(165, start_y + row_h * 3, btn_size, btn_size)
 
-        # ── Camera tab rows ──
+        # ── Camera tab rows (only on left side for tab) ──
         self.camera_rows = [
-            _SettingRow(start_y, screen_w, btn_size,
+            _SettingRow(start_y, 200, btn_size,
                         "Interval (s)", "capture.interval_seconds",
                         int(cap.get("interval_seconds", 30)), 1, 3600, 5),
-            _SettingRow(start_y + row_h, screen_w, btn_size,
+            _SettingRow(start_y + row_h, 200, btn_size,
                         "Quality", "capture.quality",
                         int(cap.get("quality", 90)), 1, 100, 5),
-            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
-                        "Width", "camera.width",
-                        int(cam.get("width", 640)), 160, 1920, 160),
-            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
-                        "Height", "camera.height",
-                        int(cam.get("height", 480)), 120, 1080, 120),
         ]
 
         # ── Display tab rows ──
@@ -681,34 +676,27 @@ class SettingsScreen:
                         0, 1, 1),
         ]
 
-        # ── LED tab rows ──
+        # ── LED tab rows (only key controls) ──
         self.led_rows = [
-            _SettingRow(start_y, screen_w, btn_size,
-                        "LED Flash", "led.enabled",
-                        1 if led.get("enabled", True) else 0, 0, 1, 1),
-            _SettingRow(start_y + row_h, screen_w, btn_size,
+            _SettingRow(start_y, 200, btn_size,
                         "Brightness", "grove_light.brightness",
                         int(grove_light.get("brightness", 48)), 0, 255, 16),
-            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+            _SettingRow(start_y + row_h, 200, btn_size,
                         "Flash ms", "grove_light.capture_flash_duration_ms",
                         int(grove_light.get("capture_flash_duration_ms", 80)), 20, 1000, 20),
-            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
-                        "LED Warmup", "led.warmup_seconds",
-                        int(led.get("warmup_seconds", 1)), 0, 5, 1),
         ]
 
         # ── Buttons tab rows ──
         self.button_rows = []
 
-        # Diagnostic buttons and status blocks on the hardware tab.
-        diag_y = start_y + row_h * 5 + 4
-        self.btn_led_test = pygame.Rect(20, diag_y, 170, 34)
-        self.btn_led_detect = pygame.Rect(200, diag_y, 170, 34)
-        self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 5 + 4, 170, 34)
+        # Diagnostic buttons and status blocks
+        self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 3 - 4, 160, 36)
+        self.btn_led_test = pygame.Rect(20, start_y + row_h * 2, 105, 36)
+        self.btn_led_detect = pygame.Rect(135, start_y + row_h * 2, 105, 36)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
-        self._led_status_y = diag_y + 9
+        self._led_status_y = start_y + row_h * 4 + 10
         self._button_status_y = start_y + row_h * 3 + 10
-        self._camera_status_y = start_y + row_h * 5 + 10
+        self._camera_status_y = start_y + row_h * 4
 
         # Bottom buttons — positioned below the last row
         btn_w = 140
@@ -950,8 +938,9 @@ class SettingsScreen:
 
         # Camera combo-like selector (Camera tab)
         if self.active_tab == 0:
+            # Left column: settings + camera selector
             cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
-            surface.blit(cam_lbl, (20, self.camera_label_y))
+            surface.blit(cam_lbl, (20, start_y - 5))
 
             pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_prev, border_radius=6)
             prev_txt = self.font.render("<", True, COLOR_TEXT)
@@ -959,7 +948,7 @@ class SettingsScreen:
 
             pygame.draw.rect(surface, COLOR_FIELD_BG, self.camera_val_rect, border_radius=6)
             cam_idx, cam_name = self.camera_options[self._camera_selected]
-            short_name = cam_name[:8] if len(cam_name) > 8 else cam_name
+            short_name = cam_name[:6] if len(cam_name) > 6 else cam_name
             display = f"{cam_idx}:{short_name}"
             cam_txt = self.font_small.render(display, True, COLOR_TEXT)
             surface.blit(cam_txt, cam_txt.get_rect(center=self.camera_val_rect.center))
@@ -972,16 +961,16 @@ class SettingsScreen:
             camera_detect_color = COLOR_TEST
             if self.camera_detect_running:
                 camera_detect_color = COLOR_STOP
-            self._draw_action_button(surface, self.btn_camera_detect, "DETECT CAM", camera_detect_color)
+            self._draw_action_button(surface, self.btn_camera_detect, "DETECT", camera_detect_color)
 
-            # Camera preview area (bottom right)
-            preview_x = 200
-            preview_y = 100
-            preview_w = 240
-            preview_h = 180
+            # Right column: large camera preview area
+            preview_x = 210
+            preview_y = start_y + 10
+            preview_w = 260
+            preview_h = 200
             preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
             pygame.draw.rect(surface, COLOR_FIELD_BG, preview_rect, border_radius=8)
-            pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_rect, width=1, border_radius=8)
+            pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_rect, width=2, border_radius=8)
             
             if self.camera_preview_frame is not None:
                 # Scale frame to fit preview area
@@ -989,18 +978,19 @@ class SettingsScreen:
                 surface.blit(frame_scaled, (preview_x + 2, preview_y + 2))
             else:
                 # Show placeholder text
-                placeholder = self.font_small.render("No frame", True, COLOR_TEXT_DIM)
+                placeholder = self.font_small.render("Tap DETECT to scan", True, COLOR_TEXT_DIM)
                 surface.blit(placeholder, placeholder.get_rect(center=preview_rect.center))
             
-            # Camera list below preview
-            list_y = preview_y + preview_h + 10
+            # Available cameras list below preview
+            list_y = preview_y + preview_h + 6
             if self.camera_options:
-                cameras_text = self.font_small.render(f"Available: {len(self.camera_options)}", True, COLOR_TEXT)
+                cameras_text = self.font_small.render(f"Available ({len(self.camera_options)}):", True, COLOR_TEXT)
                 surface.blit(cameras_text, (preview_x, list_y))
-                for i, (idx, name) in enumerate(self.camera_options[:3]):  # Show first 3
-                    short_name = name[:15] if len(name) > 15 else name
-                    cam_item = self.font_small.render(f"  [{idx}] {short_name}", True, COLOR_TEXT if i == self._camera_selected else COLOR_TEXT_DIM)
-                    surface.blit(cam_item, (preview_x + 10, list_y + 16 + i * 14))
+                for i, (idx, name) in enumerate(self.camera_options[:2]):  # Show first 2
+                    short_name = name[:16] if len(name) > 16 else name
+                    color = COLOR_USB_OK if i == self._camera_selected else COLOR_TEXT_DIM
+                    cam_item = self.font_small.render(f"[{idx}] {short_name}", True, color)
+                    surface.blit(cam_item, (preview_x + 8, list_y + 14 + i * 13))
 
         if self.active_tab == 1:
             size_lbl = self.font.render("App Size", True, COLOR_TEXT)
@@ -1021,8 +1011,23 @@ class SettingsScreen:
 
         # ── LED diagnostics (only on LED tab) ──
         if self.active_tab == 2:
+            # Test and Detect buttons side by side at top
+            led_test_color = COLOR_TEST
+            if self.led_test_running:
+                led_test_color = COLOR_STOP
+            elif time.time() < self.led_test_flash_until:
+                led_test_color = _lighten(COLOR_TEST, 35)
+            self._draw_action_button(surface, self.btn_led_test, "TEST LED", led_test_color)
+
+            # Detect LED button
+            led_detect_color = COLOR_TEST
+            if self.led_detect_running:
+                led_detect_color = COLOR_STOP
+            self._draw_action_button(surface, self.btn_led_detect, "DETECT", led_detect_color)
+
+            # Palette selector (left column)
             palette_lbl = self.font.render("Palette", True, COLOR_TEXT)
-            surface.blit(palette_lbl, (20, self.palette_label_y))
+            surface.blit(palette_lbl, (20, start_y + row_h * 3 + 5))
 
             pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_prev, border_radius=6)
             prev_txt = self.font.render("<", True, COLOR_TEXT)
@@ -1037,38 +1042,36 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.palette_btn_next.center))
 
-            led_test_color = COLOR_TEST
-            if self.led_test_running:
-                led_test_color = COLOR_STOP
-            elif time.time() < self.led_test_flash_until:
-                led_test_color = _lighten(COLOR_TEST, 35)
-            self._draw_action_button(surface, self.btn_led_test, "TEST LED", led_test_color)
-
-            # Detect LED button
-            led_detect_color = COLOR_TEST
-            if self.led_detect_running:
-                led_detect_color = COLOR_STOP
-            self._draw_action_button(surface, self.btn_led_detect, "DETECT LED", led_detect_color)
-
+            # Status display on right side
+            status_x = 240
+            status_y = start_y + 20
+            
             if self.led_backend == "grove":
                 if self.grove_light_detected:
-                    status_text = "\u2713 Grove LED ready"
+                    status_text = "Grove LED"
+                    status_detail = "✓ Ready"
                     status_color = COLOR_USB_OK
                 else:
-                    status_text = "\u2717 Grove LED not detected"
+                    status_text = "Grove LED"
+                    status_detail = "✗ Not detected"
                     status_color = COLOR_TEXT_DIM
             else:
                 if self.led_detected:
                     short_port = self.led_port_name
                     if len(short_port) > 10:
-                        short_port = f"{short_port[:7]}..."
-                    status_text = f"\u2713 USB {short_port}"
+                        short_port = f"{short_port[:7]}…"
+                    status_text = f"USB {short_port}"
+                    status_detail = "✓ Ready"
                     status_color = COLOR_USB_OK
                 else:
-                    status_text = "\u2717 USB LED not detected"
+                    status_text = "USB LED"
+                    status_detail = "✗ Not detected"
                     status_color = COLOR_TEXT_DIM
-            status_surf = self.font_small.render(status_text, True, status_color)
-            surface.blit(status_surf, (200, self._led_status_y))
+            
+            status_surf = self.font.render(status_text, True, status_color)
+            surface.blit(status_surf, (status_x, status_y))
+            detail_surf = self.font_small.render(status_detail, True, status_color)
+            surface.blit(detail_surf, (status_x, status_y + 22))
 
         # ── Buttons diagnostics (only on Buttons tab) ──
         if self.active_tab == 3:

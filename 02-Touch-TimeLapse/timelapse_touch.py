@@ -1046,33 +1046,50 @@ class TimeLapseApp:
                 if self.led_backend == "grove":
                     grove_light = self.grove_status_light
                     if grove_light is not None:
+                        # Check if running as sudo (required for Grove)
+                        is_sudo = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+                        
                         # Attempt re-initialization
                         grove_light.detect()
+                        
                         if self._settings_screen is not None:
                             if grove_light.is_available():
-                                self._settings_screen.set_hardware_message("Grove LED detected ✓", True)
+                                self._settings_screen.set_hardware_message("Grove LED ✓ Detected!", True)
+                                self._settings_screen.grove_light_detected = True
                             else:
-                                self._settings_screen.set_hardware_message("Grove LED not accessible (needs sudo)", False)
+                                if not is_sudo:
+                                    msg = "Grove needs sudo (requires /dev/mem access)"
+                                else:
+                                    msg = "Grove LED: Hardware not found or not responding"
+                                self._settings_screen.set_hardware_message(msg, False)
+                                self._settings_screen.grove_light_detected = False
                     else:
                         if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("Grove LED module not initialized", False)
+                            self._settings_screen.set_hardware_message("Grove module not loaded", False)
                 else:
+                    # USB LED detection
                     controller = self.led_controller
                     if controller is not None:
                         # Attempt to detect USB LED
                         available = controller.detect()
                         if self._settings_screen is not None:
                             if available:
-                                self._settings_screen.set_hardware_message("USB LED detected ✓", True)
+                                self._settings_screen.set_hardware_message("USB LED ✓ Detected!", True)
+                                self._settings_screen.led_detected = True
                             else:
-                                self._settings_screen.set_hardware_message("USB LED not found", False)
+                                self._settings_screen.set_hardware_message("USB LED: Device not found", False)
+                                self._settings_screen.led_detected = False
                     else:
                         if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("LED module not initialized", False)
+                            self._settings_screen.set_hardware_message("LED controller not loaded", False)
+            except PermissionError as e:
+                logger.error("Permission denied accessing LED: %s", e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message("Permission denied - try with sudo", False)
             except Exception as e:
                 logger.error("LED detection error: %s", e)
                 if self._settings_screen is not None:
-                    self._settings_screen.set_hardware_message(f"Detection error: {str(e)[:30]}", False)
+                    self._settings_screen.set_hardware_message(f"Error: {str(e)[:35]}", False)
             finally:
                 if self._settings_screen is not None:
                     self._settings_screen.set_led_detect_running(False)

@@ -124,6 +124,9 @@ class OpenCVCamera:
                 self.resolution = (actual_w, actual_h)
 
                 # Warm-up: prefer non-blocking grab, then fallback to one read.
+                # Some cameras (e.g. Microsoft LifeCam) negotiate MJPG but then
+                # fail to deliver frames after a USB hot-replug. If MJPG warm-up
+                # fails, fall back to YUYV which is more universally supported.
                 warmed = False
                 try:
                     warmed = bool(self.cap.grab())
@@ -131,9 +134,29 @@ class OpenCVCamera:
                     warmed = False
                 if not warmed:
                     try:
-                        self.cap.read()
+                        ret, _ = self.cap.read()
+                        warmed = bool(ret)
+                    except Exception:
+                        warmed = False
+
+                if not warmed:
+                    logger.warning(
+                        "Camera opened but MJPG warm-up failed — "
+                        "falling back to YUYV"
+                    )
+                    try:
+                        self.cap.set(cv2.CAP_PROP_FOURCC,
+                                     cv2.VideoWriter_fourcc(*"YUYV"))
+                        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
                     except Exception:
                         pass
+                    try:
+                        warmed = bool(self.cap.grab())
+                    except Exception:
+                        warmed = False
+                    if warmed:
+                        logger.info("Camera streaming with YUYV fallback")
 
                 self._is_open = True
                 logger.info(

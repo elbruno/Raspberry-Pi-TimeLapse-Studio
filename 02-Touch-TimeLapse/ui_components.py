@@ -695,10 +695,10 @@ class SettingsScreen:
         self.button_rows = []
 
         # Diagnostic buttons and status blocks on the hardware tab.
-        diag_y = start_y + row_h * 4 + 8
-        self.btn_led_test = pygame.Rect(20, diag_y, screen_w - 40, 36)
+        diag_y = start_y + row_h * 5 + 4
+        self.btn_led_test = pygame.Rect(20, diag_y, 170, 34)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
-        self._led_status_y = diag_y + 42
+        self._led_status_y = diag_y + 9
         self._button_status_y = start_y + row_h * 3 + 10
 
         # Bottom buttons — positioned below the last row
@@ -983,19 +983,16 @@ class SettingsScreen:
                     status_color = COLOR_TEXT_DIM
             else:
                 if self.led_detected:
-                    status_text = f"\u2713 USB LED on {self.led_port_name}"
+                    short_port = self.led_port_name
+                    if len(short_port) > 10:
+                        short_port = f"{short_port[:7]}..."
+                    status_text = f"\u2713 USB {short_port}"
                     status_color = COLOR_USB_OK
                 else:
                     status_text = "\u2717 USB LED not detected"
                     status_color = COLOR_TEXT_DIM
             status_surf = self.font_small.render(status_text, True, status_color)
-            surface.blit(status_surf, (14, self._led_status_y))
-            if self.led_backend == "usb" and not self.led_detected:
-                hint_surf = self.font_small.render("(install uhubctl)", True, COLOR_TEXT_DIM)
-                surface.blit(hint_surf, (260, self._led_status_y))
-            if self.led_backend == "grove" and not self.grove_light_detected:
-                hint_surf = self.font_small.render("(install rpi_ws281x)", True, COLOR_TEXT_DIM)
-                surface.blit(hint_surf, (230, self._led_status_y))
+            surface.blit(status_surf, (200, self._led_status_y))
 
         # ── Buttons diagnostics (only on Buttons tab) ──
         if self.active_tab == 3:

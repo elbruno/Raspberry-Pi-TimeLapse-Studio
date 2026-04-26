@@ -934,15 +934,14 @@ class TimeLapseApp:
 
         def _worker() -> None:
             success = False
+            test_duration_s = 2.0
             try:
                 if self.led_backend == "grove":
-                    flash_ms = int(self.config.get("grove_light", {}).get("capture_flash_duration_ms", 80))
-                    grove_light.flash_test(max(0.02, min(1.0, flash_ms / 1000.0)))  # type: ignore[union-attr]
+                    grove_light.flash_test(test_duration_s)  # type: ignore[union-attr]
                     success = True
                 else:
-                    warmup = max(0.5, float(self.config.get("led", {}).get("warmup_seconds", 1.0)))
                     if controller.turn_on():  # type: ignore[union-attr]
-                        time.sleep(min(warmup, 2.0))
+                        time.sleep(test_duration_s)
                         success = controller.turn_off()  # type: ignore[union-attr]
                 if self._settings_screen is not None:
                     if success:

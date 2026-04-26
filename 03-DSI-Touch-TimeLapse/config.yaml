@@ -33,6 +33,6 @@ grove_light:
   pin: 12
   pixel_count: 20
   brightness: 48
-  state_palette: classic
+  state_palette: warm
   capture_flash: true
   capture_flash_duration_ms: 80

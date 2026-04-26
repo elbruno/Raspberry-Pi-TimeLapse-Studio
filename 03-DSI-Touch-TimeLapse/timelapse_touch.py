@@ -598,11 +598,15 @@ class TimeLapseApp:
             state_palette=state_palette,
             capture_flash_duration_s=max(0.02, min(1.0, capture_flash_duration_ms / 1000.0)),
         )
+        # Keep a controller instance even when detect() fails so the settings
+        # "DETECT" action can retry after permissions/hardware state change.
+        self.grove_status_light = controller
         if controller.detect():
-            self.grove_status_light = controller
             self.grove_status_light_detected = True
             self.grove_status_light.set_state("idle")
             logger.info("Grove WS2813 status light enabled")
+        else:
+            logger.info("Grove WS2813 status light present but not accessible yet")
         if hasattr(self, "header"):
             self.header.led_detected = self._is_active_led_detected()
 
@@ -1044,28 +1048,41 @@ class TimeLapseApp:
         def _worker() -> None:
             try:
                 if self.led_backend == "grove":
+                    if not GROVE_STATUS_LIGHT_AVAILABLE:
+                        if self._settings_screen is not None:
+                            self._settings_screen.set_hardware_message("Grove driver unavailable (install rpi_ws281x)", False)
+                        return
+
+                    # Ensure controller exists (can be None if config was toggled/reloaded)
+                    if self.grove_status_light is None:
+                        self._init_grove_status_light()
+
                     grove_light = self.grove_status_light
-                    if grove_light is not None:
-                        # Check if running as sudo (required for Grove)
-                        is_sudo = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
-                        
-                        # Attempt re-initialization
-                        grove_light.detect()
-                        
+                    if grove_light is None:
                         if self._settings_screen is not None:
-                            if grove_light.is_available():
-                                self._settings_screen.set_hardware_message("Grove LED ✓ Detected!", True)
-                                self._settings_screen.grove_light_detected = True
+                            self._settings_screen.set_hardware_message("Grove disabled in config", False)
+                        return
+
+                    # Check if running as sudo (required for Grove)
+                    is_sudo = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+
+                    # Attempt re-initialization
+                    available = grove_light.detect()
+                    self.grove_status_light_detected = bool(available)
+                    if hasattr(self, "header"):
+                        self.header.led_detected = self._is_active_led_detected()
+
+                    if self._settings_screen is not None:
+                        if available and grove_light.is_available():
+                            self._settings_screen.set_hardware_message("Grove LED ✓ Detected!", True)
+                            self._settings_screen.grove_light_detected = True
+                        else:
+                            if not is_sudo:
+                                msg = "Grove needs sudo (requires /dev/mem access)"
                             else:
-                                if not is_sudo:
-                                    msg = "Grove needs sudo (requires /dev/mem access)"
-                                else:
-                                    msg = "Grove LED: Hardware not found or not responding"
-                                self._settings_screen.set_hardware_message(msg, False)
-                                self._settings_screen.grove_light_detected = False
-                    else:
-                        if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("Grove module not loaded", False)
+                                msg = "Grove LED not responding (check wiring/power)"
+                            self._settings_screen.set_hardware_message(msg, False)
+                            self._settings_screen.grove_light_detected = False
                 else:
                     # USB LED detection
                     controller = self.led_controller

@@ -288,6 +288,7 @@ class TimeLapseApp:
         self.grove_buttons = None
         self.grove_buttons_detected: bool = False
         self._start_stop_button: str = "button1"
+        self._stop_button: str = ""
         self._init_grove_buttons()
         # ── Storage & capture engine ──
         self.storage = None
@@ -709,6 +710,7 @@ class TimeLapseApp:
         button2_pin = int(cfg.get("pin_button2", 6))
         debounce_ms = int(cfg.get("debounce_ms", 250))
         self._start_stop_button = cfg.get("start_stop_button", "button1")
+        self._stop_button = cfg.get("stop_button", "") or ""
 
         controller = GroveDualButton(
             pin_button1=button1_pin,
@@ -736,6 +738,10 @@ class TimeLapseApp:
                     self._on_stop()
                 else:
                     self._on_start()
+            elif event.button == self._stop_button:
+                # Dedicated STOP button: only acts when capture is running.
+                if self.engine is not None and self.engine.is_running:
+                    self._on_stop()
 
     def _init_backend(self) -> None:
         """Set up StorageManager and CaptureEngine; check for interrupted sessions."""

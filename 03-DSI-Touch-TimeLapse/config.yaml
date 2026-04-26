@@ -28,6 +28,9 @@ grove_button:
   pin_button2: 6
   debounce_ms: 250
   start_stop_button: button2
+  # Optional dedicated stop button. When set, this button stops a running
+  # capture but does not toggle start. Leave empty to disable.
+  stop_button: button1
 grove_light:
   enabled: true
   pin: 12

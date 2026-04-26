@@ -962,34 +962,50 @@ class TimeLapseApp:
         threading.Thread(target=_worker, name="led-test", daemon=True).start()
 
     def _run_camera_detect(self) -> None:
-        """Attempt to detect/reconnect the camera from the settings screen."""
+        """Scan for available cameras and update the camera options list."""
         if self._settings_screen is None:
             return
 
-        self._settings_screen.set_hardware_message("Detecting camera…", True)
+        self._settings_screen.set_hardware_message("Scanning for cameras…", True)
         self._settings_screen.set_camera_detect_running(True)
 
         def _worker() -> None:
             try:
-                # Attempt to close existing camera
-                if self.camera is not None:
-                    try:
-                        self.camera.close()
-                    except Exception as e:
-                        logger.warning("Error closing existing camera: %s", e)
-                
-                # Re-initialize camera
-                self._init_camera()
+                # Scan for available cameras
+                available_cameras = self._list_available_cameras()
                 
                 if self._settings_screen is not None:
-                    if self.camera is not None and self.camera.is_available():
-                        self._settings_screen.set_hardware_message("Camera detected ✓", True)
+                    if available_cameras:
+                        # Update camera options in settings screen
+                        self._settings_screen.camera_options = available_cameras
+                        self._settings_screen._camera_selected = 0
+                        
+                        # Try to open the first camera
+                        if self.camera is not None:
+                            try:
+                                self.camera.close()
+                            except Exception as e:
+                                logger.warning("Error closing existing camera: %s", e)
+                        
+                        idx, name = available_cameras[0]
+                        cam_cfg = self.config.get("camera", {})
+                        w = int(cam_cfg.get("width", 640))
+                        h = int(cam_cfg.get("height", 480))
+                        
+                        cam = OpenCVCamera()
+                        if cam.open(idx, w, h):
+                            self.camera = cam
+                            found_count = len(available_cameras)
+                            msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {name}"
+                            self._settings_screen.set_hardware_message(msg, True)
+                        else:
+                            self._settings_screen.set_hardware_message(f"Found cameras but failed to open: {name}", False)
                     else:
-                        self._settings_screen.set_hardware_message("Camera not found", False)
+                        self._settings_screen.set_hardware_message("No cameras detected", False)
             except Exception as e:
                 logger.error("Camera detection error: %s", e)
                 if self._settings_screen is not None:
-                    self._settings_screen.set_hardware_message(f"Detection error: {str(e)[:30]}", False)
+                    self._settings_screen.set_hardware_message(f"Error: {str(e)[:40]}", False)
             finally:
                 if self._settings_screen is not None:
                     self._settings_screen.set_camera_detect_running(False)

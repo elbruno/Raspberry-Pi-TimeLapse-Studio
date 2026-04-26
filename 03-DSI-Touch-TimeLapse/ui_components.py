@@ -667,7 +667,13 @@ class SettingsScreen:
             _SettingRow(start_y + row_h, screen_w, btn_size,
                         "Quality", "capture.quality",
                         int(cap.get("quality", 90)), 1, 100, 5),
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+                        "Cam Index", "camera.index",
+                        int(cam.get("index", 0)), 0, 9, 1),
         ]
+        
+        # Track last camera index for validation callback
+        self._last_camera_index = int(cam.get("index", 0))
 
         # ── Display tab rows ──
         self.display_rows = [
@@ -909,11 +915,11 @@ class SettingsScreen:
         config.setdefault("grove_button", config.get("grove_button", {}))
         config.setdefault("grove_light", config.get("grove_light", {}))
 
-        selected_camera_idx = self.camera_options[self._camera_selected][0]
+        selected_camera_idx = flat.get("camera.index", 0)
 
         config["camera"].update({
             "mode": "opencv",
-            "index": selected_camera_idx,
+            "index": int(selected_camera_idx),
             "width": flat.get("camera.width", 640),
             "height": flat.get("camera.height", 480),
         })

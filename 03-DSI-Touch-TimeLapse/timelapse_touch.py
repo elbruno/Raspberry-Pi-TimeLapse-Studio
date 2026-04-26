@@ -372,6 +372,10 @@ class TimeLapseApp:
         self._last_storage_refresh: float = 0.0
         self._STORAGE_REFRESH_INTERVAL: float = 30.0
 
+        # Camera index validation (for settings screen real-time feedback)
+        self._camera_index_validation_running: bool = False
+        self._last_validated_camera_index: int = int(self.config.get("camera", {}).get("index", 0))
+
         logger.info("TimeLapseApp initialized (%dx%d, fullscreen=%s, centered=%s)",
                  self.screen_w, self.screen_h, self.fullscreen, self._center_window)
 

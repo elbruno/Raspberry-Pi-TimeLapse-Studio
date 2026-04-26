@@ -855,12 +855,10 @@ class SettingsScreen:
         gap = self.PANEL_GAP
         available_w = self.screen_w - (margin * 2)
 
-        # Keep panels usable on both 800x450 and smaller windowed sizes.
-        right_min = 210 if self.screen_w < 700 else 260
-        left_w = int(available_w * 0.38)
-        left_w = max(190, left_w)
-        left_w = min(left_w, available_w - right_min - gap)
-        right_w = max(right_min, available_w - left_w - gap)
+        # Camera preview is 30% of screen width, general config gets the rest
+        right_w = int(self.screen_w * 0.30)
+        right_w = max(120, right_w)  # Minimum viable preview width
+        left_w = available_w - right_w - gap
 
         general_x = margin
         preview_x = general_x + left_w + gap
@@ -895,7 +893,7 @@ class SettingsScreen:
         preview_x = camera_preview_panel_rect.x + 12
         preview_y = self.btn_camera_detect.bottom + 8
         preview_w = camera_preview_panel_rect.width - 24
-        preview_h = max(90, camera_preview_panel_rect.height - 36 - 8 - 56)
+        preview_h = max(60, camera_preview_panel_rect.height - 36 - 8 - 100)
         self.camera_preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
         self.camera_list_pos = (preview_x, self.camera_preview_rect.bottom + 6)
 

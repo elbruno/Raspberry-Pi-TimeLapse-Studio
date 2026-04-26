@@ -412,7 +412,11 @@ class TimeLapseApp:
         3) Fall back to low numeric indices only as a last resort.
         """
 
-        candidates: list[int] = [configured_index]
+        candidates: list[int] = []
+        # User intent first — but only if the device node actually exists,
+        # to avoid probing dead indices after replug.
+        if os.path.exists(f"/dev/video{configured_index}") or platform.system() != "Linux":
+            candidates.append(configured_index)
 
         sysfs_devices: list[tuple[int, int, str]] = []
         for dev in glob.glob("/sys/class/video4linux/video*"):
@@ -473,10 +477,12 @@ class TimeLapseApp:
             if dev_idx not in candidates:
                 candidates.append(dev_idx)
 
-        # Conservative fallback for environments with limited /sys visibility.
-        for fallback_idx in range(0, 20):
-            if fallback_idx not in candidates:
-                candidates.append(fallback_idx)
+        # Conservative fallback: only scan low indices (0-9) when sysfs gave
+        # us nothing usable. Probing 10-19 wastes time and rarely helps.
+        if len(candidates) <= 1:
+            for fallback_idx in range(0, 10):
+                if fallback_idx not in candidates:
+                    candidates.append(fallback_idx)
 
         return candidates
 
@@ -730,8 +736,20 @@ class TimeLapseApp:
         if CAPTURE_ENGINE_AVAILABLE:
             self.engine = CaptureEngine()
 
-    def _list_available_cameras(self) -> list[tuple[int, str]]:
-        """Return a list of working camera devices as (index, friendly_name)."""
+    def _list_available_cameras(
+        self,
+        progress_cb: Optional["callable"] = None,
+        stop_on_first: bool = False,
+    ) -> list[tuple[int, str]]:
+        """Return a list of working camera devices as (index, friendly_name).
+
+        Args:
+            progress_cb: Optional callback(idx: int, total: int, current: int) called
+                         before probing each candidate. Lets the UI report progress.
+            stop_on_first: If True, return as soon as one working camera is found.
+                          Use for fast detection (main app startup); use False for
+                          full enumeration (settings DETECT button).
+        """
         if not CAMERA_AVAILABLE:
             return []
 
@@ -743,9 +761,32 @@ class TimeLapseApp:
         candidate_indices = self._enumerate_camera_candidates(configured_idx)
 
         available: list[tuple[int, str]] = []
-        for idx in candidate_indices:
+        total = len(candidate_indices)
+
+        for position, idx in enumerate(candidate_indices, start=1):
+            if progress_cb is not None:
+                try:
+                    progress_cb(idx, total, position)
+                except Exception:
+                    pass  # Progress callback errors should never abort scan
+
+            # Skip indices where /dev/videoN doesn't exist on Linux. Avoids 
+            # waiting for V4L2 timeout on phantom indices after replug.
+            if platform.system() == "Linux" and not os.path.exists(f"/dev/video{idx}"):
+                continue
+
             cam = OpenCVCamera()
-            if not cam.open(idx, w, h):
+            # Two-phase probe: fast attempt, then a slower retry for newly
+            # connected devices that need time to settle.
+            opened = False
+            for attempt in range(2):
+                if cam.open(idx, w, h):
+                    opened = True
+                    break
+                if attempt == 0:
+                    time.sleep(0.15)
+
+            if not opened:
                 continue
 
             frame_ok = False
@@ -770,6 +811,8 @@ class TimeLapseApp:
                     pass
 
             available.append((idx, name))
+            if stop_on_first:
+                break
 
         return available
 
@@ -1016,84 +1059,140 @@ class TimeLapseApp:
         threading.Thread(target=_worker, name="led-test", daemon=True).start()
 
     def _run_camera_detect(self) -> None:
-        """Scan for available cameras and update the camera options list."""
+        """Scan for available cameras and update the camera options list.
+
+        Strategy for robust detection (especially after USB unplug/replug):
+        1. Release any currently-held camera handle so the device is free.
+        2. Brief settle delay to let USB enumeration complete.
+        3. Probe candidates with live progress feedback.
+        4. If main scan finds nothing, do a second pass after a longer wait
+           to catch slow-enumerating USB cameras.
+        5. Save working index to config immediately for future startups.
+        """
         if self._settings_screen is None:
             return
 
-        self._settings_screen.set_hardware_message("Scanning for cameras…", True)
+        self._settings_screen.set_hardware_message("Releasing camera…", True)
         self._settings_screen.set_camera_detect_running(True)
         self._settings_screen.set_camera_preview_frame(None)
 
         def _worker() -> None:
             try:
-                # Scan for available cameras
-                available_cameras = self._list_available_cameras()
-                
-                if self._settings_screen is not None:
-                    if available_cameras:
-                        # Update camera options in settings screen
-                        previous_idx = self._settings_screen.camera_options[
-                            self._settings_screen._camera_selected
-                        ][0]
-                        self._settings_screen.camera_options = available_cameras
-                        selected = 0
-                        for i, (cam_idx, _) in enumerate(available_cameras):
-                            if cam_idx == previous_idx:
-                                selected = i
-                                break
-                        self._settings_screen._camera_selected = selected
-                        
-                        # Try to open the first camera
-                        if self.camera is not None:
-                            try:
-                                self.camera.close()
-                            except Exception as e:
-                                logger.warning("Error closing existing camera: %s", e)
-                        
-                        idx, name = available_cameras[0]
-                        cam_cfg = self.config.get("camera", {})
-                        w = int(cam_cfg.get("width", 640))
-                        h = int(cam_cfg.get("height", 480))
-                        
-                        cam = OpenCVCamera()
-                        if cam.open(idx, w, h):
-                            self.camera = cam
-                            
-                            # Capture a frame to display as preview
-                            frame = None
-                            for attempt in range(3):
-                                frame = cam.capture()
-                                if frame is not None:
-                                    break
-                                time.sleep(0.1)
-                            
-                            if frame is not None:
-                                # Convert BGR to RGB for display
-                                import cv2
-                                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                # Convert numpy array to pygame surface
-                                pygame_frame = pygame.surfarray.make_surface(
-                                    np.transpose(rgb_frame, (1, 0, 2))
-                                )
-                                self._settings_screen.set_camera_preview_frame(pygame_frame)
-                                
-                                found_count = len(available_cameras)
-                                msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {name}"
-                                self._settings_screen.set_hardware_message(msg, True)
-                                self._camera_warning = ""
-                            else:
-                                self._settings_screen.set_camera_preview_frame(None)
-                                self._settings_screen.set_hardware_message(f"Camera found but frame capture failed: {name}", False)
-                        else:
-                            self._settings_screen.set_camera_preview_frame(None)
-                            self._settings_screen.set_hardware_message(f"Found cameras but failed to open: {name}", False)
-                    else:
-                        configured_idx = int(self.config.get("camera", {}).get("index", 0))
-                        self._settings_screen.camera_options = [(configured_idx, "Manual idx")]
-                        self._settings_screen._camera_selected = 0
-                        self._settings_screen.set_camera_preview_frame(None)
-                        self._settings_screen.set_hardware_message("No cameras detected", False)
-                        self._camera_warning = self._camera_detection_hint()
+                # Step 1: ALWAYS release the main camera before scanning. A held
+                # handle blocks reprobe and prevents detection of replugged devices.
+                if self.camera is not None:
+                    try:
+                        self.camera.close()
+                    except Exception as e:
+                        logger.warning("Error closing existing camera: %s", e)
+                    self.camera = None
+
+                # Pause preview updates while detection runs to avoid races.
+                self._set_preview_updates_enabled(False)
+
+                # Step 2: Settle delay — allows USB enumeration after replug.
+                self._settings_screen.set_hardware_message("Waiting for USB…", True)
+                time.sleep(0.5)
+
+                # Step 3: Progress callback updates UI as we probe each index.
+                def _progress(idx: int, total: int, position: int) -> None:
+                    if self._settings_screen is not None:
+                        self._settings_screen.set_hardware_message(
+                            f"Probing /dev/video{idx} ({position}/{total})…", True
+                        )
+
+                # First pass — fast scan.
+                available_cameras = self._list_available_cameras(
+                    progress_cb=_progress, stop_on_first=False
+                )
+
+                # Step 4: Second pass with longer wait if first found nothing.
+                # Helps for slow-binding USB drivers after replug.
+                if not available_cameras:
+                    if self._settings_screen is not None:
+                        self._settings_screen.set_hardware_message(
+                            "Retry — waiting for camera…", True
+                        )
+                    time.sleep(1.5)
+                    available_cameras = self._list_available_cameras(
+                        progress_cb=_progress, stop_on_first=False
+                    )
+
+                if self._settings_screen is None:
+                    return
+
+                if not available_cameras:
+                    configured_idx = int(self.config.get("camera", {}).get("index", 0))
+                    self._settings_screen.camera_options = [(configured_idx, "Manual idx")]
+                    self._settings_screen._camera_selected = 0
+                    self._settings_screen.set_camera_preview_frame(None)
+                    self._settings_screen.set_hardware_message(
+                        "No cameras found — check USB cable", False
+                    )
+                    self._camera_warning = self._camera_detection_hint()
+                    return
+
+                # Step 5: Update settings UI with discovered cameras.
+                previous_idx = self._settings_screen.camera_options[
+                    self._settings_screen._camera_selected
+                ][0]
+                self._settings_screen.camera_options = available_cameras
+                selected = 0
+                for i, (cam_idx, _) in enumerate(available_cameras):
+                    if cam_idx == previous_idx:
+                        selected = i
+                        break
+                self._settings_screen._camera_selected = selected
+
+                # Update Cam Index stepper to reflect the first available camera
+                first_idx, first_name = available_cameras[0]
+                for row in self._settings_screen.camera_rows:
+                    if row.key == "camera.index":
+                        row.value = first_idx
+                        # Update validation tracker so it doesn't re-probe immediately
+                        self._last_validated_camera_index = first_idx
+                        break
+
+                # Step 6: Open the first found camera and capture preview frame.
+                cam_cfg = self.config.get("camera", {})
+                w = int(cam_cfg.get("width", 640))
+                h = int(cam_cfg.get("height", 480))
+
+                cam = OpenCVCamera()
+                if not cam.open(first_idx, w, h):
+                    self._settings_screen.set_hardware_message(
+                        f"Found {first_name} but failed to open", False
+                    )
+                    return
+
+                self.camera = cam
+                # Persist the working index so startup uses it next time
+                self.config.setdefault("camera", {})["index"] = first_idx
+
+                # Capture a frame for the preview area
+                frame = None
+                for _ in range(3):
+                    frame = cam.capture()
+                    if frame is not None:
+                        break
+                    time.sleep(0.1)
+
+                if frame is not None:
+                    import cv2
+                    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    pygame_frame = pygame.surfarray.make_surface(
+                        np.transpose(rgb_frame, (1, 0, 2))
+                    )
+                    self._settings_screen.set_camera_preview_frame(pygame_frame)
+                    found_count = len(available_cameras)
+                    msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {first_name}"
+                    self._settings_screen.set_hardware_message(msg, True)
+                    self._camera_warning = ""
+                else:
+                    self._settings_screen.set_camera_preview_frame(None)
+                    self._settings_screen.set_hardware_message(
+                        f"Opened {first_name} but no frame", False
+                    )
             except Exception as e:
                 logger.error("Camera detection error: %s", e)
                 if self._settings_screen is not None:
@@ -1102,6 +1201,8 @@ class TimeLapseApp:
             finally:
                 if self._settings_screen is not None:
                     self._settings_screen.set_camera_detect_running(False)
+                # Re-enable preview updates so the main loop can resume
+                self._set_preview_updates_enabled(True)
 
         threading.Thread(target=_worker, name="camera-detect", daemon=True).start()
 

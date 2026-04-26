@@ -223,7 +223,14 @@ if [[ $APPLY -eq 0 ]]; then
   fi
   echo
   echo "Next step to apply:"
-  echo "  sudo bash $0 --profile $PROFILE --apply${ENABLE_ELEVATED_DEFAULTS:+ --enable-elevated-defaults}${ELEVATED_USER:+ --elevated-user $ELEVATED_USER}"
+  NEXT_STEP="  sudo bash $0 --profile $PROFILE --apply"
+  if [[ $ENABLE_ELEVATED_DEFAULTS -eq 1 ]]; then
+    NEXT_STEP+=" --enable-elevated-defaults"
+    if [[ -n "$ELEVATED_USER" ]]; then
+      NEXT_STEP+=" --elevated-user $ELEVATED_USER"
+    fi
+  fi
+  echo "$NEXT_STEP"
   exit 0
 fi
 

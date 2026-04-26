@@ -1010,6 +1010,7 @@ class TimeLapseApp:
 
         self._settings_screen.set_hardware_message("Scanning for cameras…", True)
         self._settings_screen.set_camera_detect_running(True)
+        self._settings_screen.set_camera_preview_frame(None)
 
         def _worker() -> None:
             try:
@@ -1019,8 +1020,16 @@ class TimeLapseApp:
                 if self._settings_screen is not None:
                     if available_cameras:
                         # Update camera options in settings screen
+                        previous_idx = self._settings_screen.camera_options[
+                            self._settings_screen._camera_selected
+                        ][0]
                         self._settings_screen.camera_options = available_cameras
-                        self._settings_screen._camera_selected = 0
+                        selected = 0
+                        for i, (cam_idx, _) in enumerate(available_cameras):
+                            if cam_idx == previous_idx:
+                                selected = i
+                                break
+                        self._settings_screen._camera_selected = selected
                         
                         # Try to open the first camera
                         if self.camera is not None:
@@ -1059,15 +1068,24 @@ class TimeLapseApp:
                                 found_count = len(available_cameras)
                                 msg = f"Found {found_count} camera{'s' if found_count > 1 else ''}: {name}"
                                 self._settings_screen.set_hardware_message(msg, True)
+                                self._camera_warning = ""
                             else:
+                                self._settings_screen.set_camera_preview_frame(None)
                                 self._settings_screen.set_hardware_message(f"Camera found but frame capture failed: {name}", False)
                         else:
+                            self._settings_screen.set_camera_preview_frame(None)
                             self._settings_screen.set_hardware_message(f"Found cameras but failed to open: {name}", False)
                     else:
+                        configured_idx = int(self.config.get("camera", {}).get("index", 0))
+                        self._settings_screen.camera_options = [(configured_idx, "Manual idx")]
+                        self._settings_screen._camera_selected = 0
+                        self._settings_screen.set_camera_preview_frame(None)
                         self._settings_screen.set_hardware_message("No cameras detected", False)
+                        self._camera_warning = self._camera_detection_hint()
             except Exception as e:
                 logger.error("Camera detection error: %s", e)
                 if self._settings_screen is not None:
+                    self._settings_screen.set_camera_preview_frame(None)
                     self._settings_screen.set_hardware_message(f"Error: {str(e)[:40]}", False)
             finally:
                 if self._settings_screen is not None:

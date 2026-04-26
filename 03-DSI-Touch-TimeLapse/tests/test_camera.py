@@ -45,7 +45,9 @@ class TestOpenCVCamera:
         result = camera.open(camera_index=0, width=1280, height=720)
 
         assert result is True
-        mock_cv2.VideoCapture.assert_called_once_with(0)
+        assert mock_cv2.VideoCapture.call_count >= 1
+        first_args = mock_cv2.VideoCapture.call_args_list[0].args
+        assert first_args[0] == 0
         mock_cap.set.assert_any_call(mock_cv2.CAP_PROP_FRAME_WIDTH, 1280)
         mock_cap.set.assert_any_call(mock_cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
@@ -69,6 +71,7 @@ class TestOpenCVCamera:
         fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
         mock_cap = MagicMock()
         mock_cap.isOpened.return_value = True
+        mock_cap.grab.return_value = False
         mock_cap.read.return_value = (True, fake_frame)
         mock_cv2.VideoCapture.return_value = mock_cap
 
@@ -86,6 +89,7 @@ class TestOpenCVCamera:
         """capture() returns None when read fails."""
         mock_cap = MagicMock()
         mock_cap.isOpened.return_value = True
+        mock_cap.grab.return_value = False
         mock_cap.read.return_value = (False, None)
         mock_cv2.VideoCapture.return_value = mock_cap
 

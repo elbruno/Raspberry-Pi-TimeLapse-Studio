@@ -485,6 +485,9 @@ class SettingsScreen:
 
     TAB_HEIGHT = 34
 
+    PANEL_MARGIN = 12
+    PANEL_GAP = 10
+
     @staticmethod
     def _build_window_size_options(
         max_size: Tuple[int, int],
@@ -603,7 +606,7 @@ class SettingsScreen:
         else:
             # Fallback when no camera is detected: preserve manual index value
             self._camera_selected = 0
-            self.camera_options = [(configured_index, "Manual")]
+            self.camera_options = [(configured_index, "Manual idx")]
 
         grove_button = config.get("grove_button", {})
         grove_light = config.get("grove_light", {})
@@ -715,6 +718,12 @@ class SettingsScreen:
         self.btn_save = pygame.Rect(x0, btn_y, btn_w, btn_h)
         self.btn_back = pygame.Rect(x0 + btn_w + gap, btn_y, btn_w, btn_h)
 
+        # Camera tab two-panel layout
+        self.camera_general_rect = pygame.Rect(0, 0, 0, 0)
+        self.camera_preview_rect = pygame.Rect(0, 0, 0, 0)
+        self.camera_list_pos: Tuple[int, int] = (0, 0)
+        self._layout_camera_tab_sections(start_y, row_h)
+
     @property
     def font(self) -> pygame.font.Font:
         if self._font is None:
@@ -825,6 +834,60 @@ class SettingsScreen:
         """Update the camera preview frame displayed on the Camera tab."""
         self.camera_preview_frame = frame
         self.camera_preview_timestamp = time.time()
+
+    def _layout_camera_tab_sections(self, start_y: int, row_h: int) -> None:
+        """Compute two-panel layout for Camera tab and reflow row controls."""
+        content_top = start_y
+        content_bottom = self.btn_save.y - 10
+        content_h = max(140, content_bottom - content_top)
+
+        margin = self.PANEL_MARGIN
+        gap = self.PANEL_GAP
+        available_w = self.screen_w - (margin * 2)
+
+        # Keep panels usable on both 800x450 and smaller windowed sizes.
+        right_min = 210 if self.screen_w < 700 else 260
+        left_w = int(available_w * 0.38)
+        left_w = max(190, left_w)
+        left_w = min(left_w, available_w - right_min - gap)
+        right_w = max(right_min, available_w - left_w - gap)
+
+        general_x = margin
+        preview_x = general_x + left_w + gap
+
+        self.camera_general_rect = pygame.Rect(general_x, content_top, left_w, content_h)
+        camera_preview_panel_rect = pygame.Rect(preview_x, content_top, right_w, content_h)
+
+        # Reflow interval/quality steppers to fit the general panel.
+        stepper_size = 30
+        plus_x = self.camera_general_rect.right - 12 - stepper_size
+        val_w = 52
+        val_x = plus_x - 6 - val_w
+        minus_x = val_x - 6 - stepper_size
+        for row in self.camera_rows:
+            row.btn_minus = pygame.Rect(minus_x, row.btn_minus.y, stepper_size, stepper_size)
+            row.val_rect = pygame.Rect(val_x, row.val_rect.y, val_w, stepper_size)
+            row.btn_plus = pygame.Rect(plus_x, row.btn_plus.y, stepper_size, stepper_size)
+
+        # Camera selector stays below quality row in section 1.
+        camera_selector_y = start_y + row_h * 2
+        self.camera_label_y = camera_selector_y + stepper_size // 2 - 8
+        self.camera_btn_prev = pygame.Rect(minus_x, camera_selector_y, stepper_size, stepper_size)
+        self.camera_val_rect = pygame.Rect(val_x, camera_selector_y, val_w, stepper_size)
+        self.camera_btn_next = pygame.Rect(plus_x, camera_selector_y, stepper_size, stepper_size)
+
+        # Section 2: detect button + preview + list.
+        detect_x = camera_preview_panel_rect.x + 12
+        detect_y = camera_preview_panel_rect.y + 14
+        detect_w = min(160, camera_preview_panel_rect.width - 24)
+        self.btn_camera_detect = pygame.Rect(detect_x, detect_y, detect_w, 36)
+
+        preview_x = camera_preview_panel_rect.x + 12
+        preview_y = self.btn_camera_detect.bottom + 8
+        preview_w = camera_preview_panel_rect.width - 24
+        preview_h = max(90, camera_preview_panel_rect.height - 36 - 8 - 56)
+        self.camera_preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
+        self.camera_list_pos = (preview_x, self.camera_preview_rect.bottom + 6)
 
     def get_values(self, base_config: Optional[dict] = None) -> dict:
         """Return current settings as a nested config dict."""
@@ -950,6 +1013,25 @@ class SettingsScreen:
 
         # Camera combo-like selector (Camera tab)
         if self.active_tab == 0:
+            # Section containers
+            preview_panel_rect = pygame.Rect(
+                self.camera_preview_rect.x - 12,
+                self.camera_general_rect.y,
+                self.camera_preview_rect.width + 24,
+                self.camera_general_rect.height,
+            )
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.camera_general_rect, border_radius=10)
+            pygame.draw.rect(surface, COLOR_TEXT_DIM, self.camera_general_rect, width=2, border_radius=10)
+            pygame.draw.rect(surface, COLOR_FIELD_BG, preview_panel_rect, border_radius=10)
+            pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_panel_rect, width=2, border_radius=10)
+
+            section1 = self.font_small.render("General Config", True, COLOR_TEXT_DIM)
+            section2 = self.font_small.render("Camera Preview & Detect", True, COLOR_TEXT_DIM)
+            title1_y = max(self.TAB_HEIGHT + 2, self.camera_general_rect.y - 14)
+            title2_y = max(self.TAB_HEIGHT + 2, preview_panel_rect.y - 14)
+            surface.blit(section1, (self.camera_general_rect.x + 10, title1_y))
+            surface.blit(section2, (preview_panel_rect.x + 10, title2_y))
+
             # Camera selector on right (standard position)
             cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
             surface.blit(cam_lbl, (20, self.camera_label_y))
@@ -975,26 +1057,25 @@ class SettingsScreen:
                 camera_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_camera_detect, "DETECT", camera_detect_color)
 
-            # Large camera preview area (center-right)
-            preview_x = 210
-            preview_y = start_y + row_h + 4
-            preview_w = 260
-            preview_h = 148
-            preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
-            pygame.draw.rect(surface, COLOR_FIELD_BG, preview_rect, border_radius=8)
+            # Large camera preview area in section 2
+            preview_rect = self.camera_preview_rect
+            pygame.draw.rect(surface, COLOR_PREVIEW_BG, preview_rect, border_radius=8)
             pygame.draw.rect(surface, COLOR_TEXT_DIM, preview_rect, width=2, border_radius=8)
             
             if self.camera_preview_frame is not None:
                 # Scale frame to fit preview area
-                frame_scaled = pygame.transform.scale(self.camera_preview_frame, (preview_w - 4, preview_h - 4))
-                surface.blit(frame_scaled, (preview_x + 2, preview_y + 2))
+                frame_scaled = pygame.transform.scale(
+                    self.camera_preview_frame,
+                    (max(1, preview_rect.width - 4), max(1, preview_rect.height - 4)),
+                )
+                surface.blit(frame_scaled, (preview_rect.x + 2, preview_rect.y + 2))
             else:
                 # Show placeholder text
                 placeholder = self.font_small.render("Tap DETECT to scan", True, COLOR_TEXT_DIM)
                 surface.blit(placeholder, placeholder.get_rect(center=preview_rect.center))
             
             # Available cameras list below preview
-            list_y = preview_y + preview_h + 6
+            preview_x, list_y = self.camera_list_pos
             if self.camera_options:
                 cameras_text = self.font_small.render(f"Available ({len(self.camera_options)}):", True, COLOR_TEXT)
                 surface.blit(cameras_text, (preview_x, list_y))
@@ -1003,6 +1084,10 @@ class SettingsScreen:
                     color = COLOR_USB_OK if i == self._camera_selected else COLOR_TEXT_DIM
                     cam_item = self.font_small.render(f"[{idx}] {short_name}", True, color)
                     surface.blit(cam_item, (preview_x + 8, list_y + 14 + i * 13))
+
+            if self.hardware_message:
+                msg = self.font_small.render(self.hardware_message[:52], True, self.hardware_message_color)
+                surface.blit(msg, (preview_x, list_y + 44))
 
         if self.active_tab == 1:
             size_lbl = self.font.render("App Size", True, COLOR_TEXT)

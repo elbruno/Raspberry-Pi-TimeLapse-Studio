@@ -177,6 +177,9 @@ class CaptureEngine:
         # LED settings
         led_enabled = get_config_value(config, "led.enabled", True)
         led_warmup = get_config_value(config, "led.warmup_seconds", 1.5)
+        led_pre_lead = get_config_value(config, "led.pre_capture_lead_seconds", 0.0)
+        # Total time LED stays on BEFORE the snapshot fires.
+        led_pre_total = max(0.0, float(led_warmup) + float(led_pre_lead))
         use_led = led_enabled and led is not None and led.is_available()
         if use_led:
             logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
@@ -222,8 +225,8 @@ class CaptureEngine:
                     status_light.set_capture_active(True)  # type: ignore[union-attr]
 
                 if use_led or use_status_light:
-                    # Wait for warmup (interruptible)
-                    warmup_end = time.monotonic() + led_warmup
+                    # Wait pre-capture lead time (warmup + extra lead, interruptible)
+                    warmup_end = time.monotonic() + led_pre_total
                     while not self._stop_event.is_set():
                         remaining = warmup_end - time.monotonic()
                         if remaining <= 0:

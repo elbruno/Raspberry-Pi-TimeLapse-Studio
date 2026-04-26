@@ -4,7 +4,7 @@ camera:
   width: 640
   height: 480
 capture:
-  interval_seconds: 30
+  interval_seconds: 15
   quality: 90
 preview:
   fps: 6
@@ -13,7 +13,11 @@ storage:
 led:
   backend: grove
   enabled: true
-  warmup_seconds: 1.5
+  warmup_seconds: 1
+  # Extra lead time the LED stays on BEFORE each snapshot (in seconds),
+  # added on top of warmup_seconds. Useful to fully light the scene
+  # before the camera fires. Post-capture LED-off delay stays at warmup_seconds.
+  pre_capture_lead_seconds: 1.0
   usb_port: auto
 display:
   show_countdown: true
@@ -28,16 +32,11 @@ grove_button:
   pin_button2: 6
   debounce_ms: 250
   start_stop_button: button2
-  # Optional dedicated stop button. When set, this button stops a running
-  # capture but does not toggle start. Leave empty to disable.
   stop_button: button1
 grove_light:
   enabled: true
   pin: 12
   pixel_count: 20
-  # Keep brightness <= 50 to stay within the Pi 5 USB 5V rail current budget.
-  # Bright white at high brightness on a 20-pixel ring can cause USB brownouts
-  # that disconnect the camera and storage drive.
   brightness: 40
   state_palette: classic
   capture_flash: true

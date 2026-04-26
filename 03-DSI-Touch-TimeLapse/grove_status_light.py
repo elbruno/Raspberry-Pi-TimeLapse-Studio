@@ -143,7 +143,8 @@ class GroveStatusLight:
             )
             self._strip.begin()
             self._available = True
-            self.set_state("idle")
+            # Default to OFF so LEDs are dark until explicitly needed.
+            self.set_state("off")
             logger.info(
                 "Grove WS2813 status light ready (pin=%d, pixels=%d)",
                 self.pin,

@@ -641,7 +641,7 @@ class TimeLapseApp:
         self.grove_status_light = controller
         if controller.detect():
             self.grove_status_light_detected = True
-            self.grove_status_light.set_state("idle")
+            self.grove_status_light.set_state("off")
             logger.info("Grove WS2813 status light enabled")
         else:
             logger.info("Grove WS2813 status light present but not accessible yet")
@@ -1294,9 +1294,14 @@ class TimeLapseApp:
             elapsed = self._elapsed()
             status_text = "Stopped"
             if self.grove_status_light is not None:
-                self.grove_status_light.set_state("stopped")
+                self.grove_status_light.set_state("off")
         elif self.camera is None:
             status_text = self._camera_warning or "No camera detected"
+            if self.grove_status_light is not None:
+                self.grove_status_light.set_state("off")
+        else:
+            if self.grove_status_light is not None:
+                self.grove_status_light.set_state("off")
 
         self.header.update(self.usb_connected, photo_count,
                            self._free_gb, self._remaining_photos)

@@ -16,20 +16,18 @@ Capture photos using USB webcams, built-in laptop cameras, or Raspberry Pi camer
 
 ## 📦 What's Inside
 
-This repository contains **three complete time-lapse applications** and a set of **hands-on labs** for learning touchscreen development:
+This repository contains **two complete time-lapse applications** and a set of **hands-on labs** for learning touchscreen development:
 
 | Folder | What it is | Best for |
 |--------|-----------|----------|
 | [**01-WebApp-TimeLapse**](01-WebApp-TimeLapse/) | 🌐 Web-based time-lapse app with Flask | Any platform — control from your phone or computer |
-| [**02-Touch-TimeLapse**](02-Touch-TimeLapse/) | 👆 Touchscreen GUI time-lapse app with Pygame | Raspberry Pi with a 3.5" touchscreen display |
-| [**03-DSI-Touch-TimeLapse**](03-DSI-Touch-TimeLapse/) | 🧩 DSI touchscreen profile (reuses Scenario 02 engine) | Raspberry Pi with Freenove/DSI 7" displays (800×480) |
 | [**labs**](labs/) | 🧪 Hands-on LCD & touchscreen demos | Learning Raspberry Pi display programming |
 
 ---
 
 ## 🎯 Which Scenario Should I Use?
 
-| | 01 — WebApp TimeLapse | 02 — Touch TimeLapse | 03 — DSI Touch TimeLapse |
+| 01 — WebApp TimeLapse | 03 — DSI Touch TimeLapse |
 |---|---|---|---|
 | **Interface** | Web browser (Flask) | Native touchscreen GUI (Pygame) | Native touchscreen GUI (Pygame) |
 | **Platform** | ✅ Windows, macOS, Linux, Raspberry Pi | 🍓 Raspberry Pi with touchscreen (dev mode on desktop) | 🍓 Raspberry Pi + DSI touchscreen (Freenove-style 7") |
@@ -70,22 +68,6 @@ python main.py                  # Open http://localhost:8000
 
 📖 Full instructions → [**01-WebApp-TimeLapse/README.md**](01-WebApp-TimeLapse/README.md)
 
-### Scenario 02 — Touch TimeLapse (Raspberry Pi)
-
-```bash
-git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
-cd Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
-pip install -r requirements.txt
-python timelapse_touch.py                  # Windowed (desktop dev)
-python timelapse_touch.py --fullscreen     # Fullscreen (Pi LCD)
-```
-
-> 💡 **Virtual environment optional.** On a dedicated Pi this isn't needed. On a shared machine, create one first (see note above).
->
-> ⚠️ **PEP 668 error?** Add `--break-system-packages` to the pip command (safe on a dedicated Pi).
-
-📖 Full instructions → [**02-Touch-TimeLapse/README.md**](02-Touch-TimeLapse/README.md)
-
 ### Scenario 03 — DSI Touch TimeLapse (Raspberry Pi + Freenove DSI)
 
 ```bash
@@ -95,7 +77,7 @@ bash install.sh --all
 python timelapse_touch.py --fullscreen
 ```
 
-> 💡 This scenario uses the same app engine as Scenario 02, but with a DSI-focused setup and local config profile.
+> 💡 This is the primary touchscreen application for Raspberry Pi with DSI displays.
 >
 > ✅ Starting from a fresh SD card? Use the **touch cleanup profile** first, then install Scenario 03. Do **not** install any LCD driver package for the Freenove DSI panel.
 
@@ -118,7 +100,7 @@ Just got a fresh Raspberry Pi and running low on disk space? The default Pi OS i
 ### Two cleanup profiles
 
 - **Web profile** → Removes desktop/X11 for headless setups (works with Scenario 01 — WebApp)
-- **Touch profile** → Keeps desktop/X11 for LCD/touchscreen (works with Scenario 02 — Touch and Scenario 03 — DSI Touch)
+- **Touch profile** → Keeps desktop/X11 for LCD/touchscreen (works with Scenario 03 — DSI Touch)
 
 Typical savings: **500 MB – 1.5 GB** depending on profile.
 
@@ -168,21 +150,13 @@ This project is designed for **beginners**! If you're new to programming or Rasp
 | 📡 **Use the API** | [CLI & API Reference](01-WebApp-TimeLapse/docs/09_cli_api_reference.md) |
 | 📚 **Understand the code** | [Project Overview](01-WebApp-TimeLapse/docs/01_project_overview.md) |
 
-### Scenario 02 — Touch TimeLapse
-
-| I want to... | Go to... |
-|--------------|----------|
-| 👆 **Get started with the touchscreen app** | [Touch TimeLapse README](02-Touch-TimeLapse/README.md) |
-| 📖 **Full user manual (setup, usage, FAQ)** | [User Manual](02-Touch-TimeLapse/USER_MANUAL.md) |
-| 🧪 **Try the LCD labs** | [Labs README](labs/README.md) |
-
 ### Scenario 03 — DSI Touch TimeLapse
 
 | I want to... | Go to... |
 |--------------|----------|
 | 🧩 **Set up the DSI touchscreen scenario** | [Scenario 03 README](03-DSI-Touch-TimeLapse/README.md) |
 | 💽 **Provision a brand-new SD card for Scenario 03** | [Scenario 03 User Manual](03-DSI-Touch-TimeLapse/USER_MANUAL.md) |
-| 📖 **Understand full app behavior/features** | [Scenario 02 User Manual](02-Touch-TimeLapse/USER_MANUAL.md) |
+| 📖 **Understand full app behavior/features** | [Scenario 03 User Manual](03-DSI-Touch-TimeLapse/USER_MANUAL.md) |
 
 ---
 

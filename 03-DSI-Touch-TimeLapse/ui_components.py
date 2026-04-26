@@ -613,11 +613,11 @@ class SettingsScreen:
                 self._start_stop_selected = idx_opt
                 break
 
-        # Camera combo row geometry (narrow left column)
+        # Camera combo row geometry (standard right-aligned)
         self.camera_label_y = start_y - 5
-        self.camera_btn_prev = pygame.Rect(20, start_y, btn_size, btn_size)
-        self.camera_val_rect = pygame.Rect(55, start_y, 105, btn_size)
-        self.camera_btn_next = pygame.Rect(165, start_y, btn_size, btn_size)
+        self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y, btn_size, btn_size)
+        self.camera_val_rect = pygame.Rect(screen_w - 146, start_y, 100, btn_size)
+        self.camera_btn_next = pygame.Rect(screen_w - 40, start_y, btn_size, btn_size)
 
         self.window_size_label_y = start_y + row_h * 2 + btn_size // 2 - 8
         self.window_size_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
@@ -642,16 +642,16 @@ class SettingsScreen:
                 break
         # Palette selector positioning (left column for LED tab)
         self.palette_label_y = start_y + row_h * 3 + 5
-        self.palette_btn_prev = pygame.Rect(20, start_y + row_h * 3, btn_size, btn_size)
-        self.palette_val_rect = pygame.Rect(55, start_y + row_h * 3, 105, btn_size)
-        self.palette_btn_next = pygame.Rect(165, start_y + row_h * 3, btn_size, btn_size)
+        self.palette_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 3, btn_size, btn_size)
+        self.palette_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 3, 100, btn_size)
+        self.palette_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 3, btn_size, btn_size)
 
-        # ── Camera tab rows (only on left side for tab) ──
+        # ── Camera tab rows (full width, will be drawn on left) ──
         self.camera_rows = [
-            _SettingRow(start_y, 200, btn_size,
+            _SettingRow(start_y, screen_w, btn_size,
                         "Interval (s)", "capture.interval_seconds",
                         int(cap.get("interval_seconds", 30)), 1, 3600, 5),
-            _SettingRow(start_y + row_h, 200, btn_size,
+            _SettingRow(start_y + row_h, screen_w, btn_size,
                         "Quality", "capture.quality",
                         int(cap.get("quality", 90)), 1, 100, 5),
         ]
@@ -676,12 +676,12 @@ class SettingsScreen:
                         0, 1, 1),
         ]
 
-        # ── LED tab rows (only key controls) ──
+        # ── LED tab rows (full width, will be drawn on left) ──
         self.led_rows = [
-            _SettingRow(start_y, 200, btn_size,
+            _SettingRow(start_y, screen_w, btn_size,
                         "Brightness", "grove_light.brightness",
                         int(grove_light.get("brightness", 48)), 0, 255, 16),
-            _SettingRow(start_y + row_h, 200, btn_size,
+            _SettingRow(start_y + row_h, screen_w, btn_size,
                         "Flash ms", "grove_light.capture_flash_duration_ms",
                         int(grove_light.get("capture_flash_duration_ms", 80)), 20, 1000, 20),
         ]
@@ -938,9 +938,9 @@ class SettingsScreen:
 
         # Camera combo-like selector (Camera tab)
         if self.active_tab == 0:
-            # Left column: settings + camera selector
+            # Camera selector on right (standard position)
             cam_lbl = self.font.render("Camera", True, COLOR_TEXT)
-            surface.blit(cam_lbl, (20, start_y - 5))
+            surface.blit(cam_lbl, (20, self.camera_label_y))
 
             pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_prev, border_radius=6)
             prev_txt = self.font.render("<", True, COLOR_TEXT)
@@ -963,9 +963,9 @@ class SettingsScreen:
                 camera_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_camera_detect, "DETECT", camera_detect_color)
 
-            # Right column: large camera preview area
+            # Large camera preview area (center-right)
             preview_x = 210
-            preview_y = start_y + 10
+            preview_y = start_y + row_h + 10
             preview_w = 260
             preview_h = 200
             preview_rect = pygame.Rect(preview_x, preview_y, preview_w, preview_h)
@@ -1025,9 +1025,9 @@ class SettingsScreen:
                 led_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_led_detect, "DETECT", led_detect_color)
 
-            # Palette selector (left column)
+            # Palette selector on right
             palette_lbl = self.font.render("Palette", True, COLOR_TEXT)
-            surface.blit(palette_lbl, (20, start_y + row_h * 3 + 5))
+            surface.blit(palette_lbl, (20, self.palette_label_y))
 
             pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_prev, border_radius=6)
             prev_txt = self.font.render("<", True, COLOR_TEXT)
@@ -1042,9 +1042,9 @@ class SettingsScreen:
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.palette_btn_next.center))
 
-            # Status display on right side
-            status_x = 240
-            status_y = start_y + 20
+            # Status display on right side (below palette)
+            status_x = screen_w - 220
+            status_y = start_y + row_h * 4
             
             if self.led_backend == "grove":
                 if self.grove_light_detected:

@@ -77,6 +77,24 @@ Add `--yes` to skip the confirmation prompt:
 sudo bash rpi-timelapse-cleanup.sh --profile web --apply --yes
 ```
 
+### Optional — internal-device elevated defaults
+
+For dedicated internal devices where you want interactive sessions to land in a
+root shell automatically and stop typing `sudo` for routine commands:
+
+```bash
+cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
+sudo bash enable-device-elevation.sh --user pi
+```
+
+Or apply it as part of the first-use cleanup flow:
+
+```bash
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
+```
+
+This mode is intentionally for trusted/internal devices only.
+
 ## 5. Refresh apt lists (required after cleanup)
 
 The script clears `/var/lib/apt/lists/` to save space. Refresh before installing anything:
@@ -197,7 +215,7 @@ python3 main.py validate
 ```bash
 # SSH in and run everything in one go
 cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
-sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
 
 # Step 1: LCD driver — reboots the Pi automatically
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
@@ -217,7 +235,7 @@ sudo reboot
 cd ~
 git clone https://github.com/elbruno/Raspberry-Pi-TimeLapse-Studio.git
 cd ~/Raspberry-Pi-TimeLapse-Studio/99-InitRPi
-sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
 sudo apt update
 
 # DSI display: no LCD driver install step

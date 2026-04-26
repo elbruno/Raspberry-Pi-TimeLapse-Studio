@@ -30,6 +30,8 @@ From the current repo:
 4. Purge packages conservatively.
 5. Run `autoremove`, `autoclean`, `clean`, trim journals, and delete stale VS Code server installs.
 6. Reinstall only the repo dependencies and validate the setup.
+7. Optionally enable internal-device elevated defaults so interactive sessions
+   auto-escalate to root and routine commands no longer need manual `sudo`.
 
 ## Why two profiles matter
 
@@ -63,6 +65,13 @@ or
 
 ```bash
 sudo bash rpi-timelapse-cleanup.sh --profile touch --apply
+```
+
+For trusted/internal devices, you can fold in auto-root defaults during the
+same first-use flow:
+
+```bash
+sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults --elevated-user pi
 ```
 
 ## Recommendation

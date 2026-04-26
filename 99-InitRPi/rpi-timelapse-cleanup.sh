@@ -5,6 +5,9 @@ PROFILE="web"
 APPLY=0
 ASSUME_YES=0
 SKIP_ANALYZE=0
+ENABLE_ELEVATED_DEFAULTS=0
+ELEVATED_USER=""
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 usage() {
   cat <<'USAGE'
@@ -12,6 +15,7 @@ Raspberry Pi TimeLapse Studio cleanup helper
 
 Usage:
   ./rpi-timelapse-cleanup.sh [--profile web|touch] [--apply] [--yes] [--skip-analyze]
+                                [--enable-elevated-defaults] [--elevated-user <username>]
 
 Profiles:
   web    Keeps a headless / VS Code / SSH friendly setup for 01-WebApp-TimeLapse.
@@ -21,11 +25,14 @@ Behavior:
   - Default mode is DRY RUN. It only shows what would be removed.
   - Use --apply to actually purge packages.
   - Use --yes to skip the confirmation prompt.
+  - Use --enable-elevated-defaults for dedicated/internal devices that should
+    auto-escalate to root without typing sudo each time.
 
 Examples:
   bash rpi-timelapse-cleanup.sh --profile web
   bash rpi-timelapse-cleanup.sh --profile web --apply
   bash rpi-timelapse-cleanup.sh --profile touch --apply --yes
+  bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevated-defaults
 USAGE
 }
 
@@ -46,6 +53,14 @@ while [[ $# -gt 0 ]]; do
     --skip-analyze)
       SKIP_ANALYZE=1
       shift
+      ;;
+    --enable-elevated-defaults)
+      ENABLE_ELEVATED_DEFAULTS=1
+      shift
+      ;;
+    --elevated-user)
+      ELEVATED_USER="${2:-}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -72,6 +87,9 @@ fi
 echo "== Raspberry Pi TimeLapse Studio cleanup =="
 echo "Profile : $PROFILE"
 echo "Mode    : $([[ $APPLY -eq 1 ]] && echo APPLY || echo DRY RUN)"
+if [[ $ENABLE_ELEVATED_DEFAULTS -eq 1 ]]; then
+  echo "Elevated defaults : ENABLED${ELEVATED_USER:+ for $ELEVATED_USER}"
+fi
 echo
 
 # Capture disk usage before cleanup for comparison
@@ -200,9 +218,12 @@ fi
 echo
 if [[ $APPLY -eq 0 ]]; then
   echo "Dry run only. Nothing has been removed."
+  if [[ $ENABLE_ELEVATED_DEFAULTS -eq 1 ]]; then
+    echo "Elevated defaults would also be enabled during apply mode."
+  fi
   echo
   echo "Next step to apply:"
-  echo "  sudo bash $0 --profile $PROFILE --apply"
+  echo "  sudo bash $0 --profile $PROFILE --apply${ENABLE_ELEVATED_DEFAULTS:+ --enable-elevated-defaults}${ELEVATED_USER:+ --elevated-user $ELEVATED_USER}"
   exit 0
 fi
 
@@ -282,6 +303,16 @@ echo
 echo "Cleaning old VS Code server caches from user home..."
 rm -rf "$HOME/.vscode-server" "$HOME/.vscode-server-insiders" || true
 
+if [[ $ENABLE_ELEVATED_DEFAULTS -eq 1 ]]; then
+  echo
+  echo "Enabling internal-device elevated defaults..."
+  if [[ -n "$ELEVATED_USER" ]]; then
+    bash "$SCRIPT_DIR/enable-device-elevation.sh" --user "$ELEVATED_USER"
+  else
+    bash "$SCRIPT_DIR/enable-device-elevation.sh"
+  fi
+fi
+
 echo
 # Final report with before/after comparison
 DISK_AFTER=$(df / --output=used | tail -1 | tr -d ' ')
@@ -302,6 +333,9 @@ echo "========================================="
 echo
 echo "NOTE: Run 'sudo apt update' before installing new packages"
 echo "      (apt lists were cleared to save space)."
+if [[ $ENABLE_ELEVATED_DEFAULTS -eq 1 ]]; then
+  echo "      Elevated defaults were enabled for this internal device."
+fi
 echo
 cat <<EOF2
 Done.

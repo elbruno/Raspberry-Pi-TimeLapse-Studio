@@ -250,6 +250,11 @@ class TimeLapseApp:
         flags = pygame.FULLSCREEN if self.fullscreen else 0
         self.screen = pygame.display.set_mode((self.screen_w, self.screen_h), flags)
         pygame.display.set_caption("PiTimeLapse Touch")
+        display_info = pygame.display.Info()
+        self.display_max_size = (
+            max(self.screen_w, int(getattr(display_info, "current_w", self.screen_w) or self.screen_w)),
+            max(self.screen_h, int(getattr(display_info, "current_h", self.screen_h) or self.screen_h)),
+        )
         # Keep cursor visible while troubleshooting touch/click input mapping.
         pygame.mouse.set_visible(True)
         self.clock = pygame.time.Clock()
@@ -348,6 +353,7 @@ class TimeLapseApp:
         self._preview_capture_lock = threading.Lock()
         self._preview_capture_result: Optional[np.ndarray] = None
         self._preview_capture_ready: bool = False
+        self._preview_updates_enabled: bool = True
 
         # Display feature flags
         display_cfg = self.config.get("display", {})
@@ -775,6 +781,7 @@ class TimeLapseApp:
         elif action == "test_led":
             self._run_led_test()
         elif action == "back":
+            self._set_preview_updates_enabled(True)
             self._settings_screen = None
             self._screen_state = "main"
 
@@ -834,6 +841,7 @@ class TimeLapseApp:
             # Don't open settings while capturing
             self.status_bar.update("Stop capture first", self._elapsed())
             return
+        self._set_preview_updates_enabled(False, wait_for_thread=True)
         camera_options = self._list_available_cameras()
         self._settings_screen = SettingsScreen(
             self.screen_w, self.screen_h, self.config,
@@ -843,6 +851,7 @@ class TimeLapseApp:
             grove_buttons_detected=self.grove_buttons_detected,
             led_backend=self.led_backend,
             grove_light_detected=self.grove_status_light_detected,
+            max_display_size=self.display_max_size,
         )
         self._screen_state = "settings"
 
@@ -867,11 +876,12 @@ class TimeLapseApp:
         self.led_backend = str(self.config.get("led", {}).get("backend", "usb")).lower()
 
         # Re-open camera using updated settings (index, resolution, etc.)
+        self._set_preview_updates_enabled(False, wait_for_thread=True)
         self._init_camera()
         self._init_led()
         self._init_grove_status_light()
         self._init_grove_buttons()
-        self._last_preview_time = 0.0
+        self._set_preview_updates_enabled(True)
 
         restart_needed = any([
             int(current_display.get("window_width", self.screen_w)) != int(display_cfg.get("window_width", self.screen_w)),
@@ -933,8 +943,38 @@ class TimeLapseApp:
 
     # ── Preview & status ───────────────────────────────────────────────────
 
+    def _clear_preview_capture_state(self) -> None:
+        """Clear any cached preview capture result or worker bookkeeping."""
+        with self._preview_capture_lock:
+            self._preview_capture_result = None
+            self._preview_capture_ready = False
+        if self._preview_capture_thread is not None and not self._preview_capture_thread.is_alive():
+            self._preview_capture_thread = None
+
+    def _set_preview_updates_enabled(self, enabled: bool, wait_for_thread: bool = False) -> None:
+        """Pause or resume camera preview refreshes.
+
+        When disabling, optionally wait for the current one-shot capture worker to
+        finish so camera reconfiguration does not race with an in-flight preview.
+        """
+        self._preview_updates_enabled = enabled
+
+        if not enabled:
+            if wait_for_thread and self._preview_capture_thread is not None:
+                self._preview_capture_thread.join(timeout=self._preview_capture_timeout_s + 0.1)
+                if self._preview_capture_thread.is_alive():
+                    logger.warning("Preview capture thread still running while preview is paused")
+            self._clear_preview_capture_state()
+            return
+
+        self._last_preview_time = 0.0
+        self._clear_preview_capture_state()
+
     def _update_preview(self) -> None:
         """Grab preview frames asynchronously to keep UI responsive."""
+        if not self._preview_updates_enabled:
+            return
+
         if self.camera is None:
             self.preview.update(None)
             return

@@ -14,9 +14,14 @@ led:
   backend: grove
   enabled: true
   warmup_seconds: 1
+  usb_port: auto
 display:
   show_countdown: true
   show_storage_info: true
+  window_width: 560
+  window_height: 400
+  center_window: true
+  fullscreen: false
 grove_button:
   enabled: true
   pin_button1: 5

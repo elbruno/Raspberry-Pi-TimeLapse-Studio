@@ -484,12 +484,50 @@ class SettingsScreen:
 
     TAB_HEIGHT = 34
 
+    @staticmethod
+    def _build_window_size_options(
+        max_size: Tuple[int, int],
+        current_size: Tuple[int, int],
+    ) -> tuple[list[tuple[int, int]], int]:
+        """Return 16:9 window presets up to the current display resolution."""
+        max_w, max_h = max_size
+        current_w, current_h = current_size
+
+        preset_candidates = [
+            (640, 360),
+            (800, 450),
+            (960, 540),
+            (1024, 576),
+            (1280, 720),
+            (1600, 900),
+            (1920, 1080),
+            (2560, 1440),
+        ]
+        options = [(w, h) for w, h in preset_candidates if w <= max_w and h <= max_h]
+
+        if not options:
+            fallback_w = max(320, min(max_w, current_w))
+            fallback_w -= fallback_w % 16
+            fallback_h = max(180, (fallback_w * 9) // 16)
+            if fallback_h > max_h:
+                fallback_h = max(180, min(max_h, current_h))
+                fallback_h -= fallback_h % 9
+                fallback_w = max(320, (fallback_h * 16) // 9)
+            options = [(fallback_w, fallback_h)]
+
+        selected = min(
+            range(len(options)),
+            key=lambda idx: abs(options[idx][0] - current_w) + abs(options[idx][1] - current_h),
+        )
+        return options, selected
+
     def __init__(self, screen_w: int, screen_h: int, config: dict,
                  led_detected: bool = False, led_port_name: str = "",
                  camera_options: Optional[list[tuple[int, str]]] = None,
                  grove_buttons_detected: bool = False,
                  led_backend: str = "usb",
-                 grove_light_detected: bool = False) -> None:
+                 grove_light_detected: bool = False,
+                 max_display_size: Optional[Tuple[int, int]] = None) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
         self._font: Optional[pygame.font.Font] = None
@@ -525,6 +563,15 @@ class SettingsScreen:
         cap = config.get("capture", {})
         led = config.get("led", {})
         display = config.get("display", {})
+        display_max = max_display_size or (screen_w, screen_h)
+
+        self.window_size_options, self._window_size_selected = self._build_window_size_options(
+            display_max,
+            (
+                int(display.get("window_width", screen_w)),
+                int(display.get("window_height", screen_h)),
+            ),
+        )
 
         # Available cameras for combo-style selector, e.g. [(1, "LifeCam"), ...]
         self.camera_options: list[tuple[int, str]] = sorted(
@@ -550,6 +597,11 @@ class SettingsScreen:
         self.camera_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
         self.camera_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
         self.camera_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
+
+        self.window_size_label_y = start_y + row_h * 2 + btn_size // 2 - 8
+        self.window_size_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 2, btn_size, btn_size)
+        self.window_size_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
+        self.window_size_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
 
         # ── Camera tab rows ──
         self.camera_rows = [
@@ -577,17 +629,11 @@ class SettingsScreen:
                         "Storage Info", "display.show_storage_info",
                         1 if display.get("show_storage_info", True) else 0,
                         0, 1, 1),
-            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
-                        "App Width", "display.window_width",
-                        int(display.get("window_width", 480)), 320, 1920, 40),
             _SettingRow(start_y + row_h * 3, screen_w, btn_size,
-                        "App Height", "display.window_height",
-                        int(display.get("window_height", 320)), 240, 1080, 40),
-            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
                         "Center Window", "display.center_window",
                         1 if display.get("center_window", True) else 0,
                         0, 1, 1),
-            _SettingRow(start_y + row_h * 5, screen_w, btn_size,
+            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
                         "Fullscreen", "display.fullscreen",
                         1 if display.get("fullscreen", False) else 0,
                         0, 1, 1),
@@ -650,6 +696,12 @@ class SettingsScreen:
                 return None
             rows = self.camera_rows
         elif self.active_tab == 1:
+            if self.window_size_btn_prev.collidepoint(pos):
+                self._window_size_selected = (self._window_size_selected - 1) % len(self.window_size_options)
+                return None
+            if self.window_size_btn_next.collidepoint(pos):
+                self._window_size_selected = (self._window_size_selected + 1) % len(self.window_size_options)
+                return None
             rows = self.display_rows
         else:
             if self.btn_led_test.collidepoint(pos):
@@ -723,11 +775,12 @@ class SettingsScreen:
             "warmup_seconds": flat.get("led.warmup_seconds", 1),
             "usb_port": config["led"].get("usb_port", "auto"),
         })
+        window_width, window_height = self.window_size_options[self._window_size_selected]
         config["display"].update({
             "show_countdown": bool(flat.get("display.show_countdown", 1)),
             "show_storage_info": bool(flat.get("display.show_storage_info", 1)),
-            "window_width": flat.get("display.window_width", 480),
-            "window_height": flat.get("display.window_height", 320),
+            "window_width": window_width,
+            "window_height": window_height,
             "center_window": bool(flat.get("display.center_window", 1)),
             "fullscreen": bool(flat.get("display.fullscreen", 0)),
         })
@@ -812,6 +865,23 @@ class SettingsScreen:
             pygame.draw.rect(surface, COLOR_STEPPER, self.camera_btn_next, border_radius=6)
             next_txt = self.font.render(">", True, COLOR_TEXT)
             surface.blit(next_txt, next_txt.get_rect(center=self.camera_btn_next.center))
+
+        if self.active_tab == 1:
+            size_lbl = self.font.render("App Size", True, COLOR_TEXT)
+            surface.blit(size_lbl, (20, self.window_size_label_y))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.window_size_btn_prev, border_radius=6)
+            prev_txt = self.font.render("<", True, COLOR_TEXT)
+            surface.blit(prev_txt, prev_txt.get_rect(center=self.window_size_btn_prev.center))
+
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.window_size_val_rect, border_radius=6)
+            window_width, window_height = self.window_size_options[self._window_size_selected]
+            size_txt = self.font_small.render(f"{window_width}x{window_height}", True, COLOR_TEXT)
+            surface.blit(size_txt, size_txt.get_rect(center=self.window_size_val_rect.center))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.window_size_btn_next, border_radius=6)
+            next_txt = self.font.render(">", True, COLOR_TEXT)
+            surface.blit(next_txt, next_txt.get_rect(center=self.window_size_btn_next.center))
 
         # ── Hardware diagnostics (only on Hardware tab) ──
         if self.active_tab == 2:

@@ -63,6 +63,10 @@ def capture_config():
             "width": 640,
             "height": 480,
         },
+        "led": {
+            "enabled": True,
+            "warmup_seconds": 0.05,  # Short warmup for testing
+        },
     }
 
 

@@ -18,7 +18,7 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 
 from camera_opencv import OpenCVCamera
 from config import get_config_value
@@ -40,8 +40,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 3          # consecutive capture failures before giving up
+MAX_RETRIES = 3          # consecutive capture failures before triggering reopen
 RETRY_DELAY_S = 1.0      # seconds between retry attempts
+REOPEN_BACKOFF_S = [3.0, 6.0, 12.0, 30.0]  # exponential backoff caps
+STORAGE_RETRY_BACKOFF_S = [2.0, 5.0, 10.0, 30.0]  # USB drive reappear waits
 
 
 class CaptureEngine:
@@ -71,7 +73,8 @@ class CaptureEngine:
     def start(self, session: Session, camera: OpenCVCamera,
               storage: StorageManager, config: dict,
               led: Optional["LEDController"] = None,
-              status_light: Optional["GroveStatusLight"] = None) -> None:  # type: ignore[name-defined]
+              status_light: Optional["GroveStatusLight"] = None,
+              camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """
         Begin the capture loop in a background thread.
 
@@ -82,6 +85,11 @@ class CaptureEngine:
             config:  Merged configuration dictionary.
             led:     Optional LEDController for illumination before capture.
             status_light: Optional GroveStatusLight for visual app state.
+            camera_reopen_callback: Optional callable invoked when the camera
+                stops responding. Should reinitialise the device and return a
+                fresh ``OpenCVCamera`` instance, or ``None`` if it is still
+                unavailable. The engine retries with exponential backoff and
+                does not give up until the user stops the session.
         """
         if self._thread is not None and self._thread.is_alive():
             logger.warning("Capture engine is already running")
@@ -98,7 +106,8 @@ class CaptureEngine:
 
         self._thread = threading.Thread(
             target=self._capture_loop,
-            args=(session, camera, storage, config, led, status_light),
+            args=(session, camera, storage, config, led, status_light,
+                  camera_reopen_callback),
             name="capture-engine",
             daemon=True,
         )
@@ -157,7 +166,8 @@ class CaptureEngine:
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
                       storage: StorageManager, config: dict,
                       led: Optional["LEDController"] = None,
-                      status_light: Optional["GroveStatusLight"] = None) -> None:  # type: ignore[name-defined]
+                      status_light: Optional["GroveStatusLight"] = None,
+                      camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """Main loop executed inside the background thread."""
         interval = get_config_value(config, "capture.interval_seconds", 30)
         quality = get_config_value(config, "capture.quality", 90)
@@ -265,25 +275,31 @@ class CaptureEngine:
                         self._errors.append(error_msg)
                         session.errors.append(error_msg)
 
-                    if consecutive_failures >= MAX_RETRIES:
-                        logger.error("Too many consecutive failures — stopping")
-                        break
+                    # Try to reopen the camera with exponential backoff.
+                    # The session keeps running until the user explicitly stops.
+                    if camera_reopen_callback is not None:
+                        new_cam = self._reopen_camera_with_backoff(camera_reopen_callback)
+                        if new_cam is not None:
+                            camera = new_cam
+                            consecutive_failures = 0
+                            with self._lock:
+                                self._errors.append("Camera reconnected")
+                                session.errors.append("Camera reconnected")
+                    else:
+                        # No reopen callback available — fall back to old behaviour
+                        if consecutive_failures >= MAX_RETRIES:
+                            logger.error("Too many consecutive failures — stopping")
+                            break
                 else:
                     # -- save the photo --
-                    path = storage.save_photo(session, frame, quality)
+                    path = self._save_photo_with_retry(storage, session, frame, quality)
                     if path:
                         with self._lock:
                             self._total_photos = session.total_photos
                             self._last_photo_path = path
-                    else:
-                        error_msg = "Failed to save photo to disk"
-                        logger.error(error_msg)
-                        with self._lock:
-                            self._errors.append(error_msg)
-                            session.errors.append(error_msg)
 
-                # Persist metadata after every capture cycle
-                storage.save_session_metadata(session)
+                # Persist metadata after every capture cycle (best-effort)
+                self._save_metadata_with_retry(storage, session)
 
                 # -- sleep until next capture, checking for stop --
                 self._interruptible_sleep(next_capture)
@@ -297,7 +313,7 @@ class CaptureEngine:
         # -- finalise session --
         session.end_time = datetime.now()
         session.status = "stopped"
-        storage.save_session_metadata(session)
+        self._save_metadata_with_retry(storage, session)
 
         if use_status_light:
             status_light.set_state("stopped")  # type: ignore[union-attr]
@@ -315,3 +331,97 @@ class CaptureEngine:
             if remaining <= 0:
                 break
             self._stop_event.wait(timeout=min(remaining, 0.25))
+
+    def _reopen_camera_with_backoff(
+        self,
+        reopen_callback: Callable[[], Optional[OpenCVCamera]],
+    ) -> Optional[OpenCVCamera]:
+        """Try to reopen the camera with exponential backoff.
+
+        Returns the new camera handle on success, or ``None`` if the user
+        stopped the session before recovery succeeded. Never gives up on
+        its own — only the stop_event breaks the loop.
+        """
+        attempt = 0
+        while not self._stop_event.is_set():
+            delay = REOPEN_BACKOFF_S[min(attempt, len(REOPEN_BACKOFF_S) - 1)]
+            logger.info(
+                "Attempting camera reopen in %.1fs (attempt #%d)",
+                delay, attempt + 1,
+            )
+            # Wait the backoff window (interruptible)
+            wake = time.monotonic() + delay
+            while not self._stop_event.is_set():
+                remaining = wake - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._stop_event.wait(timeout=min(remaining, 0.25))
+            if self._stop_event.is_set():
+                return None
+
+            try:
+                new_cam = reopen_callback()
+            except Exception as exc:
+                logger.warning("Camera reopen callback raised: %s", exc)
+                new_cam = None
+
+            if new_cam is not None and new_cam.is_available():
+                logger.info("Camera reopened successfully")
+                return new_cam
+
+            attempt += 1
+        return None
+
+    def _save_photo_with_retry(
+        self,
+        storage: StorageManager,
+        session: Session,
+        frame,
+        quality: int,
+    ) -> Optional[str]:
+        """Save a photo, retrying with backoff if storage is unavailable."""
+        for delay in STORAGE_RETRY_BACKOFF_S:
+            if self._stop_event.is_set():
+                return None
+            # Verify the storage base path is still mounted before writing.
+            if not storage.base_path.exists():
+                msg = f"Storage path missing: {storage.base_path} — waiting {delay:.1f}s"
+                logger.warning(msg)
+                with self._lock:
+                    if not self._errors or self._errors[-1] != msg:
+                        self._errors.append(msg)
+                        session.errors.append(msg)
+                wake = time.monotonic() + delay
+                while not self._stop_event.is_set():
+                    remaining = wake - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    self._stop_event.wait(timeout=min(remaining, 0.25))
+                continue
+
+            path = storage.save_photo(session, frame, quality)
+            if path:
+                return path
+
+            err = "Failed to save photo to disk"
+            logger.error(err)
+            with self._lock:
+                self._errors.append(err)
+                session.errors.append(err)
+            # Brief pause before retrying in case of a transient I/O hiccup
+            self._stop_event.wait(timeout=delay)
+        return None
+
+    def _save_metadata_with_retry(
+        self,
+        storage: StorageManager,
+        session: Session,
+    ) -> None:
+        """Persist session metadata; tolerate transient storage outages."""
+        try:
+            if not storage.base_path.exists():
+                # Skip silently — _save_photo_with_retry already logged it.
+                return
+            storage.save_session_metadata(session)
+        except Exception as exc:
+            logger.warning("Could not save session metadata: %s", exc)

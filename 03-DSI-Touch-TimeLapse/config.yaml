@@ -32,7 +32,10 @@ grove_light:
   enabled: true
   pin: 12
   pixel_count: 20
-  brightness: 80
+  # Keep brightness <= 50 to stay within the Pi 5 USB 5V rail current budget.
+  # Bright white at high brightness on a 20-pixel ring can cause USB brownouts
+  # that disconnect the camera and storage drive.
+  brightness: 40
   state_palette: classic
   capture_flash: true
   capture_flash_duration_ms: 80

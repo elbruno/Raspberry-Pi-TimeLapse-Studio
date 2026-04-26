@@ -177,37 +177,44 @@ class GroveStatusLight:
         self._last_state = state
 
     def flash_capture(self, duration_seconds: float | None = None) -> None:
-        """Brief white flash to mark each captured frame."""
+        """Brief dim flash to mark each captured frame."""
         if not self._available:
             return
 
         duration = self.capture_flash_duration_s if duration_seconds is None else duration_seconds
 
-        self._fill(RGBColor(90, 90, 90))
+        # Dim white to keep peak current low (avoids USB 5V brownout on Pi 5).
+        self._fill(RGBColor(35, 35, 35))
         time.sleep(max(0.0, duration))
         self.set_state("capturing")
 
     def set_capture_active(self, active: bool) -> None:
-        """Turn the LED bright white (active=True) or back to capturing/off.
+        """Turn the LED on (active=True) or off (active=False) around captures.
 
-        Used by the capture engine to signal the photo moment: ON 1s before
-        the snapshot and OFF 1s after, providing a clear visual indicator.
+        Used by the capture engine to signal the photo moment: ON `warmup`
+        seconds before the snapshot and OFF `warmup` seconds after.
+
+        The color is intentionally dim (RGB ~40) to keep the WS2813 ring's
+        peak current well under the Pi 5's USB rail budget. Bright white at
+        full intensity (RGB 120+) on a 20-pixel ring can briefly dip the 5V
+        rail enough to disconnect attached USB devices (camera, storage).
         """
         if not self._available:
             return
         if active:
-            self._fill(RGBColor(120, 120, 120))
+            self._fill(RGBColor(40, 40, 40))
             self._last_state = "capture_flash"
         else:
-            self.set_state("capturing")
+            self.set_state("off")
 
     def flash_test(self, duration_seconds: float = 0.25) -> None:
-        """Brief bright flash used by the settings diagnostics button."""
+        """Brief flash used by the settings diagnostics button."""
         if not self._available:
             return
 
         previous_state = self._last_state
-        self._fill(RGBColor(120, 120, 120))
+        # Dim white to stay within USB 5V rail current budget.
+        self._fill(RGBColor(40, 40, 40))
         time.sleep(max(0.0, duration_seconds))
         self.set_state(previous_state)
 

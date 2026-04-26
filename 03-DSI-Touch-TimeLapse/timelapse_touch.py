@@ -545,6 +545,24 @@ class TimeLapseApp:
         self._camera_warning = self._camera_detection_hint()
         logger.warning("Camera failed to open on all probed indices")
 
+    def _reopen_camera_for_engine(self) -> Optional[OpenCVCamera]:
+        """Callback used by the capture engine to recover from a camera loss.
+
+        Re-runs the standard ``_init_camera`` probe. Returns the new camera
+        handle (so the engine can swap it in) or ``None`` if probing failed.
+
+        This runs in the capture engine's background thread, so it must not
+        touch pygame UI state directly. ``_init_camera`` only mutates
+        ``self.camera`` / ``self.config`` / ``self._camera_warning``, all of
+        which are safe to update from another thread for our usage.
+        """
+        try:
+            self._init_camera()
+        except Exception as exc:
+            logger.warning("Camera reopen failed: %s", exc)
+            return None
+        return self.camera
+
     def _camera_detection_hint(self) -> str:
         """Return a user-facing hint for camera detection failures."""
         # Default message (safe on all platforms)
@@ -924,7 +942,8 @@ class TimeLapseApp:
             logger.info("Created session %s", self.session.session_id)
 
         self.engine.start(self.session, self.camera, self.storage,
-                          self.config, self.led, self.grove_status_light)
+                          self.config, self.led, self.grove_status_light,
+                          camera_reopen_callback=self._reopen_camera_for_engine)
         self._capture_start_time = time.time()
 
         if self.grove_status_light is not None:

@@ -1,6 +1,6 @@
 # 👆 Scenario 03 — DSI Touch TimeLapse
 
-A Raspberry Pi **DSI touchscreen** scenario based on the same app engine lineage as legacy Scenario 02, pre-wired for displays like:
+A Raspberry Pi **DSI touchscreen** scenario that reuses the shared touchscreen app engine, pre-wired for displays like:
 
 - **Freenove 7 Inch Touchscreen Monitor** (ASIN `B0B44VZTRG`)
 - 800×480, capacitive touch, DSI ribbon connection
@@ -9,7 +9,7 @@ A Raspberry Pi **DSI touchscreen** scenario based on the same app engine lineage
 
 ---
 
-## What is different vs Scenario 02?
+## What is different in Scenario 03?
 
 - ✅ Same UI, same capture engine, same features
 - ✅ Same camera, USB storage, LED relay, Grove button/light support
@@ -17,7 +17,7 @@ A Raspberry Pi **DSI touchscreen** scenario based on the same app engine lineage
 - 🔁 Different scenario folder + config so you can tune it independently
 - 🧩 Install flow adapted for **DSI** displays (no SPI LCD driver step)
 
-This scenario launches the Scenario 02 app internally, while keeping local files for:
+This scenario reuses the shared touchscreen engine while keeping local files for:
 
 - `config.yaml` (your DSI profile settings)
 - desktop shortcut and autostart
@@ -137,11 +137,11 @@ common `800x480` DSI touchscreens.
 ```text
 03-DSI-Touch-TimeLapse/
 ├── cleanup.sh          # Scenario 03 cleanup helper (keeps desktop/X11)
-├── timelapse_touch.py   # Launcher that reuses Scenario 02 app code
+├── timelapse_touch.py   # Launcher for the shared touchscreen app engine
 ├── config.yaml          # Scenario 03 local config
 ├── install.sh           # DSI-focused installer
 ├── install-shortcut.sh  # Desktop shortcut + optional opt-in autostart
-└── requirements.txt     # Reuses Scenario 02 Python dependencies
+└── requirements.txt     # Shared touchscreen Python dependencies
 ```
 
 ---

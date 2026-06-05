@@ -112,7 +112,7 @@ Just got a fresh Raspberry Pi and running low on disk space? The default Pi OS i
 ### Two cleanup profiles
 
 - **Web profile** → Removes desktop/X11 for headless setups (works with Scenario 01 — WebApp)
-- **Touch profile** → Keeps desktop/X11 for LCD/touchscreen (works with Scenario 03 — DSI Touch)
+- **Touch profile** → Keeps desktop/X11 for touchscreen UI (works with Scenario 03 — DSI Touch)
 
 Typical savings: **500 MB – 1.5 GB** depending on profile.
 

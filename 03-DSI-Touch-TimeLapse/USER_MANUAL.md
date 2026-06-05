@@ -3,13 +3,13 @@
 A complete setup guide for running **PiTimeLapse DSI Touch** on a Raspberry Pi with a **driver-free DSI touchscreen**, such as the **Freenove 7-inch 800×480 capacitive display**.
 
 > 📖 Part of [PiTimeLapse Lab](../README.md) · Quick overview → [README.md](README.md)
-> 💡 Scenario 03 reuses the full Scenario 02 app engine, but the hardware setup is different: **no SPI LCD driver install step is required**.
+> 💡 Scenario 03 reuses the shared touchscreen app engine, but the hardware setup is different: **no SPI LCD driver install step is required**.
 
 ---
 
 ## What makes Scenario 03 different?
 
-Scenario 03 uses the same application feature set lineage as legacy Scenario 02:
+Scenario 03 includes the same touchscreen feature set:
 
 - touchscreen UI
 - camera preview
@@ -141,7 +141,7 @@ Why `touch` profile?
 
 - it keeps the desktop/X11 stack required by the touchscreen app
 - it removes non-essential bloat
-- it is the right profile for both Scenario 02 and Scenario 03
+- it is the right profile for Scenario 03 (and legacy Scenario 02 only when explicitly needed)
 
 ---
 

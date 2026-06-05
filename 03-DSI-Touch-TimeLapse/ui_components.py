@@ -917,6 +917,17 @@ class SettingsScreen:
             row.val_rect = pygame.Rect(val_x, row.val_rect.y, val_w, stepper_size)
             row.btn_plus = pygame.Rect(plus_x, row.btn_plus.y, stepper_size, stepper_size)
 
+        # Reflow source mode selector into the same left config panel.
+        source_row_y = start_y + row_h * 3
+        source_val_w = 110
+        source_plus_x = plus_x
+        source_val_x = source_plus_x - 6 - source_val_w
+        source_minus_x = source_val_x - 6 - stepper_size
+        self.source_mode_label_y = source_row_y + stepper_size // 2 - 8
+        self.source_mode_btn_prev = pygame.Rect(source_minus_x, source_row_y, stepper_size, stepper_size)
+        self.source_mode_val_rect = pygame.Rect(source_val_x, source_row_y, source_val_w, stepper_size)
+        self.source_mode_btn_next = pygame.Rect(source_plus_x, source_row_y, stepper_size, stepper_size)
+
         # Section 2: detect button + preview + list.
         detect_x = camera_preview_panel_rect.x + 12
         detect_y = camera_preview_panel_rect.y + 14

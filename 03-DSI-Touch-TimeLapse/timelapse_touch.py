@@ -28,6 +28,7 @@ import time
 import glob
 from typing import Optional
 from urllib.parse import urlparse
+import stat
 
 # ---------------------------------------------------------------------------
 # SDL environment — must be set BEFORE importing pygame.
@@ -444,9 +445,21 @@ class TimeLapseApp:
         """
 
         candidates: list[int] = []
+
+        def _is_char_video_node(idx: int) -> bool:
+            node = f"/dev/video{idx}"
+            # Fail-open when node is absent so sysfs-based probing still works
+            # in mocked/transient environments; only hard-reject known bad nodes.
+            if not os.path.exists(node):
+                return True
+            try:
+                return stat.S_ISCHR(os.stat(node).st_mode)
+            except Exception:
+                return False
+
         # User intent first — but only if the device node actually exists,
         # to avoid probing dead indices after replug.
-        if os.path.exists(f"/dev/video{configured_index}") or platform.system() != "Linux":
+        if _is_char_video_node(configured_index) or platform.system() != "Linux":
             candidates.append(configured_index)
 
         sysfs_devices: list[tuple[int, int, str]] = []
@@ -456,6 +469,8 @@ class TimeLapseApp:
                 continue
 
             dev_idx = int(suffix)
+            if not _is_char_video_node(dev_idx):
+                continue
             name = ""
             dev_stream_index = 0
 
@@ -512,7 +527,7 @@ class TimeLapseApp:
         # us nothing usable. Probing 10-19 wastes time and rarely helps.
         if len(candidates) <= 1:
             for fallback_idx in range(0, 10):
-                if fallback_idx not in candidates:
+                if fallback_idx not in candidates and _is_char_video_node(fallback_idx):
                     candidates.append(fallback_idx)
 
         return candidates
@@ -956,8 +971,13 @@ class TimeLapseApp:
 
             # Skip indices where /dev/videoN doesn't exist on Linux. Avoids 
             # waiting for V4L2 timeout on phantom indices after replug.
-            if platform.system() == "Linux" and not os.path.exists(f"/dev/video{idx}"):
-                continue
+            if platform.system() == "Linux":
+                node = f"/dev/video{idx}"
+                try:
+                    if not os.path.exists(node) or not stat.S_ISCHR(os.stat(node).st_mode):
+                        continue
+                except Exception:
+                    continue
 
             cam = OpenCVCamera()
             # Two-phase probe: fast attempt, then a slower retry for newly

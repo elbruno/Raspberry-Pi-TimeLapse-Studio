@@ -147,12 +147,6 @@ except ImportError:
     GROVE_BUTTON_AVAILABLE = False
     GroveDualButton = None  # type: ignore[assignment, misc]
 
-try:
-    from grove_status_light import GroveStatusLight
-    GROVE_STATUS_LIGHT_AVAILABLE = True
-except ImportError:
-    GROVE_STATUS_LIGHT_AVAILABLE = False
-    GroveStatusLight = None  # type: ignore[assignment, misc]
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -190,10 +184,14 @@ def _load_app_config() -> dict:
         "preview": {"fps": PREVIEW_FPS},
         "storage": {"fallback_path": "./data"},
         "led": {
-            "backend": "usb",
             "enabled": True,
             "warmup_seconds": 1.5,
-            "usb_port": "auto",
+            "pre_capture_lead_seconds": 0.0,
+        },
+        "grove_relay": {
+            "enabled": True,
+            "pin": 26,
+            "active_high": True,
         },
         "display": {
             "show_countdown": True,
@@ -238,8 +236,6 @@ class TimeLapseApp:
         self._center_window = bool(display_cfg.get("center_window", True))
         self.fullscreen = fullscreen or bool(display_cfg.get("fullscreen", False))
         self.preview_fps = max(1, int(self.config.get("preview", {}).get("fps", PREVIEW_FPS)))
-        self.led_backend = str(self.config.get("led", {}).get("backend", "usb")).lower()
-
         if not self.fullscreen and self._center_window:
             os.environ["SDL_VIDEO_CENTERED"] = "1"
             os.environ.pop("SDL_VIDEO_WINDOW_POS", None)
@@ -270,7 +266,7 @@ class TimeLapseApp:
         self.camera: Optional[OpenCVCamera] = None  # type: ignore[assignment]
         self._init_camera()
 
-        # ── LED controller ──
+        # ── Relay controller ──
         self.led = None
         self.led_controller = None
         self.led_detected: bool = False
@@ -278,11 +274,6 @@ class TimeLapseApp:
         self._led_test_lock = threading.Lock()
         self._led_test_active = False
         self._init_led()
-
-        # ── Grove status light (WS2813) ──
-        self.grove_status_light = None
-        self.grove_status_light_detected: bool = False
-        self._init_grove_status_light()
 
         # ── Grove dual button ──
         self.grove_buttons = None
@@ -365,7 +356,7 @@ class TimeLapseApp:
         self._show_countdown: bool = display_cfg.get("show_countdown", True)
         self._show_storage_info: bool = display_cfg.get("show_storage_info", True)
         self.header.show_storage_info = self._show_storage_info
-        self.header.led_detected = self._is_active_led_detected()
+        self.header.led_detected = self.led_detected
 
         # Storage info state (refreshed periodically)
         self._free_gb: float = 0.0
@@ -599,20 +590,7 @@ class TimeLapseApp:
         return fallback
 
     def _init_led(self) -> None:
-        """Auto-detect a USB LED and ensure it starts OFF."""
-        self.led_backend = str(self.config.get("led", {}).get("backend", "usb")).lower()
-        if self.led_backend != "usb":
-            if self.led_controller is not None:
-                self.led_controller.close()
-            self.led_controller = None
-            self.led = None
-            self.led_detected = False
-            self.led_port_name = ""
-            logger.info("LED backend is '%s' — skipping USB LED controller", self.led_backend)
-            if hasattr(self, "header"):
-                self.header.led_detected = self._is_active_led_detected()
-            return
-
+        """Initialize Grove relay controller and ensure it starts OFF."""
         if not LED_MODULE_AVAILABLE:
             logger.info("led_controller not available — LED support disabled")
             return
@@ -624,71 +602,32 @@ class TimeLapseApp:
         self.led_detected = False
         self.led_port_name = ""
 
+        relay_cfg = self.config.get("grove_relay", {})
+        if not relay_cfg.get("enabled", True):
+            logger.info("Grove relay disabled in config")
+            if hasattr(self, "header"):
+                self.header.led_detected = False
+            return
+
         led_cfg = self.config.get("led", {})
-        usb_port = led_cfg.get("usb_port", "auto")
-        controller = LEDController(usb_port=usb_port)
+        pin = int(relay_cfg.get("pin", 26))
+        active_high = bool(relay_cfg.get("active_high", True))
+        controller = LEDController(pin=pin, active_high=active_high)
         if controller.detect():
             controller.turn_off()  # always ensure LED starts in off state
             self.led_controller = controller
             self.led_detected = True
             self.led_port_name = controller.port_name
-            logger.info("USB LED detected on %s", controller.port_name)
+            logger.info("Grove relay detected on %s", controller.port_name)
             if led_cfg.get("enabled", True):
                 self.led = controller
-                logger.info("LED enabled for capture")
+                logger.info("Relay enabled for capture")
             else:
-                logger.info("LED disabled in config — turned off")
+                logger.info("Relay disabled in config — kept OFF")
         else:
-            logger.info("No USB LED relay found")
+            logger.info("No Grove relay found")
         if hasattr(self, "header"):
-            self.header.led_detected = self._is_active_led_detected()
-
-    def _init_grove_status_light(self) -> None:
-        """Initialize optional Grove WS2813 status light."""
-        if self.grove_status_light is not None:
-            self.grove_status_light.close()
-        self.grove_status_light = None
-        self.grove_status_light_detected = False
-
-        if not GROVE_STATUS_LIGHT_AVAILABLE:
-            logger.info("grove_status_light module not available")
-            return
-
-        cfg = self.config.get("grove_light", {})
-        if not cfg.get("enabled", True):
-            logger.info("Grove status light disabled in config")
-            return
-
-        pin = int(cfg.get("pin", 12))
-        pixel_count = int(cfg.get("pixel_count", 10))
-        brightness = int(cfg.get("brightness", 48))
-        state_palette = str(cfg.get("state_palette", "classic"))
-        capture_flash_duration_ms = int(cfg.get("capture_flash_duration_ms", 80))
-
-        controller = GroveStatusLight(
-            pin=pin,
-            pixel_count=pixel_count,
-            brightness=brightness,
-            state_palette=state_palette,
-            capture_flash_duration_s=max(0.02, min(1.0, capture_flash_duration_ms / 1000.0)),
-        )
-        # Keep a controller instance even when detect() fails so the settings
-        # "DETECT" action can retry after permissions/hardware state change.
-        self.grove_status_light = controller
-        if controller.detect():
-            self.grove_status_light_detected = True
-            self.grove_status_light.set_state("off")
-            logger.info("Grove WS2813 status light enabled")
-        else:
-            logger.info("Grove WS2813 status light present but not accessible yet")
-        if hasattr(self, "header"):
-            self.header.led_detected = self._is_active_led_detected()
-
-    def _is_active_led_detected(self) -> bool:
-        """Return whether the configured LED backend is available."""
-        if self.led_backend == "grove":
-            return self.grove_status_light_detected
-        return self.led_detected
+            self.header.led_detected = self.led_detected
 
     def _init_grove_buttons(self) -> None:
         """Initialize optional Grove dual button input."""
@@ -948,12 +887,9 @@ class TimeLapseApp:
             logger.info("Created session %s", self.session.session_id)
 
         self.engine.start(self.session, self.camera, self.storage,
-                          self.config, self.led, self.grove_status_light,
+                          self.config, self.led,
                           camera_reopen_callback=self._reopen_camera_for_engine)
         self._capture_start_time = time.time()
-
-        if self.grove_status_light is not None:
-            self.grove_status_light.set_state("capturing")
         # Swap buttons — only STOP visible while capturing
         self.btn_start.visible = False
         self.btn_stop.visible = True
@@ -988,8 +924,6 @@ class TimeLapseApp:
             led_port_name=self.led_port_name,
             camera_options=camera_options,
             grove_buttons_detected=self.grove_buttons_detected,
-            led_backend=self.led_backend,
-            grove_light_detected=self.grove_status_light_detected,
             max_display_size=self.display_max_size,
         )
         self._screen_state = "settings"
@@ -1012,13 +946,11 @@ class TimeLapseApp:
         self.header.show_storage_info = self._show_storage_info
         self._center_window = bool(display_cfg.get("center_window", True))
         self.preview_fps = max(1, int(self.config.get("preview", {}).get("fps", PREVIEW_FPS)))
-        self.led_backend = str(self.config.get("led", {}).get("backend", "usb")).lower()
 
         # Re-open camera using updated settings (index, resolution, etc.)
         self._set_preview_updates_enabled(False, wait_for_thread=True)
         self._init_camera()
         self._init_led()
-        self._init_grove_status_light()
         self._init_grove_buttons()
         self._set_preview_updates_enabled(True)
 
@@ -1040,15 +972,9 @@ class TimeLapseApp:
             return
 
         controller = self.led_controller
-        grove_light = self.grove_status_light
-        if self.led_backend == "grove":
-            if grove_light is None or not grove_light.is_available():
-                self._settings_screen.set_hardware_message("Grove LED not available", False)
-                return
-        else:
-            if controller is None or not controller.is_available():
-                self._settings_screen.set_hardware_message("USB LED not available — check uhubctl/permissions", False)
-                return
+        if controller is None or not controller.is_available():
+            self._settings_screen.set_hardware_message("Relay not available", False)
+            return
 
         with self._led_test_lock:
             if self._led_test_active:
@@ -1056,25 +982,21 @@ class TimeLapseApp:
                 return
             self._led_test_active = True
 
-        self._settings_screen.set_hardware_message("Testing LED…", True)
+        self._settings_screen.set_hardware_message("Testing relay…", True)
         self._settings_screen.set_led_test_running(True)
 
         def _worker() -> None:
             success = False
             test_duration_s = 2.0
             try:
-                if self.led_backend == "grove":
-                    grove_light.flash_test(test_duration_s)  # type: ignore[union-attr]
-                    success = True
-                else:
-                    if controller.turn_on():  # type: ignore[union-attr]
-                        time.sleep(test_duration_s)
-                        success = controller.turn_off()  # type: ignore[union-attr]
+                if controller.turn_on():  # type: ignore[union-attr]
+                    time.sleep(test_duration_s)
+                    success = controller.turn_off()  # type: ignore[union-attr]
                 if self._settings_screen is not None:
                     if success:
-                        self._settings_screen.set_hardware_message("LED test complete", True)
+                        self._settings_screen.set_hardware_message("Relay test complete", True)
                     else:
-                        self._settings_screen.set_hardware_message("LED test failed", False)
+                        self._settings_screen.set_hardware_message("Relay test failed", False)
             finally:
                 if self._settings_screen is not None:
                     self._settings_screen.set_led_test_running(False)
@@ -1302,67 +1224,37 @@ class TimeLapseApp:
         threading.Thread(target=_validate_worker, name="camera-index-validate", daemon=True).start()
 
     def _run_led_detect(self) -> None:
-        """Attempt to detect/reinitialize the LED from the settings screen."""
+        """Attempt to detect/reinitialize the relay from the settings screen."""
         if self._settings_screen is None:
             return
 
-        self._settings_screen.set_hardware_message("Detecting LED…", True)
+        self._settings_screen.set_hardware_message("Detecting relay…", True)
         self._settings_screen.set_led_detect_running(True)
 
         def _worker() -> None:
             try:
-                if self.led_backend == "grove":
-                    if not GROVE_STATUS_LIGHT_AVAILABLE:
-                        if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("Grove driver unavailable (install rpi_ws281x)", False)
-                        return
+                relay_cfg = self.config.get("grove_relay", {})
+                if self.led_controller is None:
+                    pin = int(relay_cfg.get("pin", 26))
+                    active_high = bool(relay_cfg.get("active_high", True))
+                    self.led_controller = LEDController(pin=pin, active_high=active_high)
 
-                    # Ensure controller exists (can be None if config was toggled/reloaded)
-                    if self.grove_status_light is None:
-                        self._init_grove_status_light()
+                controller = self.led_controller
+                available = bool(controller and controller.detect())
+                self.led_detected = available
+                if available and controller is not None:
+                    self.led_port_name = controller.port_name
+                    if self.config.get("led", {}).get("enabled", True):
+                        self.led = controller
+                if hasattr(self, "header"):
+                    self.header.led_detected = self.led_detected
 
-                    grove_light = self.grove_status_light
-                    if grove_light is None:
-                        if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("Grove disabled in config", False)
-                        return
-
-                    # Check if running as sudo (required for Grove)
-                    is_sudo = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
-
-                    # Attempt re-initialization
-                    available = grove_light.detect()
-                    self.grove_status_light_detected = bool(available)
-                    if hasattr(self, "header"):
-                        self.header.led_detected = self._is_active_led_detected()
-
-                    if self._settings_screen is not None:
-                        if available and grove_light.is_available():
-                            self._settings_screen.set_hardware_message("Grove LED ✓ Detected!", True)
-                            self._settings_screen.grove_light_detected = True
-                        else:
-                            if not is_sudo:
-                                msg = "Grove needs sudo (requires /dev/mem access)"
-                            else:
-                                msg = "Grove LED not responding (check wiring/power)"
-                            self._settings_screen.set_hardware_message(msg, False)
-                            self._settings_screen.grove_light_detected = False
-                else:
-                    # USB LED detection
-                    controller = self.led_controller
-                    if controller is not None:
-                        # Attempt to detect USB LED
-                        available = controller.detect()
-                        if self._settings_screen is not None:
-                            if available:
-                                self._settings_screen.set_hardware_message("USB LED ✓ Detected!", True)
-                                self._settings_screen.led_detected = True
-                            else:
-                                self._settings_screen.set_hardware_message("USB LED: Device not found", False)
-                                self._settings_screen.led_detected = False
+                if self._settings_screen is not None:
+                    self._settings_screen.led_detected = available
+                    if available:
+                        self._settings_screen.set_hardware_message("Relay ✓ Detected!", True)
                     else:
-                        if self._settings_screen is not None:
-                            self._settings_screen.set_hardware_message("LED controller not loaded", False)
+                        self._settings_screen.set_hardware_message("Relay not detected (check wiring/sudo)", False)
             except PermissionError as e:
                 logger.error("Permission denied accessing LED: %s", e)
                 if self._settings_screen is not None:
@@ -1507,8 +1399,6 @@ class TimeLapseApp:
             
             if errors:
                 status_text = f"Error: {errors[-1]}"
-                if self.grove_status_light is not None:
-                    self.grove_status_light.set_state("error")
             elif self._show_countdown:
                 countdown = int(st.get("next_capture_in", 0))
                 status_text = f"Next: {countdown}s"
@@ -1519,15 +1409,8 @@ class TimeLapseApp:
             photo_count = st.get("total_photos", 0)
             elapsed = self._elapsed()
             status_text = "Stopped"
-            if self.grove_status_light is not None:
-                self.grove_status_light.set_state("off")
         elif self.camera is None:
             status_text = self._camera_warning or "No camera detected"
-            if self.grove_status_light is not None:
-                self.grove_status_light.set_state("off")
-        else:
-            if self.grove_status_light is not None:
-                self.grove_status_light.set_state("off")
 
         self.header.update(self.usb_connected, photo_count,
                            self._free_gb, self._remaining_photos)
@@ -1593,8 +1476,6 @@ class TimeLapseApp:
             self.engine.stop()
         if self.led_controller is not None:
             self.led_controller.close()
-        if self.grove_status_light is not None:
-            self.grove_status_light.close()
         if self.grove_buttons is not None:
             self.grove_buttons.close()
         if self.camera is not None:

@@ -8,7 +8,6 @@
 # Usage:
 #   chmod +x install.sh
 #   ./install.sh                # standard install
-#   ./install.sh --with-led     # also install uhubctl for USB LED control
 #   ./install.sh --shortcut     # create desktop shortcut only (no autostart)
 #   ./install.sh --autostart    # create desktop shortcut + autostart
 #   ./install.sh --all          # dependencies + desktop shortcut (no autostart)
@@ -16,20 +15,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WITH_LED=0
 SHORTCUT=0
 AUTOSTART=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all)        WITH_LED=1; SHORTCUT=1; shift ;;
-    --with-led)   WITH_LED=1; shift ;;
+    --all)        SHORTCUT=1; shift ;;
     --shortcut)   SHORTCUT=1; shift ;;
     --autostart)  SHORTCUT=1; AUTOSTART=1; shift ;;
     -h|--help)
-      echo "Usage: ./install.sh [--all] [--with-led] [--shortcut] [--autostart]"
+      echo "Usage: ./install.sh [--all] [--shortcut] [--autostart]"
       echo "  --all         Install dependencies + desktop shortcut (no autostart)"
-      echo "  --with-led    Install uhubctl for USB LED flash control"
       echo "  --shortcut    Create desktop shortcut only"
       echo "  --autostart   Create desktop shortcut + autostart on boot"
       echo "                and disable the duplicate MATE PolicyKit agent when present"
@@ -60,10 +56,6 @@ PKGS=(
   libsdl2-ttf-2.0-0
 )
 
-if [[ $WITH_LED -eq 1 ]]; then
-  PKGS+=(uhubctl)
-fi
-
 sudo apt install -y "${PKGS[@]}"
 echo
 
@@ -85,15 +77,6 @@ python3 -c "import cv2; print(f'  opencv {cv2.__version__} ✓')" 2>/dev/null ||
 python3 -c "import numpy; print(f'  numpy {numpy.__version__} ✓')" 2>/dev/null || { echo "  numpy ✗"; FAILED=1; }
 python3 -c "import psutil; print(f'  psutil {psutil.__version__} ✓')" 2>/dev/null || { echo "  psutil ✗"; FAILED=1; }
 python3 -c "import yaml; print(f'  pyyaml ✓')" 2>/dev/null || { echo "  pyyaml ✗"; FAILED=1; }
-
-if [[ $WITH_LED -eq 1 ]]; then
-  if command -v uhubctl >/dev/null 2>&1; then
-    echo "  uhubctl ✓"
-  else
-    echo "  uhubctl ✗ (LED control will not work)"
-    FAILED=1
-  fi
-fi
 
 echo
 if [[ $FAILED -eq 1 ]]; then

@@ -89,7 +89,7 @@ python3 timelapse_touch.py --fullscreen
 
 The desktop shortcut now uses a smart launcher: it runs directly when already
 root, uses passwordless `sudo` when configured, and otherwise falls back to a
-normal user launch with a warning that Grove WS281x LED access may be limited.
+normal user launch with a warning that GPIO relay access may be limited.
 
 ---
 
@@ -109,7 +109,7 @@ normal user launch with a warning that Grove WS281x LED access may be limited.
 Scenario 03 supports optional Grove hardware for physical controls/status:
 
 - Grove Dual Button
-- Grove WS2813 Ring/Stick status light
+- Grove Relay module
 
 Use these docs for exact connections:
 

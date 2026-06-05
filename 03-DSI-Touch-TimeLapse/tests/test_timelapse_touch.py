@@ -1,6 +1,9 @@
 """Focused tests for preview pause/resume helpers in timelapse_touch.py."""
 
+import pytest
 from unittest.mock import MagicMock
+
+pytest.importorskip("pygame")
 
 
 def _run_thread_target_immediately(monkeypatch):
@@ -68,69 +71,55 @@ def test_set_preview_updates_enabled_disables_and_joins_worker():
 
 
 def test_run_led_detect_reports_sudo_message_when_grove_unavailable(monkeypatch):
-    """Grove detect should guide user to sudo instead of 'module not loaded'."""
+    """Relay detect reports wiring/sudo guidance when controller detection fails."""
     from timelapse_touch import TimeLapseApp
 
     _run_thread_target_immediately(monkeypatch)
 
     app = TimeLapseApp.__new__(TimeLapseApp)
-    app.led_backend = "grove"
-    app.grove_status_light_detected = False
+    app.config = {"grove_relay": {"pin": 26, "active_high": True}, "led": {"enabled": True}}
+    app.led_detected = False
+    app.led = None
     app.header = MagicMock()
-    app._is_active_led_detected = MagicMock(return_value=False)
-
-    grove = MagicMock()
-    grove.detect.return_value = False
-    grove.is_available.return_value = False
-    app.grove_status_light = grove
+    controller = MagicMock()
+    controller.detect.return_value = False
+    app.led_controller = controller
 
     app._settings_screen = MagicMock()
-    app._settings_screen.grove_light_detected = False
-
-    import timelapse_touch as mod
-    monkeypatch.setattr(mod, "GROVE_STATUS_LIGHT_AVAILABLE", True)
-    monkeypatch.setattr(mod.os, "geteuid", lambda: 1000)
 
     TimeLapseApp._run_led_detect(app)
 
     app._settings_screen.set_hardware_message.assert_any_call(
-        "Grove needs sudo (requires /dev/mem access)", False
+        "Relay not detected (check wiring/sudo)", False
     )
-    assert app.grove_status_light_detected is False
+    assert app.led_detected is False
 
 
 def test_run_led_detect_initializes_controller_when_missing(monkeypatch):
-    """If Grove controller is None, detect should self-initialize before probing."""
+    """If relay controller is None, detect should self-initialize before probing."""
     from timelapse_touch import TimeLapseApp
+    import timelapse_touch as mod
 
     _run_thread_target_immediately(monkeypatch)
 
     app = TimeLapseApp.__new__(TimeLapseApp)
-    app.led_backend = "grove"
-    app.grove_status_light_detected = False
+    app.config = {"grove_relay": {"pin": 26, "active_high": True}, "led": {"enabled": True}}
+    app.led_detected = False
+    app.led = None
     app.header = MagicMock()
-    app._is_active_led_detected = MagicMock(return_value=True)
     app._settings_screen = MagicMock()
-    app._settings_screen.grove_light_detected = False
 
-    grove = MagicMock()
-    grove.detect.return_value = True
-    grove.is_available.return_value = True
-
-    def _fake_init():
-        app.grove_status_light = grove
-
-    app._init_grove_status_light = _fake_init
-    app.grove_status_light = None
-
-    import timelapse_touch as mod
-    monkeypatch.setattr(mod, "GROVE_STATUS_LIGHT_AVAILABLE", True)
-    monkeypatch.setattr(mod.os, "geteuid", lambda: 0)
+    controller = MagicMock()
+    controller.detect.return_value = True
+    controller.port_name = "GPIO26"
+    monkeypatch.setattr(mod, "LEDController", lambda pin, active_high: controller)
+    app.led_controller = None
 
     TimeLapseApp._run_led_detect(app)
 
-    assert app.grove_status_light is grove
-    app._settings_screen.set_hardware_message.assert_any_call("Grove LED ✓ Detected!", True)
+    assert app.led_controller is controller
+    assert app.led is controller
+    app._settings_screen.set_hardware_message.assert_any_call("Relay ✓ Detected!", True)
 
 
 def test_set_preview_updates_enabled_resets_timer_when_reenabled():

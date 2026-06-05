@@ -5,30 +5,27 @@ This page documents the active pin/socket mapping for Scenario 03 optional Grove
 ## Recommended mapping
 
 | Module | Grove socket label | BCM pins used | Config keys |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Grove Dual Button | `D5` | BCM 5 + BCM 6 | `grove_button.pin_button1`, `grove_button.pin_button2` |
-| Grove WS2813 Ring/Stick | `PWM` | BCM 12 (signal) | `grove_light.pin` |
+| Grove Relay (Seeed) | `D26` *(recommended)* | BCM 26 | `grove_relay.pin` |
 
 ## Practical plug map
 
 - Plug the **Dual Button** cable into the socket labeled **D5**.
-- Plug the **WS2813 LED** cable into the socket labeled **PWM**.
+- Plug the **Grove Relay** cable into the socket labeled **D26**.
 
 If your hat revision layout looks different, trust the printed socket labels over board position.
 
 ## Config examples
 
-### Ring (20 LEDs)
+### Grove Relay (active-high default)
 
-- `grove_light.pixel_count: 20`
-
-### Stick (10 LEDs)
-
-- `grove_light.pixel_count: 10`
+- `grove_relay.pin: 26`
+- `grove_relay.active_high: true`
 
 ## Notes
 
-- Scenario 03 defaults are tuned for Ring (20) in `config.yaml`.
+- Scenario 03 defaults are tuned for Grove Relay in `config.yaml`.
 - Software uses BCM numbering, so keep BCM values synchronized with your wiring.
 - Grove hardware is optional; Scenario 03 can run without it.
 

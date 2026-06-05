@@ -1,6 +1,6 @@
 # 🛠️ Scenario 03 Hardware Troubleshooting
 
-Use this guide when DSI display, Grove button/light, or USB LED behavior is not working as expected.
+Use this guide when DSI display, Grove button, or Grove relay behavior is not working as expected.
 
 ## 1) DSI display issues
 
@@ -30,40 +30,30 @@ Check:
    - `start_stop_button`
    - `stop_button`
 
-## 3) Grove WS2813 light issues
+## 3) Grove relay issues
 
-### Symptom: LED stays off
+### Symptom: relay does not switch
 
 Check:
 
-1. Module is connected to socket **PWM** on Grove Base Hat.
+1. Module is connected to socket **D26** on Grove Base Hat.
 2. `config.yaml` has:
-   - `grove_light.enabled: true`
-   - `pin: 12`
-3. `pixel_count` matches your hardware:
-   - `20` for Ring
-   - `10` for Stick
+   - `grove_relay.enabled: true`
+   - `grove_relay.pin: 26`
+   - `grove_relay.active_high: true` (or `false` for inverted relay boards)
 
-### Symptom: import/runtime LED errors
+### Symptom: permission/runtime relay errors
 
 - Ensure dependencies were installed with:
   - `bash install.sh --all`
-- This installs Python dependencies including `rpi-ws281x` from `requirements.txt`.
-
-## 4) USB LED backend issues
-
-If using USB LED backend instead of Grove:
-
-1. Set `led.backend: usb`.
-2. Install tooling if needed (`uhubctl`) via install script with LED options.
-3. Re-test capture cycle.
+- Run app with sudo if `/sys/class/gpio` write access is denied.
 
 ## 5) Fast fallback strategy
 
 When debugging, disable optional hardware first so capture can still run:
 
 - `grove_button.enabled: false`
-- `grove_light.enabled: false`
+- `grove_relay.enabled: false`
 
 Then re-enable one module at a time.
 

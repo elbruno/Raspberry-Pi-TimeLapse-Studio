@@ -16,7 +16,7 @@ Use it when your question is: **"Where do I plug the shield and sensors?"**
 
 - Grove Base Hat for Raspberry Pi (stacked on GPIO header)
 - Grove Dual Button
-- Grove WS2813 RGB light (Ring 20 LEDs recommended, Stick 10 also works)
+- Grove Relay module (Seeed)
 
 > Scenario 03 works without Grove modules. Grove is optional.
 
@@ -27,14 +27,14 @@ Use it when your question is: **"Where do I plug the shield and sensors?"**
 3. Stack the Grove Base Hat on the Pi GPIO header.
 4. Connect optional Grove modules:
    - Dual Button → D5 socket
-   - WS2813 Ring/Stick → PWM socket
+   - Grove Relay → D26 socket (recommended)
 5. Connect camera.
 6. Power on and boot into Raspberry Pi OS Desktop.
 
 ## Exact Grove connections
 
 - **Dual Button**: plug into the socket labeled **D5** (uses BCM 5 and BCM 6)
-- **WS2813 LED**: plug into the socket labeled **PWM** (uses BCM 12)
+- **Grove Relay**: plug into socket **D26** (uses BCM 26)
 
 ### Quick socket diagram (top view)
 
@@ -45,10 +45,12 @@ TOP VIEW (Grove Base Hat)
 
 ┌─────────────────────────────────────────────┐
 │ [ PWM ] [ D5 ] [ D16 ] [ D18 ] [ A0 ] [A2] │
-│   ↑       ↑                                 │
-│  LED    BUTTON                              │
+│           ↑                                 │
+│        BUTTON                               │
 │                                             │
 │ [UART] [D22] [D24] [D26] [ A4 ] [A6]       │
+│                    ↑                        │
+│                  RELAY                      │
 │                                             │
 │ [I2C] [I2C] [I2C] [ SWD / GPIO ]            │
 └─────────────────────────────────────────────┘
@@ -62,8 +64,8 @@ In `config.yaml`:
 
 - `grove_button.pin_button1: 5`
 - `grove_button.pin_button2: 6`
-- `grove_light.pin: 12`
-- `grove_light.pixel_count: 20` for Ring, `10` for Stick
+- `grove_relay.pin: 26`
+- `grove_relay.active_high: true`
 
 If your board revision differs, trust the socket labels (`D5`, `PWM`) and keep these BCM values aligned.
 
@@ -72,7 +74,7 @@ If your board revision differs, trust the socket labels (`D5`, `PWM`) and keep t
 - DSI screen shows Raspberry Pi desktop after boot
 - App launches on screen with `python3 timelapse_touch.py --fullscreen`
 - Button press toggles capture (depending on your button mapping in config)
-- LED changes state colors if `grove_light.enabled: true`
+- Relay toggles ON before capture and OFF right after capture
 
 ## If something does not work
 

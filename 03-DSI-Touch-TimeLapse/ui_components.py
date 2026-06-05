@@ -538,8 +538,6 @@ class SettingsScreen:
                  led_detected: bool = False, led_port_name: str = "",
                  camera_options: Optional[list[tuple[int, str]]] = None,
                  grove_buttons_detected: bool = False,
-                 led_backend: str = "usb",
-                 grove_light_detected: bool = False,
                  max_display_size: Optional[Tuple[int, int]] = None) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
@@ -549,8 +547,6 @@ class SettingsScreen:
         self.led_detected = led_detected
         self.led_port_name = led_port_name
         self.grove_buttons_detected = grove_buttons_detected
-        self.led_backend = led_backend
-        self.grove_light_detected = grove_light_detected
         self.button_test_active = False
         self.button_test_counts = {"button1": 0, "button2": 0}
         self.button_flash_until = {"button1": 0.0, "button2": 0.0}
@@ -613,7 +609,7 @@ class SettingsScreen:
             self.camera_options = [(configured_index, "Manual idx")]
 
         grove_button = config.get("grove_button", {})
-        grove_light = config.get("grove_light", {})
+        relay = config.get("grove_relay", {})
         self._start_stop_options: list[tuple[str, str]] = [
             ("button1", "Btn1"),
             ("button2", "Btn2"),
@@ -641,23 +637,6 @@ class SettingsScreen:
         self.start_stop_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h, btn_size, btn_size)
         self.start_stop_val_rect = pygame.Rect(screen_w - 146, start_y + row_h, 100, btn_size)
         self.start_stop_btn_next = pygame.Rect(screen_w - 40, start_y + row_h, btn_size, btn_size)
-
-        self._palette_options: list[tuple[str, str]] = [
-            ("classic", "Classic"),
-            ("high_contrast", "Contrast"),
-            ("warm", "Warm"),
-        ]
-        configured_palette = str(grove_light.get("state_palette", "classic"))
-        self._palette_selected = 0
-        for idx_opt, (value, _) in enumerate(self._palette_options):
-            if value == configured_palette:
-                self._palette_selected = idx_opt
-                break
-        # Palette selector positioning (left column for LED tab)
-        self.palette_label_y = start_y + row_h * 3 + 5
-        self.palette_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h * 3, btn_size, btn_size)
-        self.palette_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 3, 100, btn_size)
-        self.palette_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 3, btn_size, btn_size)
 
         # ── Camera tab rows (full width, will be drawn on left) ──
         self.camera_rows = [
@@ -698,11 +677,17 @@ class SettingsScreen:
         # ── LED tab rows (full width, will be drawn on left) ──
         self.led_rows = [
             _SettingRow(start_y, screen_w, btn_size,
-                        "Brightness", "grove_light.brightness",
-                        int(grove_light.get("brightness", 48)), 0, 255, 16),
+                        "Relay Pin", "grove_relay.pin",
+                        int(relay.get("pin", 26)), 0, 27, 1),
             _SettingRow(start_y + row_h, screen_w, btn_size,
-                        "Flash ms", "grove_light.capture_flash_duration_ms",
-                        int(grove_light.get("capture_flash_duration_ms", 80)), 20, 1000, 20),
+                        "Active High", "grove_relay.active_high",
+                        1 if relay.get("active_high", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 2, screen_w, btn_size,
+                        "Enable Relay", "led.enabled",
+                        1 if led.get("enabled", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 3, screen_w, btn_size,
+                        "Warmup (s)", "led.warmup_seconds",
+                        int(led.get("warmup_seconds", 1)), 0, 30, 1),
         ]
 
         # ── Buttons tab rows ──
@@ -768,12 +753,6 @@ class SettingsScreen:
                 return None
             rows = self.display_rows
         elif self.active_tab == 2:
-            if self.palette_btn_prev.collidepoint(pos):
-                self._palette_selected = (self._palette_selected - 1) % len(self._palette_options)
-                return None
-            if self.palette_btn_next.collidepoint(pos):
-                self._palette_selected = (self._palette_selected + 1) % len(self._palette_options)
-                return None
             if self.btn_led_test.collidepoint(pos):
                 self.led_test_flash_until = time.time() + 0.18
                 return "test_led"
@@ -898,7 +877,7 @@ class SettingsScreen:
         config.setdefault("led", {})
         config.setdefault("display", {})
         config.setdefault("grove_button", config.get("grove_button", {}))
-        config.setdefault("grove_light", config.get("grove_light", {}))
+        config.setdefault("grove_relay", config.get("grove_relay", {}))
 
         selected_camera_idx = flat.get("camera.index", 0)
 
@@ -913,10 +892,9 @@ class SettingsScreen:
             "quality": flat.get("capture.quality", 90),
         })
         config["led"].update({
-            "backend": config["led"].get("backend", "usb"),
             "enabled": bool(flat.get("led.enabled", 1)),
             "warmup_seconds": flat.get("led.warmup_seconds", 1),
-            "usb_port": config["led"].get("usb_port", "auto"),
+            "pre_capture_lead_seconds": config["led"].get("pre_capture_lead_seconds", 0.0),
         })
         window_width, window_height = self.window_size_options[self._window_size_selected]
         config["display"].update({
@@ -930,11 +908,10 @@ class SettingsScreen:
         config["grove_button"].update({
             "start_stop_button": self._start_stop_options[self._start_stop_selected][0],
         })
-        config["grove_light"].update({
-            "brightness": flat.get("grove_light.brightness", 48),
-            "capture_flash": bool(config["grove_light"].get("capture_flash", True)),
-            "capture_flash_duration_ms": flat.get("grove_light.capture_flash_duration_ms", 80),
-            "state_palette": self._palette_options[self._palette_selected][0],
+        config["grove_relay"].update({
+            "enabled": bool(config["grove_relay"].get("enabled", True)),
+            "pin": int(flat.get("grove_relay.pin", 26)),
+            "active_high": bool(flat.get("grove_relay.active_high", 1)),
         })
 
         return config
@@ -1126,7 +1103,7 @@ class SettingsScreen:
                 led_test_color = COLOR_STOP
             elif time.time() < self.led_test_flash_until:
                 led_test_color = _lighten(COLOR_TEST, 35)
-            self._draw_action_button(surface, self.btn_led_test, "TEST LED", led_test_color)
+            self._draw_action_button(surface, self.btn_led_test, "TEST RELAY", led_test_color)
 
             # Detect LED button
             led_detect_color = COLOR_TEST
@@ -1134,48 +1111,21 @@ class SettingsScreen:
                 led_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_led_detect, "DETECT", led_detect_color)
 
-            # Palette selector on right
-            palette_lbl = self.font.render("Palette", True, COLOR_TEXT)
-            surface.blit(palette_lbl, (20, self.palette_label_y))
-
-            pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_prev, border_radius=6)
-            prev_txt = self.font.render("<", True, COLOR_TEXT)
-            surface.blit(prev_txt, prev_txt.get_rect(center=self.palette_btn_prev.center))
-
-            pygame.draw.rect(surface, COLOR_FIELD_BG, self.palette_val_rect, border_radius=6)
-            palette_text = self._palette_options[self._palette_selected][1]
-            palette_txt = self.font_small.render(palette_text, True, COLOR_TEXT)
-            surface.blit(palette_txt, palette_txt.get_rect(center=self.palette_val_rect.center))
-
-            pygame.draw.rect(surface, COLOR_STEPPER, self.palette_btn_next, border_radius=6)
-            next_txt = self.font.render(">", True, COLOR_TEXT)
-            surface.blit(next_txt, next_txt.get_rect(center=self.palette_btn_next.center))
-
             # Status display on right side (below palette)
             status_x = screen_w - 220
             status_y = start_y + row_h * 4
             
-            if self.led_backend == "grove":
-                if self.grove_light_detected:
-                    status_text = "Grove LED"
-                    status_detail = "✓ Ready"
-                    status_color = COLOR_USB_OK
-                else:
-                    status_text = "Grove LED"
-                    status_detail = "✗ Not detected"
-                    status_color = COLOR_TEXT_DIM
+            if self.led_detected:
+                short_port = self.led_port_name or "GPIO"
+                if len(short_port) > 10:
+                    short_port = f"{short_port[:7]}…"
+                status_text = f"Relay {short_port}"
+                status_detail = "✓ Ready"
+                status_color = COLOR_USB_OK
             else:
-                if self.led_detected:
-                    short_port = self.led_port_name
-                    if len(short_port) > 10:
-                        short_port = f"{short_port[:7]}…"
-                    status_text = f"USB {short_port}"
-                    status_detail = "✓ Ready"
-                    status_color = COLOR_USB_OK
-                else:
-                    status_text = "USB LED"
-                    status_detail = "✗ Not detected"
-                    status_color = COLOR_TEXT_DIM
+                status_text = "Relay"
+                status_detail = "✗ Not detected"
+                status_color = COLOR_TEXT_DIM
             
             status_surf = self.font.render(status_text, True, status_color)
             surface.blit(status_surf, (status_x, status_y))

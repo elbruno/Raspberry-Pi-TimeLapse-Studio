@@ -43,10 +43,9 @@ DEFAULTS: dict = {
         "fallback_path": "./data",
     },
     "led": {
-        "backend": "usb",
         "enabled": True,
         "warmup_seconds": 1.5,
-        "usb_port": "auto",
+        "pre_capture_lead_seconds": 0.0,
     },
     "display": {
         "show_countdown": True,
@@ -63,14 +62,10 @@ DEFAULTS: dict = {
         "debounce_ms": 250,
         "start_stop_button": "button1",
     },
-    "grove_light": {
+    "grove_relay": {
         "enabled": True,
-        "pin": 12,
-        "pixel_count": 10,
-        "brightness": 48,
-        "state_palette": "classic",
-        "capture_flash": True,
-        "capture_flash_duration_ms": 80,
+        "pin": 26,
+        "active_high": True,
     },
 }
 
@@ -200,13 +195,15 @@ def validate_config(config: dict) -> list[str]:
     if not isinstance(led_enabled, bool):
         errors.append(f"led.enabled must be true or false, got {led_enabled}")
 
-    led_backend = get_config_value(config, "led.backend", "usb")
-    if led_backend not in ("usb", "grove"):
-        errors.append(f"led.backend must be 'usb' or 'grove', got '{led_backend}'")
-
     led_warmup = get_config_value(config, "led.warmup_seconds", 1.5)
     if not isinstance(led_warmup, (int, float)) or led_warmup < 0:
         errors.append(f"led.warmup_seconds must be >= 0, got {led_warmup}")
+
+    led_pre_capture = get_config_value(config, "led.pre_capture_lead_seconds", 0.0)
+    if not isinstance(led_pre_capture, (int, float)) or led_pre_capture < 0:
+        errors.append(
+            f"led.pre_capture_lead_seconds must be >= 0, got {led_pre_capture}"
+        )
 
     # Display checks
     for key in (
@@ -245,43 +242,19 @@ def validate_config(config: dict) -> list[str]:
             f"got '{start_stop_button}'"
         )
 
-    # Grove WS2813 status light checks
-    grove_light_enabled = get_config_value(config, "grove_light.enabled", True)
-    if not isinstance(grove_light_enabled, bool):
-        errors.append(f"grove_light.enabled must be true or false, got {grove_light_enabled}")
+    # Grove relay checks
+    relay_enabled = get_config_value(config, "grove_relay.enabled", True)
+    if not isinstance(relay_enabled, bool):
+        errors.append(f"grove_relay.enabled must be true or false, got {relay_enabled}")
 
-    grove_light_pin = get_config_value(config, "grove_light.pin", 12)
-    if not isinstance(grove_light_pin, int) or grove_light_pin < 0:
-        errors.append(f"grove_light.pin must be a non-negative integer, got {grove_light_pin}")
+    relay_pin = get_config_value(config, "grove_relay.pin", 26)
+    if not isinstance(relay_pin, int) or relay_pin < 0:
+        errors.append(f"grove_relay.pin must be a non-negative integer, got {relay_pin}")
 
-    pixel_count = get_config_value(config, "grove_light.pixel_count", 10)
-    if not isinstance(pixel_count, int) or pixel_count <= 0:
-        errors.append(f"grove_light.pixel_count must be > 0, got {pixel_count}")
-
-    brightness = get_config_value(config, "grove_light.brightness", 48)
-    if not isinstance(brightness, int) or brightness < 0 or brightness > 255:
-        errors.append(f"grove_light.brightness must be 0-255, got {brightness}")
-
-    state_palette = get_config_value(config, "grove_light.state_palette", "classic")
-    if state_palette not in ("classic", "high_contrast", "warm"):
+    relay_active_high = get_config_value(config, "grove_relay.active_high", True)
+    if not isinstance(relay_active_high, bool):
         errors.append(
-            "grove_light.state_palette must be 'classic', 'high_contrast', or 'warm', "
-            f"got '{state_palette}'"
-        )
-
-    capture_flash = get_config_value(config, "grove_light.capture_flash", True)
-    if not isinstance(capture_flash, bool):
-        errors.append(f"grove_light.capture_flash must be true or false, got {capture_flash}")
-
-    capture_flash_duration_ms = get_config_value(config, "grove_light.capture_flash_duration_ms", 80)
-    if (
-        not isinstance(capture_flash_duration_ms, int)
-        or capture_flash_duration_ms < 20
-        or capture_flash_duration_ms > 1000
-    ):
-        errors.append(
-            "grove_light.capture_flash_duration_ms must be 20-1000, "
-            f"got {capture_flash_duration_ms}"
+            f"grove_relay.active_high must be true or false, got {relay_active_high}"
         )
 
     return errors

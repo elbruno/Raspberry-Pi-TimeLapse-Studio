@@ -1,6 +1,7 @@
 """Tests for the touchscreen settings UI model helpers."""
 
-import pygame
+import pytest
+pygame = pytest.importorskip("pygame")
 
 
 def test_settings_screen_preserves_existing_nested_config_values():
@@ -13,7 +14,7 @@ def test_settings_screen_preserves_existing_nested_config_values():
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "1-1.2"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -23,12 +24,10 @@ def test_settings_screen_preserves_existing_nested_config_values():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6, "start_stop_button": "button2"},
-        "grove_light": {
+        "grove_relay": {
             "enabled": True,
-            "pin": 12,
-            "brightness": 64,
-            "state_palette": "warm",
-            "capture_flash_duration_ms": 120,
+            "pin": 26,
+            "active_high": True,
         },
     }
 
@@ -36,14 +35,11 @@ def test_settings_screen_preserves_existing_nested_config_values():
     values = screen.get_values(base_config=config)
 
     assert screen.tab_labels == ["Camera", "Display", "LED", "Buttons"]
-    assert values["led"]["backend"] == "grove"
-    assert values["led"]["usb_port"] == "1-1.2"
+    assert values["led"]["enabled"] is True
     assert values["grove_button"]["start_stop_button"] == "button2"
     assert values["grove_button"]["pin_button1"] == 5
-    assert values["grove_light"]["pin"] == 12
-    assert values["grove_light"]["brightness"] == 64
-    assert values["grove_light"]["state_palette"] == "warm"
-    assert values["grove_light"]["capture_flash_duration_ms"] == 120
+    assert values["grove_relay"]["pin"] == 26
+    assert values["grove_relay"]["active_high"] is True
 
 
 def test_window_size_options_are_16_by_9_and_capped_to_display():
@@ -68,7 +64,7 @@ def test_settings_screen_saves_selected_window_size_preset():
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -78,7 +74,7 @@ def test_settings_screen_saves_selected_window_size_preset():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
     }
 
     screen = SettingsScreen(
@@ -117,7 +113,7 @@ def test_display_tab_app_size_next_cycles_option():
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -127,7 +123,7 @@ def test_display_tab_app_size_next_cycles_option():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
     }
 
     screen = SettingsScreen(640, 360, config, max_display_size=(640, 360))
@@ -150,7 +146,7 @@ def test_camera_selector_is_below_quality_row():
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -160,7 +156,7 @@ def test_camera_selector_is_below_quality_row():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
     }
 
     screen = SettingsScreen(640, 360, config, camera_options=[(0, "USB Cam")])
@@ -182,7 +178,7 @@ def test_led_tab_draws_hardware_message_without_crashing():
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -192,12 +188,12 @@ def test_led_tab_draws_hardware_message_without_crashing():
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
     }
 
     screen = SettingsScreen(640, 360, config)
     screen.active_tab = 2
-    screen.set_hardware_message("Grove needs sudo", False)
+    screen.set_hardware_message("Relay not detected", False)
 
     screen.draw(surface)
 
@@ -216,7 +212,7 @@ def test_camera_tab_draws_rows_after_panels(monkeypatch):
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
-        "led": {"backend": "grove", "enabled": True, "warmup_seconds": 1, "usb_port": "auto"},
+        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -226,7 +222,7 @@ def test_camera_tab_draws_rows_after_panels(monkeypatch):
             "fullscreen": False,
         },
         "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_light": {"enabled": True, "pin": 12},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
     }
 
     screen = SettingsScreen(800, 450, config, camera_options=[(0, "Manual idx")])

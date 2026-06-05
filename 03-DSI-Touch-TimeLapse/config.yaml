@@ -11,14 +11,16 @@ preview:
 storage:
   fallback_path: ./data
 led:
-  backend: grove
   enabled: true
   warmup_seconds: 1
   # Extra lead time the LED stays on BEFORE each snapshot (in seconds),
   # added on top of warmup_seconds. Useful to fully light the scene
   # before the camera fires. Post-capture LED-off delay stays at warmup_seconds.
   pre_capture_lead_seconds: 1.0
-  usb_port: auto
+grove_relay:
+  enabled: true
+  pin: 26
+  active_high: true
 display:
   show_countdown: true
   show_storage_info: true
@@ -33,11 +35,3 @@ grove_button:
   debounce_ms: 250
   start_stop_button: button2
   stop_button: button1
-grove_light:
-  enabled: true
-  pin: 12
-  pixel_count: 20
-  brightness: 40
-  state_palette: classic
-  capture_flash: true
-  capture_flash_duration_ms: 80

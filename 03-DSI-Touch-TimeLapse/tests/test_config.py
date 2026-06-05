@@ -162,7 +162,7 @@ class TestConfigValidation:
 
 
 class TestGroveConfigSections:
-    """Tests for Grove button/light configuration defaults and validation."""
+    """Tests for Grove button/relay configuration defaults and validation."""
 
     def test_defaults_include_grove_sections(self):
         """load_config() returns Grove defaults when config file is missing."""
@@ -170,11 +170,10 @@ class TestGroveConfigSections:
 
         cfg = load_config("/nonexistent/config.yaml")
         assert "grove_button" in cfg
-        assert "grove_light" in cfg
+        assert "grove_relay" in cfg
         assert cfg["grove_button"]["pin_button1"] == 5
-        assert cfg["grove_light"]["pixel_count"] > 0
-        assert cfg["grove_light"]["state_palette"] == "classic"
-        assert cfg["grove_light"]["capture_flash_duration_ms"] == 80
+        assert isinstance(cfg["grove_relay"]["pin"], int)
+        assert cfg["grove_relay"]["active_high"] is True
 
     def test_validate_config_rejects_invalid_grove_values(self, sample_config):
         """validate_config() returns errors for malformed Grove settings."""
@@ -187,25 +186,18 @@ class TestGroveConfigSections:
             "debounce_ms": -10,
             "start_stop_button": "invalid",
         }
-        sample_config["grove_light"] = {
+        sample_config["grove_relay"] = {
             "enabled": True,
-            "pin": 12,
-            "pixel_count": 0,
-            "brightness": 999,
-            "state_palette": "neon",
-            "capture_flash": "yes",
-            "capture_flash_duration_ms": 5,
+            "pin": -1,
+            "active_high": "yes",
         }
 
         errors = validate_config(sample_config)
         assert any("grove_button.pin_button1" in e for e in errors)
         assert any("grove_button.debounce_ms" in e for e in errors)
         assert any("grove_button.start_stop_button" in e for e in errors)
-        assert any("grove_light.pixel_count" in e for e in errors)
-        assert any("grove_light.brightness" in e for e in errors)
-        assert any("grove_light.state_palette" in e for e in errors)
-        assert any("grove_light.capture_flash" in e for e in errors)
-        assert any("grove_light.capture_flash_duration_ms" in e for e in errors)
+        assert any("grove_relay.pin" in e for e in errors)
+        assert any("grove_relay.active_high" in e for e in errors)
 
 
 class TestDisplayConfigSections:
@@ -241,23 +233,25 @@ class TestDisplayConfigSections:
         assert any("display.fullscreen" in e for e in errors)
 
 
-class TestLedBackendConfig:
-    """Tests for selecting USB vs Grove LED backends."""
+class TestLedConfig:
+    """Tests for relay timing/light settings in led section."""
 
-    def test_defaults_include_led_backend(self):
+    def test_defaults_include_led_settings(self):
         from config import load_config
 
         cfg = load_config("/nonexistent/config.yaml")
-        assert cfg["led"]["backend"] == "usb"
+        assert "enabled" in cfg["led"]
+        assert "warmup_seconds" in cfg["led"]
+        assert "pre_capture_lead_seconds" in cfg["led"]
 
-    def test_validate_config_rejects_invalid_led_backend(self, sample_config):
+    def test_validate_config_rejects_invalid_led_lead(self, sample_config):
         from config import validate_config
 
         sample_config["led"] = {
-            "backend": "banana",
             "enabled": True,
             "warmup_seconds": 1,
+            "pre_capture_lead_seconds": -1,
         }
 
         errors = validate_config(sample_config)
-        assert any("led.backend" in e for e in errors)
+        assert any("led.pre_capture_lead_seconds" in e for e in errors)

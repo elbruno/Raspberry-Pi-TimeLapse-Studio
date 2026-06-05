@@ -58,7 +58,7 @@ if sudo -n true >/dev/null 2>&1; then
 fi
 
 echo "Warning: passwordless sudo is not configured for this user." >&2
-echo "Launching without elevation; Grove WS281x LED access may be unavailable." >&2
+echo "Launching without elevation; Grove relay GPIO access may be unavailable." >&2
 exec /usr/bin/python3 "\${SCRIPT_DIR}/timelapse_touch.py" --fullscreen
 EOF
 

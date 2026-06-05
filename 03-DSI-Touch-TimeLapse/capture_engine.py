@@ -31,13 +31,6 @@ except ImportError:
     LED_AVAILABLE = False
     LEDController = None  # type: ignore[assignment, misc]
 
-try:
-    from grove_status_light import GroveStatusLight
-    GROVE_LIGHT_AVAILABLE = True
-except ImportError:
-    GROVE_LIGHT_AVAILABLE = False
-    GroveStatusLight = None  # type: ignore[assignment, misc]
-
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3          # consecutive capture failures before triggering reopen
@@ -73,7 +66,6 @@ class CaptureEngine:
     def start(self, session: Session, camera: OpenCVCamera,
               storage: StorageManager, config: dict,
               led: Optional["LEDController"] = None,
-              status_light: Optional["GroveStatusLight"] = None,
               camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """
         Begin the capture loop in a background thread.
@@ -84,7 +76,6 @@ class CaptureEngine:
             storage: StorageManager pointed at the session base path.
             config:  Merged configuration dictionary.
             led:     Optional LEDController for illumination before capture.
-            status_light: Optional GroveStatusLight for visual app state.
             camera_reopen_callback: Optional callable invoked when the camera
                 stops responding. Should reinitialise the device and return a
                 fresh ``OpenCVCamera`` instance, or ``None`` if it is still
@@ -106,7 +97,7 @@ class CaptureEngine:
 
         self._thread = threading.Thread(
             target=self._capture_loop,
-            args=(session, camera, storage, config, led, status_light,
+            args=(session, camera, storage, config, led,
                   camera_reopen_callback),
             name="capture-engine",
             daemon=True,
@@ -166,7 +157,6 @@ class CaptureEngine:
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
                       storage: StorageManager, config: dict,
                       led: Optional["LEDController"] = None,
-                      status_light: Optional["GroveStatusLight"] = None,
                       camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """Main loop executed inside the background thread."""
         interval = get_config_value(config, "capture.interval_seconds", 30)
@@ -184,22 +174,6 @@ class CaptureEngine:
         if use_led:
             logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
 
-        capture_flash = get_config_value(config, "grove_light.capture_flash", True)
-        use_status_light = (
-            capture_flash
-            and status_light is not None
-            and status_light.is_available()
-        )
-        if use_status_light:
-            # Keep the LED off between captures; it only turns on during the
-            # warmup -> capture -> post-warmup window so the user gets a clear
-            # visual cue around each snapshot.
-            status_light.set_state("off")  # type: ignore[union-attr]
-            logger.info(
-                "Grove status light flash enabled — warmup %.1fs before each capture",
-                led_warmup,
-            )
-
         logger.info("Capture loop running — interval=%ss, quality=%d",
                      interval, quality)
 
@@ -215,16 +189,11 @@ class CaptureEngine:
                     self._next_capture_mono = next_capture
 
                 # -- LED ON before capture --
-                # Both the USB LEDController (illumination) and the Grove
-                # status light (visual indicator) turn ON `led_warmup` seconds
-                # before the snapshot, then OFF again after.
+                # Relay/illumination turns ON before the snapshot, then OFF
+                # immediately after frame capture.
                 if use_led:
                     led.turn_on()  # type: ignore[union-attr]
-                if use_status_light:
-                    # Bright white pre-flash so the user sees the snapshot moment
-                    status_light.set_capture_active(True)  # type: ignore[union-attr]
-
-                if use_led or use_status_light:
+                if use_led:
                     # Wait pre-capture lead time (warmup + extra lead, interruptible)
                     warmup_end = time.monotonic() + led_pre_total
                     while not self._stop_event.is_set():
@@ -235,8 +204,6 @@ class CaptureEngine:
                     if self._stop_event.is_set():
                         if use_led:
                             led.turn_off()  # type: ignore[union-attr]
-                        if use_status_light:
-                            status_light.set_state("off")  # type: ignore[union-attr]
                         break
 
                 # -- attempt to capture a frame --
@@ -250,22 +217,9 @@ class CaptureEngine:
                                    attempt, MAX_RETRIES)
                     time.sleep(retry_delay)
 
-                # -- LED stays ON briefly after capture, then OFF --
-                # Wait `led_warmup` seconds with LED still on so the user sees
-                # a clear "flash" duration around each snapshot.
-                if use_led or use_status_light:
-                    post_end = time.monotonic() + led_warmup
-                    while not self._stop_event.is_set():
-                        remaining = post_end - time.monotonic()
-                        if remaining <= 0:
-                            break
-                        self._stop_event.wait(timeout=min(remaining, 0.25))
-
+                # Turn relay/LED off immediately after the frame attempt.
                 if use_led:
                     led.turn_off()  # type: ignore[union-attr]
-                if use_status_light:
-                    # Turn the LED fully off between shots (no green during countdown)
-                    status_light.set_state("off")  # type: ignore[union-attr]
 
                 if frame is None:
                     consecutive_failures += 1
@@ -317,9 +271,6 @@ class CaptureEngine:
         session.end_time = datetime.now()
         session.status = "stopped"
         self._save_metadata_with_retry(storage, session)
-
-        if use_status_light:
-            status_light.set_state("stopped")  # type: ignore[union-attr]
 
         with self._lock:
             self._running = False

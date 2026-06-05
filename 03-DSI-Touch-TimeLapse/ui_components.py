@@ -718,10 +718,15 @@ class SettingsScreen:
 
         # Diagnostic buttons and status blocks
         self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 3 + 2, 160, 36)
-        self.btn_led_test = pygame.Rect(20, start_y + row_h * 2, 105, 36)
-        self.btn_led_detect = pygame.Rect(135, start_y + row_h * 2, 105, 36)
-        self.btn_relay_2_test = pygame.Rect(20, start_y + row_h * 3, 105, 36)
-        self.btn_relay_2_detect = pygame.Rect(135, start_y + row_h * 3, 105, 36)
+        relay_test_w = 126
+        relay_detect_w = 96
+        relay_btn_gap = 10
+        relay_detect_x = 20 + relay_test_w + relay_btn_gap
+
+        self.btn_led_test = pygame.Rect(20, start_y + row_h * 2, relay_test_w, 36)
+        self.btn_led_detect = pygame.Rect(relay_detect_x, start_y + row_h * 2, relay_detect_w, 36)
+        self.btn_relay_2_test = pygame.Rect(20, start_y + row_h * 3, relay_test_w, 36)
+        self.btn_relay_2_detect = pygame.Rect(relay_detect_x, start_y + row_h * 3, relay_detect_w, 36)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
         self._led_status_y = start_y + row_h * 4 + 10
         self._button_status_y = start_y + row_h * 3 + 10
@@ -1147,7 +1152,7 @@ class SettingsScreen:
                 led_test_color = COLOR_STOP
             elif time.time() < self.led_test_flash_until:
                 led_test_color = _lighten(COLOR_TEST, 35)
-            self._draw_action_button(surface, self.btn_led_test, "TEST RELAY", led_test_color)
+            self._draw_action_button(surface, self.btn_led_test, "TEST R1", led_test_color)
 
             # Detect LED button
             led_detect_color = COLOR_TEST

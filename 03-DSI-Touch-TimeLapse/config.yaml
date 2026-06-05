@@ -1,11 +1,11 @@
 camera:
   mode: opencv
-  source_mode: daemon_primary
+  source_mode: direct_primary
   index: 0
   width: 640
   height: 480
   daemon:
-    enabled: true
+    enabled: false
     rtsp_url: rtsp://127.0.0.1:8554/unicast
     open_timeout_s: 5.0
     read_timeout_s: 3.0

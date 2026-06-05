@@ -113,7 +113,10 @@ pip3 install -r requirements.txt --break-system-packages
 python3 main.py validate
 ```
 
-### For `02-Touch-TimeLapse`
+### Legacy only — `02-Touch-TimeLapse` (archived)
+
+> ⚠️ Use this section only if you intentionally need the archived SPI-touch path.
+> For the active touchscreen flow, use the `03-DSI-Touch-TimeLapse` section below.
 
 #### Step 1 — LCD driver (first time / after cleanup)
 
@@ -178,6 +181,8 @@ Open `http://<pi-hostname>:5000` in your browser.
 
 ### Touch app
 
+> ⚠️ Legacy archived scenario.
+
 ```bash
 cd ~/Raspberry-Pi-TimeLapse-Studio/02-Touch-TimeLapse
 python3 timelapse_touch.py --fullscreen
@@ -210,7 +215,7 @@ pip3 install -r requirements.txt --break-system-packages
 python3 main.py validate
 ```
 
-## Quick reference — all-in-one (touch profile)
+## Quick reference — all-in-one (legacy Scenario 02 touch profile)
 
 ```bash
 # SSH in and run everything in one go
@@ -228,7 +233,7 @@ bash install.sh --all
 sudo reboot
 ```
 
-## Quick reference — all-in-one (Scenario 03 DSI touch)
+## Quick reference — all-in-one (Scenario 03 DSI touch, recommended)
 
 ```bash
 # SSH in and run everything in one go

@@ -9,7 +9,7 @@ This plan is designed for the repository:
 Free disk space on a dedicated Raspberry Pi while preserving everything needed to run one of these scenarios:
 
 - `01-WebApp-TimeLapse` — Flask + OpenCV + Pillow + optional `python3-picamera2`
-- `02-Touch-TimeLapse` — Pygame + OpenCV + NumPy + optional `python3-picamera2`
+- `02-Touch-TimeLapse` — **legacy/archived** SPI-touch scenario (reference only)
 - `03-DSI-Touch-TimeLapse` — same app engine as Scenario 02, but for driver-free DSI touchscreens
 
 ## What the repo actually needs
@@ -77,7 +77,7 @@ sudo bash rpi-timelapse-cleanup.sh --profile touch --apply --yes --enable-elevat
 ## Recommendation
 
 Use `web` if this Pi is mainly going to run the browser-based timelapse app and you manage it over SSH/VS Code.
-Use `touch` if this Pi must keep the local LCD/touchscreen UI for **either** Scenario 02 or Scenario 03.
+Use `touch` if this Pi must keep the local LCD/touchscreen UI for **Scenario 03** (and only for legacy Scenario 02 if explicitly needed).
 
 ## Scenario 03 note
 

@@ -36,6 +36,24 @@ Use it when your question is: **"Where do I plug the shield and sensors?"**
 - **Dual Button**: plug into the socket labeled **D5** (uses BCM 5 and BCM 6)
 - **WS2813 LED**: plug into the socket labeled **PWM** (uses BCM 12)
 
+### Quick socket diagram (top view)
+
+Use labels on your actual board if placement differs by revision.
+
+```text
+TOP VIEW (Grove Base Hat)
+
+┌─────────────────────────────────────────────┐
+│ [ PWM ] [ D5 ] [ D16 ] [ D18 ] [ A0 ] [A2] │
+│   ↑       ↑                                 │
+│  LED    BUTTON                              │
+│                                             │
+│ [UART] [D22] [D24] [D26] [ A4 ] [A6]       │
+│                                             │
+│ [I2C] [I2C] [I2C] [ SWD / GPIO ]            │
+└─────────────────────────────────────────────┘
+```
+
 See full mapping details in [GROVE_BASE_HAT_PINOUT.md](GROVE_BASE_HAT_PINOUT.md).
 
 ## Config values that must match wiring

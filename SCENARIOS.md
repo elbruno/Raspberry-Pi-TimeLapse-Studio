@@ -20,5 +20,6 @@ Use this page to quickly pick the right PiTimeLapse setup.
 ## Where to start next
 
 - New to the repo: [GETTING_STARTED.md](GETTING_STARTED.md)
+- Need Scenario 03 hardware wiring: [03-DSI-Touch-TimeLapse/HARDWARE_ASSEMBLY.md](03-DSI-Touch-TimeLapse/HARDWARE_ASSEMBLY.md)
 - Need Raspberry Pi cleanup/profile guidance: [99-InitRPi/rpi-cleanup-ssh-commands.md](99-InitRPi/rpi-cleanup-ssh-commands.md)
 - Need archive policy and migration context: [DEPRECATIONS.md](DEPRECATIONS.md)

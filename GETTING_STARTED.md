@@ -24,6 +24,12 @@ Best for: cross-platform use, remote browser access, quick validation.
 3. Install with `install.sh --all`
 4. Reboot and test launch from SSH first
 
+Hardware wiring quick links for Scenario 03:
+
+- [HARDWARE_ASSEMBLY.md](03-DSI-Touch-TimeLapse/HARDWARE_ASSEMBLY.md)
+- [GROVE_BASE_HAT_PINOUT.md](03-DSI-Touch-TimeLapse/GROVE_BASE_HAT_PINOUT.md)
+- [TROUBLESHOOTING_HARDWARE.md](03-DSI-Touch-TimeLapse/TROUBLESHOOTING_HARDWARE.md)
+
 Best for: dedicated Raspberry Pi touch station.
 
 ## Step 3: avoid the old path

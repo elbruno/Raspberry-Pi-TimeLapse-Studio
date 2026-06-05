@@ -32,9 +32,11 @@ class TestFindFirstUsbDrive:
         result = find_first_usb_drive()
         assert result == "/media/user/USB"
 
+    @patch("usb_detector.platform")
     @patch("usb_detector.psutil")
-    def test_returns_usb_mount_on_windows(self, mock_psutil):
+    def test_returns_usb_mount_on_windows(self, mock_psutil, mock_platform):
         """USB drive on Windows (removable drive letter) is detected."""
+        mock_platform.system.return_value = "Windows"
         partition = MagicMock()
         partition.mountpoint = "E:\\"
         partition.fstype = "FAT32"

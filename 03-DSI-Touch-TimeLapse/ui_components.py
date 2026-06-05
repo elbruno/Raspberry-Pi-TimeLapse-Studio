@@ -1112,7 +1112,7 @@ class SettingsScreen:
             for row in self.camera_rows:
                 row.draw(surface, self.font)
 
-            source_lbl = self.font.render("Source Mode", True, COLOR_TEXT)
+            source_lbl = self.font.render("Camera Source", True, COLOR_TEXT)
             surface.blit(source_lbl, (20, self.source_mode_label_y))
 
             pygame.draw.rect(surface, COLOR_STEPPER, self.source_mode_btn_prev, border_radius=6)
@@ -1122,11 +1122,11 @@ class SettingsScreen:
             pygame.draw.rect(surface, COLOR_FIELD_BG, self.source_mode_val_rect, border_radius=6)
             source_mode_value = self.source_mode_options[self._source_mode_selected][0]
             if source_mode_value == "daemon_primary":
-                source_mode_label = "A: Daemon"
+                source_mode_label = "Daemon→USB"
             elif source_mode_value == "direct_primary":
-                source_mode_label = "B: Direct"
+                source_mode_label = "USB→Daemon"
             else:
-                source_mode_label = "Direct only"
+                source_mode_label = "USB only"
             source_mode_txt = self.font_small.render(source_mode_label, True, COLOR_TEXT)
             surface.blit(source_mode_txt, source_mode_txt.get_rect(center=self.source_mode_val_rect.center))
 

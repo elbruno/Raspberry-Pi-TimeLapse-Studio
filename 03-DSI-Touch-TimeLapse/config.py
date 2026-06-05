@@ -28,9 +28,19 @@ except ImportError:
 DEFAULTS: dict = {
     "camera": {
         "mode": "opencv",
+        "source_mode": "daemon_primary",
         "index": 0,
         "width": 640,
         "height": 480,
+        "daemon": {
+            "enabled": True,
+            "rtsp_url": "rtsp://127.0.0.1:8554/unicast",
+            "open_timeout_s": 5.0,
+            "read_timeout_s": 3.0,
+            "healthcheck_interval_s": 5.0,
+            "healthcheck_timeout_s": 2.0,
+            "connect_transport": "tcp",
+        },
     },
     "capture": {
         "interval_seconds": 30,
@@ -180,6 +190,86 @@ def validate_config(config: dict) -> list[str]:
     cam_mode = get_config_value(config, "camera.mode", "opencv")
     if cam_mode not in ("opencv", "picamera2"):
         errors.append(f"camera.mode must be 'opencv' or 'picamera2', got '{cam_mode}'")
+
+    source_mode = get_config_value(config, "camera.source_mode", "daemon_primary")
+    if source_mode not in ("daemon_primary", "direct_primary", "direct_only"):
+        errors.append(
+            "camera.source_mode must be 'daemon_primary', 'direct_primary', "
+            f"or 'direct_only', got '{source_mode}'"
+        )
+
+    daemon_enabled = get_config_value(config, "camera.daemon.enabled", True)
+    if not isinstance(daemon_enabled, bool):
+        errors.append(
+            f"camera.daemon.enabled must be true or false, got {daemon_enabled}"
+        )
+
+    daemon_rtsp_url = get_config_value(
+        config,
+        "camera.daemon.rtsp_url",
+        "rtsp://127.0.0.1:8554/unicast",
+    )
+    if not isinstance(daemon_rtsp_url, str) or not daemon_rtsp_url.strip():
+        errors.append(
+            f"camera.daemon.rtsp_url must be a non-empty string, got {daemon_rtsp_url}"
+        )
+
+    daemon_open_timeout = get_config_value(config, "camera.daemon.open_timeout_s", 5.0)
+    if (
+        not isinstance(daemon_open_timeout, (int, float))
+        or daemon_open_timeout <= 0
+    ):
+        errors.append(
+            f"camera.daemon.open_timeout_s must be > 0, got {daemon_open_timeout}"
+        )
+
+    daemon_read_timeout = get_config_value(config, "camera.daemon.read_timeout_s", 3.0)
+    if (
+        not isinstance(daemon_read_timeout, (int, float))
+        or daemon_read_timeout <= 0
+    ):
+        errors.append(
+            f"camera.daemon.read_timeout_s must be > 0, got {daemon_read_timeout}"
+        )
+
+    daemon_health_interval = get_config_value(
+        config,
+        "camera.daemon.healthcheck_interval_s",
+        5.0,
+    )
+    if (
+        not isinstance(daemon_health_interval, (int, float))
+        or daemon_health_interval <= 0
+    ):
+        errors.append(
+            "camera.daemon.healthcheck_interval_s must be > 0, "
+            f"got {daemon_health_interval}"
+        )
+
+    daemon_health_timeout = get_config_value(
+        config,
+        "camera.daemon.healthcheck_timeout_s",
+        2.0,
+    )
+    if (
+        not isinstance(daemon_health_timeout, (int, float))
+        or daemon_health_timeout <= 0
+    ):
+        errors.append(
+            "camera.daemon.healthcheck_timeout_s must be > 0, "
+            f"got {daemon_health_timeout}"
+        )
+
+    daemon_transport = get_config_value(
+        config,
+        "camera.daemon.connect_transport",
+        "tcp",
+    )
+    if daemon_transport not in ("tcp", "udp"):
+        errors.append(
+            "camera.daemon.connect_transport must be 'tcp' or 'udp', "
+            f"got '{daemon_transport}'"
+        )
 
     # Capture checks
     interval = get_config_value(config, "capture.interval_seconds", 30)

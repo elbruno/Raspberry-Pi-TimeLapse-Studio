@@ -46,7 +46,14 @@ class OpenCVCamera:
         """Return True when the OpenCV library is importable."""
         return OPENCV_AVAILABLE
 
-    def open(self, camera_index: int = 0, width: int = 640, height: int = 480) -> bool:
+    def open(
+        self,
+        camera_index: int = 0,
+        width: int = 640,
+        height: int = 480,
+        source: str = "direct",
+        stream_url: Optional[str] = None,
+    ) -> bool:
         """
         Open a camera device and set the requested resolution.
 
@@ -54,6 +61,8 @@ class OpenCVCamera:
             camera_index: /dev/videoN index (0 = first camera).
             width:  Desired frame width.
             height: Desired frame height.
+            source: "direct" for /dev/videoN, "daemon" for stream URL.
+            stream_url: URL for daemon source (e.g., RTSP endpoint).
 
         Returns:
             True on success, False otherwise.
@@ -70,20 +79,31 @@ class OpenCVCamera:
             os.close(devnull)
 
             try:
-                # Try Linux V4L2 first, then generic backend as fallback.
-                # Some Pi camera stacks expose nodes that fail with one backend
-                # but work with the other.
                 open_candidates = []
-                if os.name != "nt" and hasattr(cv2, "CAP_V4L2"):
-                    open_candidates.append(("v4l2", cv2.CAP_V4L2))
-                open_candidates.append(("auto", None))
+                source_kind = source if source in ("direct", "daemon") else "direct"
+                if source_kind == "daemon":
+                    stream_url = (stream_url or "").strip()
+                    if not stream_url:
+                        logger.warning("Daemon source selected but stream URL is empty")
+                        return False
+                    # For network streams, prefer generic backend; optional ffmpeg first.
+                    if hasattr(cv2, "CAP_FFMPEG"):
+                        open_candidates.append(("ffmpeg", cv2.CAP_FFMPEG, stream_url))
+                    open_candidates.append(("stream", None, stream_url))
+                else:
+                    # Try Linux V4L2 first, then generic backend as fallback.
+                    # Some Pi camera stacks expose nodes that fail with one backend
+                    # but work with the other.
+                    if os.name != "nt" and hasattr(cv2, "CAP_V4L2"):
+                        open_candidates.append(("v4l2", cv2.CAP_V4L2, camera_index))
+                    open_candidates.append(("auto", None, camera_index))
 
                 opened = False
-                for backend_name, backend_flag in open_candidates:
+                for backend_name, backend_flag, capture_target in open_candidates:
                     if backend_flag is None:
-                        candidate = cv2.VideoCapture(camera_index)
+                        candidate = cv2.VideoCapture(capture_target)
                     else:
-                        candidate = cv2.VideoCapture(camera_index, backend_flag)
+                        candidate = cv2.VideoCapture(capture_target, backend_flag)
 
                     if candidate is None or not candidate.isOpened():
                         try:
@@ -99,10 +119,17 @@ class OpenCVCamera:
                     break
 
                 if not opened or self.cap is None:
-                    logger.warning(
-                        "No camera found at index %d. "
-                        "Check connection or try a different index.", camera_index
-                    )
+                    if source_kind == "daemon":
+                        logger.warning(
+                            "No daemon camera stream found at %s. "
+                            "Check daemon service and URL.",
+                            stream_url,
+                        )
+                    else:
+                        logger.warning(
+                            "No camera found at index %d. "
+                            "Check connection or try a different index.", camera_index
+                        )
                     return False
 
                 # Prefer MJPEG for faster USB transfer when supported.

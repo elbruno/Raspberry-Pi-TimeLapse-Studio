@@ -173,9 +173,19 @@ def _load_app_config() -> dict:
     defaults = {
         "camera": {
             "mode": "opencv",
+            "source_mode": "daemon_primary",
             "index": 0,
             "width": 640,
             "height": 480,
+            "daemon": {
+                "enabled": True,
+                "rtsp_url": "rtsp://127.0.0.1:8554/unicast",
+                "open_timeout_s": 5.0,
+                "read_timeout_s": 3.0,
+                "healthcheck_interval_s": 5.0,
+                "healthcheck_timeout_s": 2.0,
+                "connect_transport": "tcp",
+            },
         },
         "capture": {
             "interval_seconds": 30,
@@ -269,6 +279,7 @@ class TimeLapseApp:
 
         # ── Camera ──
         self.camera: Optional[OpenCVCamera] = None  # type: ignore[assignment]
+        self._active_camera_source: str = "none"
         self._init_camera()
 
         # ── Relay controller ──
@@ -492,10 +503,17 @@ class TimeLapseApp:
         return candidates
 
     def _init_camera(self) -> None:
-        """Open the camera using OpenCV (with fallback index probing)."""
+        """Open the camera using selected source mode with fallback policy.
+
+        Source order is controlled by ``camera.source_mode``:
+        - ``daemon_primary``: daemon stream first, then direct /dev/video fallback.
+        - ``direct_primary``: direct first, then daemon stream fallback.
+        - ``direct_only``: direct only (legacy behavior).
+        """
         if not CAMERA_AVAILABLE:
             logger.warning("camera_opencv not available — preview disabled")
             self._camera_warning = "Camera module unavailable"
+            self._active_camera_source = "none"
             return
         # Close existing handle before re-initialising (e.g., after settings save)
         if self.camera is not None:
@@ -506,49 +524,108 @@ class TimeLapseApp:
         if not probe.is_available():
             logger.warning("No camera detected")
             self._camera_warning = self._camera_detection_hint()
+            self._active_camera_source = "none"
             return
 
         cam_cfg = self.config.get("camera", {})
         idx = int(cam_cfg.get("index", 0))
         w = int(cam_cfg.get("width", 640))
         h = int(cam_cfg.get("height", 480))
+        source_mode = str(cam_cfg.get("source_mode", "daemon_primary")).strip().lower()
+        if source_mode not in ("daemon_primary", "direct_primary", "direct_only"):
+            logger.warning("Invalid camera.source_mode '%s' — using daemon_primary", source_mode)
+            source_mode = "daemon_primary"
 
-        # Try configured index first, then probe likely camera nodes.
-        candidate_indices = self._enumerate_camera_candidates(idx)
+        daemon_cfg = cam_cfg.get("daemon", {}) if isinstance(cam_cfg, dict) else {}
+        daemon_enabled = bool(daemon_cfg.get("enabled", True))
+        daemon_url = str(
+            daemon_cfg.get("rtsp_url", "rtsp://127.0.0.1:8554/unicast")
+        ).strip()
+        if not daemon_url:
+            daemon_url = "rtsp://127.0.0.1:8554/unicast"
 
-        for candidate in candidate_indices:
-            cam = OpenCVCamera()
-            if not cam.open(candidate, w, h):
-                continue
+        source_order: list[str] = []
+        if source_mode == "direct_only":
+            source_order = ["direct"]
+        elif source_mode == "direct_primary":
+            source_order = ["direct", "daemon"]
+        else:
+            source_order = ["daemon", "direct"]
 
-            # Validate that we can fetch a frame (codec devices can open but not stream).
-            frame_ok = False
+        def _validate_stream(cam: OpenCVCamera) -> bool:
             for _ in range(3):
                 frame = cam.capture()
                 if frame is not None:
-                    frame_ok = True
-                    break
+                    return True
                 time.sleep(0.1)
+            return False
 
-            if frame_ok:
-                self.camera = cam
-                self._camera_warning = ""
-                self._consecutive_preview_failures = 0
-                if candidate != idx:
+        for source_kind in source_order:
+            if source_kind == "daemon":
+                if not daemon_enabled:
+                    continue
+
+                cam = OpenCVCamera()
+                if not cam.open(width=w, height=h, source="daemon", stream_url=daemon_url):
+                    continue
+
+                if _validate_stream(cam):
+                    self.camera = cam
+                    self._camera_warning = ""
+                    self._consecutive_preview_failures = 0
+                    self._active_camera_source = "daemon"
                     logger.info(
-                        "Configured camera index %d failed; using detected index %d",
-                        idx,
-                        candidate,
+                        "Camera opened via daemon stream (%s, %dx%d)",
+                        daemon_url,
+                        w,
+                        h,
                     )
-                    self.config.setdefault("camera", {})["index"] = candidate
-                logger.info("Camera opened (index=%d, %dx%d)", candidate, w, h)
-                return
+                    return
 
-            cam.close()
+                cam.close()
+                continue
+
+            # Direct source path (legacy /dev/video probing).
+            candidate_indices = self._enumerate_camera_candidates(idx)
+            for candidate in candidate_indices:
+                cam = OpenCVCamera()
+                if not cam.open(candidate, w, h, source="direct"):
+                    continue
+
+                if _validate_stream(cam):
+                    self.camera = cam
+                    self._camera_warning = ""
+                    self._consecutive_preview_failures = 0
+                    self._active_camera_source = "direct"
+                    if source_mode == "daemon_primary":
+                        logger.info(
+                            "Daemon source unavailable; using direct camera index %d",
+                            candidate,
+                        )
+                    elif candidate != idx:
+                        logger.info(
+                            "Configured camera index %d failed; using detected index %d",
+                            idx,
+                            candidate,
+                        )
+                    logger.info(
+                        "Camera opened via direct device (index=%d, %dx%d)",
+                        candidate,
+                        w,
+                        h,
+                    )
+                    return
+
+                cam.close()
 
         self.camera = None
+        self._active_camera_source = "none"
         self._camera_warning = self._camera_detection_hint()
-        logger.warning("Camera failed to open on all probed indices")
+        logger.warning(
+            "Camera failed to open for source_mode=%s (daemon_enabled=%s)",
+            source_mode,
+            daemon_enabled,
+        )
 
     def _reopen_camera_for_engine(self) -> Optional[OpenCVCamera]:
         """Callback used by the capture engine to recover from a camera loss.

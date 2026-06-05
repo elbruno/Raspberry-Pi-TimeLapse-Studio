@@ -160,6 +160,52 @@ class TestConfigValidation:
         assert index == 0
         assert quality == 85
 
+    @pytest.mark.parametrize(
+        "source_mode",
+        ["daemon_primary", "direct_primary", "direct_only"],
+    )
+    def test_valid_camera_source_mode(self, source_mode, sample_config):
+        """camera.source_mode accepts all supported values."""
+        from config import validate_config
+
+        sample_config.setdefault("camera", {})["source_mode"] = source_mode
+        errors = validate_config(sample_config)
+        assert not any("camera.source_mode" in e for e in errors)
+
+    def test_invalid_camera_source_mode(self, sample_config):
+        """camera.source_mode rejects unsupported values."""
+        from config import validate_config
+
+        sample_config.setdefault("camera", {})["source_mode"] = "broken_mode"
+        errors = validate_config(sample_config)
+        assert any("camera.source_mode" in e for e in errors)
+
+    def test_invalid_camera_daemon_transport(self, sample_config):
+        """camera.daemon.connect_transport must be tcp or udp."""
+        from config import validate_config
+
+        sample_config.setdefault("camera", {}).setdefault("daemon", {})[
+            "connect_transport"
+        ] = "quic"
+        errors = validate_config(sample_config)
+        assert any("camera.daemon.connect_transport" in e for e in errors)
+
+    def test_invalid_camera_daemon_timeouts(self, sample_config):
+        """camera.daemon timeout values must be > 0."""
+        from config import validate_config
+
+        daemon_cfg = sample_config.setdefault("camera", {}).setdefault("daemon", {})
+        daemon_cfg["open_timeout_s"] = 0
+        daemon_cfg["read_timeout_s"] = -1
+        daemon_cfg["healthcheck_interval_s"] = 0
+        daemon_cfg["healthcheck_timeout_s"] = -2
+
+        errors = validate_config(sample_config)
+        assert any("camera.daemon.open_timeout_s" in e for e in errors)
+        assert any("camera.daemon.read_timeout_s" in e for e in errors)
+        assert any("camera.daemon.healthcheck_interval_s" in e for e in errors)
+        assert any("camera.daemon.healthcheck_timeout_s" in e for e in errors)
+
 
 class TestGroveConfigSections:
     """Tests for Grove button/relay configuration defaults and validation."""

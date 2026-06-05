@@ -22,6 +22,12 @@ AUTOSTART=0
 CAMERA_DAEMON=0
 CAMERA_DAEMON_AUTOSTART=0
 CAMERA_DAEMON_SERVICE=""
+CAMERA_DAEMON_BIN_AVAILABLE=0
+
+package_available() {
+  local pkg="$1"
+  apt-cache show "$pkg" >/dev/null 2>&1
+}
 
 detect_camera_daemon_service() {
   if sudo systemctl list-unit-files --type=service | grep -q '^v4l2rtspserver\.service'; then
@@ -126,10 +132,19 @@ PKGS=(
 )
 
 if [[ $CAMERA_DAEMON -eq 1 ]]; then
+  # Debian package name is v4l-utils (not v4l2-utils).
   PKGS+=(
-    v4l2-utils
-    v4l2rtspserver
+    v4l-utils
   )
+
+  if package_available v4l2rtspserver; then
+    PKGS+=(
+      v4l2rtspserver
+    )
+  else
+    echo "  Warning: package 'v4l2rtspserver' is not available in current apt repositories."
+    echo "           Continuing without daemon binary package (direct camera mode still works)."
+  fi
 fi
 
 sudo apt install -y "${PKGS[@]}"
@@ -162,9 +177,20 @@ else
 fi
 
 if [[ $CAMERA_DAEMON -eq 1 ]]; then
+  if command -v v4l2rtspserver >/dev/null 2>&1; then
+    CAMERA_DAEMON_BIN_AVAILABLE=1
+  fi
+
   echo
-  echo "Camera daemon prerequisites installed."
+  echo "Camera daemon diagnostics:"
   echo "  RTSP URL default: rtsp://127.0.0.1:8554/unicast"
+  if [[ $CAMERA_DAEMON_BIN_AVAILABLE -eq 1 ]]; then
+    echo "  v4l2rtspserver binary: found ✓"
+  else
+    echo "  v4l2rtspserver binary: not found"
+    echo "  Install from your distro repo/package source, then re-run with --with-camera-daemon-autostart"
+  fi
+
   if CAMERA_DAEMON_SERVICE="$(detect_camera_daemon_service)"; then
     echo "  Detected system service unit: ${CAMERA_DAEMON_SERVICE}.service"
   else
@@ -172,18 +198,24 @@ if [[ $CAMERA_DAEMON -eq 1 ]]; then
   fi
 
   if [[ $CAMERA_DAEMON_AUTOSTART -eq 1 ]]; then
-    if [[ -z "$CAMERA_DAEMON_SERVICE" ]]; then
+    if [[ $CAMERA_DAEMON_BIN_AVAILABLE -ne 1 ]]; then
+      echo "Cannot enable camera daemon autostart: v4l2rtspserver binary is missing."
+      echo "Install the daemon binary first, then run:"
+      echo "  bash install.sh --with-camera-daemon-autostart"
+    elif [[ -z "$CAMERA_DAEMON_SERVICE" ]]; then
       echo "No packaged daemon service found; creating local service unit..."
       install_local_v4l2rtspserver_service
     fi
 
-    echo "Enabling ${CAMERA_DAEMON_SERVICE} autostart..."
-    sudo systemctl enable --now "${CAMERA_DAEMON_SERVICE}" || true
-    if sudo systemctl is-active --quiet "${CAMERA_DAEMON_SERVICE}"; then
-      echo "  ${CAMERA_DAEMON_SERVICE} is active ✓"
-    else
-      echo "  ${CAMERA_DAEMON_SERVICE} is not active"
-      echo "  Check: sudo systemctl status ${CAMERA_DAEMON_SERVICE}"
+    if [[ -n "$CAMERA_DAEMON_SERVICE" ]]; then
+      echo "Enabling ${CAMERA_DAEMON_SERVICE} autostart..."
+      sudo systemctl enable --now "${CAMERA_DAEMON_SERVICE}" || true
+      if sudo systemctl is-active --quiet "${CAMERA_DAEMON_SERVICE}"; then
+        echo "  ${CAMERA_DAEMON_SERVICE} is active ✓"
+      else
+        echo "  ${CAMERA_DAEMON_SERVICE} is not active"
+        echo "  Check: sudo systemctl status ${CAMERA_DAEMON_SERVICE}"
+      fi
     fi
   fi
 
@@ -223,7 +255,11 @@ echo "Notes for DSI displays:"
 echo "  • No SPI LCD driver script is required for Freenove DSI displays"
 echo "  • Ensure Raspberry Pi OS Desktop is running on the DSI panel"
 if [[ $CAMERA_DAEMON -eq 1 ]]; then
-  echo "  • Camera daemon prerequisites installed (v4l2rtspserver + v4l-utils)"
+  if [[ $CAMERA_DAEMON_BIN_AVAILABLE -eq 1 ]]; then
+    echo "  • Camera daemon prerequisites installed (v4l2rtspserver + v4l-utils)"
+  else
+    echo "  • Camera tools installed (v4l-utils); v4l2rtspserver not found in apt repos on this OS"
+  fi
 fi
 echo
 if [[ $AUTOSTART -eq 1 ]]; then

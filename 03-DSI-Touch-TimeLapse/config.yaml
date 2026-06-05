@@ -1,6 +1,6 @@
 camera:
   mode: opencv
-  source_mode: direct_primary
+  source_mode: direct_only
   index: 0
   width: 640
   height: 480

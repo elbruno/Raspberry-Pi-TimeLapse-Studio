@@ -1,5 +1,11 @@
 # 👆 Scenario 02 — Touch TimeLapse
 
+> ⚠️ **ARCHIVED SCENARIO**
+>
+> Scenario 02 is no longer the active touchscreen path. For current Raspberry Pi touchscreen builds, use [**Scenario 03 — DSI Touch TimeLapse**](../../03-DSI-Touch-TimeLapse/README.md).
+>
+> Scenario 02 remains here as a legacy reference for SPI/GPIO touchscreen workflows.
+
 A **touchscreen GUI time-lapse application** built with Pygame for Raspberry Pi. Tap the screen to start/stop captures — no browser, no keyboard needed.
 
 > 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 01 — WebApp TimeLapse](../01-WebApp-TimeLapse/README.md) · [**User Manual**](USER_MANUAL.md)

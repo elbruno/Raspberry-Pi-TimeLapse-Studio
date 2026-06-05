@@ -9,7 +9,7 @@ A complete setup guide for running **PiTimeLapse DSI Touch** on a Raspberry Pi w
 
 ## What makes Scenario 03 different?
 
-Scenario 03 uses the same application features as [Scenario 02](../02-Touch-TimeLapse/README.md):
+Scenario 03 uses the same application feature set lineage as legacy Scenario 02:
 
 - touchscreen UI
 - camera preview
@@ -19,6 +19,14 @@ Scenario 03 uses the same application features as [Scenario 02](../02-Touch-Time
 - optional Grove button / Grove status light support
 
 But it is tuned for **DSI touchscreens** that already work with Raspberry Pi OS Desktop.
+
+> ⚠️ The active touchscreen path is Scenario 03. Scenario 02 is archived and should be treated as legacy reference only.
+
+Need physical connection guidance for Grove modules? Start here:
+
+- [HARDWARE_ASSEMBLY.md](HARDWARE_ASSEMBLY.md)
+- [GROVE_BASE_HAT_PINOUT.md](GROVE_BASE_HAT_PINOUT.md)
+- [TROUBLESHOOTING_HARDWARE.md](TROUBLESHOOTING_HARDWARE.md)
 
 That means:
 
@@ -287,6 +295,10 @@ Edit `config.yaml` and try a different `camera.index`.
 ## 9. Related docs
 
 - [Scenario 03 README](README.md)
-- [Scenario 02 README](../02-Touch-TimeLapse/README.md)
-- [Scenario 02 User Manual](../02-Touch-TimeLapse/USER_MANUAL.md)
+- [Scenario chooser](../SCENARIOS.md)
+- [Hardware assembly guide](HARDWARE_ASSEMBLY.md)
+- [Grove pinout mapping](GROVE_BASE_HAT_PINOUT.md)
+- [Hardware troubleshooting](TROUBLESHOOTING_HARDWARE.md)
+- [Legacy Scenario 02 README (archive)](../archive/02-Touch-TimeLapse/README.md)
+- [Legacy Scenario 02 User Manual (archive)](../archive/02-Touch-TimeLapse/USER_MANUAL.md)
 - [Raspberry Pi cleanup commands](../99-InitRPi/rpi-cleanup-ssh-commands.md)

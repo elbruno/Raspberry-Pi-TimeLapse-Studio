@@ -2,7 +2,7 @@
 
 Copy-paste these commands when connected to your Pi via SSH.
 
-> 📌 **Doc split:** [`../02-Touch-TimeLapse/README.md`](../02-Touch-TimeLapse/README.md) is the **quick guide** for the touchscreen scenario. This file is the **detailed bring-up guide** when you want the full provisioning flow and explanations.
+> 📌 **Doc split:** [`../03-DSI-Touch-TimeLapse/README.md`](../03-DSI-Touch-TimeLapse/README.md) is the **quick guide** for the active touchscreen scenario. This file is the **detailed bring-up guide** when you want the full provisioning flow and explanations.
 > **Context**: A fresh Raspberry Pi OS install + updates typically uses ~5.3 GB on an 8 GB card,
 > leaving only ~1.2 GB free. This script recovers space by removing desktop bloat, unused locales,
 > docs, old logs, and apt caches.
@@ -49,7 +49,7 @@ bash rpi-timelapse-cleanup.sh --profile touch
 Review the output. Nothing is modified during a dry run.  
 Check the **[7/7] Reclaimable filesystem areas** section — it shows how much space locales, docs, man pages, and apt lists use.
 
-If you do not need the detailed cleanup flow, you can skip back to [`../02-Touch-TimeLapse/README.md`](../02-Touch-TimeLapse/README.md) and use the short install path there.
+If you do not need the detailed cleanup flow, you can skip back to [`../03-DSI-Touch-TimeLapse/README.md`](../03-DSI-Touch-TimeLapse/README.md) and use the short install path there.
 
 ## 4. Apply the cleanup
 

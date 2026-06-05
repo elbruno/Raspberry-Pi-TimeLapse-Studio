@@ -1,0 +1,61 @@
+# 🔌 Scenario 03 Hardware Assembly (DSI + Grove)
+
+This is the canonical physical wiring guide for Scenario 03.
+
+Use it when your question is: **"Where do I plug the shield and sensors?"**
+
+## Required vs optional hardware
+
+### Required (Scenario 03 baseline)
+
+- Raspberry Pi (3B+, 4, or 5)
+- DSI touchscreen (for example Freenove 7-inch 800x480)
+- USB camera (or your supported camera setup)
+
+### Optional (extra controls/lighting)
+
+- Grove Base Hat for Raspberry Pi (stacked on GPIO header)
+- Grove Dual Button
+- Grove WS2813 RGB light (Ring 20 LEDs recommended, Stick 10 also works)
+
+> Scenario 03 works without Grove modules. Grove is optional.
+
+## Physical assembly order
+
+1. Power off the Pi.
+2. Connect the DSI ribbon cable to the Pi display connector and your DSI panel.
+3. Stack the Grove Base Hat on the Pi GPIO header.
+4. Connect optional Grove modules:
+   - Dual Button → D5 socket
+   - WS2813 Ring/Stick → PWM socket
+5. Connect camera.
+6. Power on and boot into Raspberry Pi OS Desktop.
+
+## Exact Grove connections
+
+- **Dual Button**: plug into the socket labeled **D5** (uses BCM 5 and BCM 6)
+- **WS2813 LED**: plug into the socket labeled **PWM** (uses BCM 12)
+
+See full mapping details in [GROVE_BASE_HAT_PINOUT.md](GROVE_BASE_HAT_PINOUT.md).
+
+## Config values that must match wiring
+
+In `config.yaml`:
+
+- `grove_button.pin_button1: 5`
+- `grove_button.pin_button2: 6`
+- `grove_light.pin: 12`
+- `grove_light.pixel_count: 20` for Ring, `10` for Stick
+
+If your board revision differs, trust the socket labels (`D5`, `PWM`) and keep these BCM values aligned.
+
+## Quick sanity checks
+
+- DSI screen shows Raspberry Pi desktop after boot
+- App launches on screen with `python3 timelapse_touch.py --fullscreen`
+- Button press toggles capture (depending on your button mapping in config)
+- LED changes state colors if `grove_light.enabled: true`
+
+## If something does not work
+
+Use [TROUBLESHOOTING_HARDWARE.md](TROUBLESHOOTING_HARDWARE.md).

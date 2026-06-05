@@ -1,9 +1,11 @@
 # 👆 Scenario 03 — DSI Touch TimeLapse
 
-A Raspberry Pi **DSI touchscreen** scenario using the exact same app engine as [Scenario 02](../02-Touch-TimeLapse/), pre-wired for displays like:
+A Raspberry Pi **DSI touchscreen** scenario based on the same app engine lineage as legacy Scenario 02, pre-wired for displays like:
 
 - **Freenove 7 Inch Touchscreen Monitor** (ASIN `B0B44VZTRG`)
 - 800×480, capacitive touch, DSI ribbon connection
+
+> ⚠️ **Scenario 02 in the root folder is archived.** If you need historical SPI-touch references, use [archive/02-Touch-TimeLapse](../archive/02-Touch-TimeLapse/README.md). For current touchscreen setup, stay in Scenario 03 docs.
 
 ---
 
@@ -102,6 +104,21 @@ normal user launch with a warning that Grove WS281x LED access may be limited.
 
 ---
 
+## Optional hardware wiring (Grove)
+
+Scenario 03 supports optional Grove hardware for physical controls/status:
+
+- Grove Dual Button
+- Grove WS2813 Ring/Stick status light
+
+Use these docs for exact connections:
+
+- [Hardware assembly (where to plug each module)](HARDWARE_ASSEMBLY.md)
+- [Grove Base Hat pin/socket mapping](GROVE_BASE_HAT_PINOUT.md)
+- [Hardware troubleshooting](TROUBLESHOOTING_HARDWARE.md)
+
+---
+
 ## Configuration
 
 Edit `config.yaml` in this folder.
@@ -131,10 +148,14 @@ common `800x480` DSI touchscreens.
 
 ## Need full feature docs?
 
-Use Scenario 03 + Scenario 02 documentation together:
+Start with Scenario 03 documentation. Use archived Scenario 02 docs only as legacy reference:
 
 - [Scenario 03 User Manual](USER_MANUAL.md)
-- [Scenario 02 README](../02-Touch-TimeLapse/README.md)
-- [Scenario 02 User Manual](../02-Touch-TimeLapse/USER_MANUAL.md)
+- [Scenario chooser](../SCENARIOS.md)
+- [Hardware assembly guide](HARDWARE_ASSEMBLY.md)
+- [Grove pinout mapping](GROVE_BASE_HAT_PINOUT.md)
+- [Hardware troubleshooting](TROUBLESHOOTING_HARDWARE.md)
+- [Legacy Scenario 02 README (archive)](../archive/02-Touch-TimeLapse/README.md)
+- [Legacy Scenario 02 User Manual (archive)](../archive/02-Touch-TimeLapse/USER_MANUAL.md)
 - [Cleanup SSH guide](../99-InitRPi/rpi-cleanup-ssh-commands.md)
 - [Internal-device elevation helper](../99-InitRPi/enable-device-elevation.sh)

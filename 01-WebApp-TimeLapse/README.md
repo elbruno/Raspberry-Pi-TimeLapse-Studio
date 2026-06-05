@@ -2,7 +2,7 @@
 
 A **web-based time-lapse application** built with Flask and OpenCV. Control your camera from any browser — on your phone, laptop, or another computer on the network.
 
-> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 02 — Touch TimeLapse](../02-Touch-TimeLapse/README.md)
+> 📖 Part of [PiTimeLapse Lab](../README.md). See also: [Scenario 03 — DSI Touch TimeLapse](../03-DSI-Touch-TimeLapse/README.md) · [Scenario chooser](../SCENARIOS.md)
 
 ---
 
@@ -55,15 +55,18 @@ pip install -r requirements.txt
 ```
 
 > 💡 **Virtual environment (optional):**On a dedicated Raspberry Pi you can skip this — install packages globally. On a shared or development machine, create one first to avoid conflicts:
+>
 > ```bash
 > python3 -m venv venv
 > source venv/bin/activate    # Windows: venv\Scripts\activate
 > ```
 >
 > ⚠️ **PEP 668 error?** On newer Raspberry Pi OS (Bookworm+), pip refuses to install system-wide. Add `--break-system-packages` to the pip command:
+>
 > ```bash
 > pip install -r requirements.txt --break-system-packages
 > ```
+>
 > This is safe on a dedicated Pi that only runs this project.
 
 ### 2. Validate Your Setup
@@ -87,7 +90,7 @@ python main.py
 
 ### 4. Open Browser
 
-Go to **http://localhost:8000** and start your first time-lapse!
+Go to **<http://localhost:8000>** and start your first time-lapse!
 
 > 💡 **What does `localhost:8000` mean?** "localhost" is your own computer, and "8000" is the port number where the app is listening. It's like an address and apartment number!
 

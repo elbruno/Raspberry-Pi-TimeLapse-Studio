@@ -20,12 +20,14 @@ import logging
 import os
 import platform
 import signal
+import socket
 import subprocess
 import sys
 import threading
 import time
 import glob
 from typing import Optional
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
 # SDL environment — must be set BEFORE importing pygame.
@@ -280,6 +282,19 @@ class TimeLapseApp:
         # ── Camera ──
         self.camera: Optional[OpenCVCamera] = None  # type: ignore[assignment]
         self._active_camera_source: str = "none"
+        self._camera_on_hold: bool = False
+        self._camera_on_hold_reason: str = ""
+        self._camera_on_hold_since: float = 0.0
+        self._camera_last_frame_ok_ts: float = 0.0
+        self._camera_reconnect_thread: Optional[threading.Thread] = None
+        daemon_cfg = self.config.get("camera", {}).get("daemon", {})
+        self._camera_healthcheck_interval_s: float = float(
+            daemon_cfg.get("healthcheck_interval_s", 5.0)
+        )
+        self._camera_healthcheck_timeout_s: float = float(
+            daemon_cfg.get("healthcheck_timeout_s", 2.0)
+        )
+        self._last_camera_healthcheck_attempt: float = 0.0
         self._init_camera()
 
         # ── Relay controller ──
@@ -541,6 +556,7 @@ class TimeLapseApp:
         daemon_url = str(
             daemon_cfg.get("rtsp_url", "rtsp://127.0.0.1:8554/unicast")
         ).strip()
+        daemon_open_timeout = float(daemon_cfg.get("open_timeout_s", 5.0))
         if not daemon_url:
             daemon_url = "rtsp://127.0.0.1:8554/unicast"
 
@@ -565,6 +581,10 @@ class TimeLapseApp:
                 if not daemon_enabled:
                     continue
 
+                if not self._is_daemon_endpoint_reachable(daemon_url, daemon_open_timeout):
+                    logger.warning("Daemon endpoint not reachable: %s", daemon_url)
+                    continue
+
                 cam = OpenCVCamera()
                 if not cam.open(width=w, height=h, source="daemon", stream_url=daemon_url):
                     continue
@@ -574,6 +594,8 @@ class TimeLapseApp:
                     self._camera_warning = ""
                     self._consecutive_preview_failures = 0
                     self._active_camera_source = "daemon"
+                    self._camera_last_frame_ok_ts = time.time()
+                    self._clear_camera_on_hold()
                     logger.info(
                         "Camera opened via daemon stream (%s, %dx%d)",
                         daemon_url,
@@ -597,6 +619,8 @@ class TimeLapseApp:
                     self._camera_warning = ""
                     self._consecutive_preview_failures = 0
                     self._active_camera_source = "direct"
+                    self._camera_last_frame_ok_ts = time.time()
+                    self._clear_camera_on_hold()
                     if source_mode == "daemon_primary":
                         logger.info(
                             "Daemon source unavailable; using direct camera index %d",
@@ -621,6 +645,7 @@ class TimeLapseApp:
         self.camera = None
         self._active_camera_source = "none"
         self._camera_warning = self._camera_detection_hint()
+        self._set_camera_on_hold("Camera source unavailable — recovering")
         logger.warning(
             "Camera failed to open for source_mode=%s (daemon_enabled=%s)",
             source_mode,
@@ -678,6 +703,72 @@ class TimeLapseApp:
             return "Camera found on USB but stream failed — try another index"
 
         return fallback
+
+    def _is_daemon_endpoint_reachable(self, stream_url: str, timeout_s: float) -> bool:
+        """Quick readiness check for daemon stream endpoint.
+
+        For RTSP/HTTP-style URLs this validates that host:port is reachable
+        before OpenCV attempts opening the stream.
+        """
+        if not stream_url:
+            return False
+
+        parsed = urlparse(stream_url)
+        scheme = (parsed.scheme or "").lower()
+        if scheme not in ("rtsp", "http", "https", "tcp"):
+            return True
+
+        host = parsed.hostname
+        if not host:
+            return False
+
+        if parsed.port is not None:
+            port = parsed.port
+        elif scheme == "rtsp":
+            port = 554
+        elif scheme == "https":
+            port = 443
+        else:
+            port = 80
+
+        try:
+            with socket.create_connection((host, port), timeout=max(0.2, float(timeout_s))):
+                return True
+        except Exception:
+            return False
+
+    def _set_camera_on_hold(self, reason: str) -> None:
+        """Set camera ON HOLD state with a user-facing reason."""
+        self._camera_on_hold = True
+        self._camera_on_hold_reason = reason.strip() or "Camera recovering"
+        self._camera_on_hold_since = time.time()
+
+    def _clear_camera_on_hold(self) -> None:
+        """Clear camera ON HOLD state after successful recovery."""
+        self._camera_on_hold = False
+        self._camera_on_hold_reason = ""
+        self._camera_on_hold_since = 0.0
+
+    def _start_async_camera_reconnect(self, reason: str = "") -> None:
+        """Trigger camera reconnect in background to avoid UI blocking."""
+        if self._camera_reconnect_thread is not None and self._camera_reconnect_thread.is_alive():
+            return
+
+        self._set_camera_on_hold(reason or "Camera reconnect in progress")
+
+        def _worker() -> None:
+            try:
+                self._init_camera()
+            except Exception as exc:
+                logger.warning("Async camera reconnect failed: %s", exc)
+                self._set_camera_on_hold("Camera reconnect failed")
+
+        self._camera_reconnect_thread = threading.Thread(
+            target=_worker,
+            name="camera-reconnect",
+            daemon=True,
+        )
+        self._camera_reconnect_thread.start()
 
     def _init_led(self) -> None:
         """Initialize Grove relay controller and ensure it starts OFF."""
@@ -1531,8 +1622,8 @@ class TimeLapseApp:
                 now = time.time()
                 if now - self._last_camera_reconnect_attempt >= self._camera_reconnect_interval_s:
                     self._last_camera_reconnect_attempt = now
-                    logger.info("Camera unavailable — attempting reconnect")
-                    self._init_camera()
+                    logger.info("Camera unavailable — attempting async reconnect")
+                    self._start_async_camera_reconnect("Camera unavailable")
             self.preview.update(None)
             return
 
@@ -1562,14 +1653,17 @@ class TimeLapseApp:
 
                 if self._consecutive_preview_failures >= 3:
                     logger.warning("Camera not responding — disabling camera preview")
-                    self._camera_warning = "Camera not responding"
+                    self._camera_warning = "Camera not responding — recovering"
                     self.camera.close()
                     self.camera = None
+                    self._set_camera_on_hold("Camera stream stalled")
                     self._last_camera_reconnect_attempt = 0.0
                 return
 
             self._consecutive_preview_failures = 0
             self._camera_warning = ""
+            self._camera_last_frame_ok_ts = time.time()
+            self._clear_camera_on_hold()
             self.preview.update(frame)
             return
 
@@ -1632,6 +1726,8 @@ class TimeLapseApp:
             photo_count = st.get("total_photos", 0)
             elapsed = self._elapsed()
             status_text = "Stopped"
+        elif self._camera_on_hold:
+            status_text = f"ON HOLD: {self._camera_on_hold_reason}"
         elif self.camera is None:
             status_text = self._camera_warning or "No camera detected"
 

@@ -89,6 +89,19 @@ bash install.sh --with-camera-daemon
 bash install.sh --with-camera-daemon-autostart
 ```
 
+If your distro package does not ship a `v4l2rtspserver` service unit, the
+installer creates a local fallback unit named:
+
+- `pitimelapse-v4l2rtspserver.service`
+
+You can check daemon status with:
+
+```bash
+sudo systemctl status v4l2rtspserver
+# or
+sudo systemctl status pitimelapse-v4l2rtspserver
+```
+
 1. Reboot and launch:
 
 ```bash

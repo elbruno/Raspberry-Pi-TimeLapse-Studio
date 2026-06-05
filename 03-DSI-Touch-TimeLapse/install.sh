@@ -21,6 +21,66 @@ SHORTCUT=0
 AUTOSTART=0
 CAMERA_DAEMON=0
 CAMERA_DAEMON_AUTOSTART=0
+CAMERA_DAEMON_SERVICE=""
+
+detect_camera_daemon_service() {
+  if sudo systemctl list-unit-files --type=service | grep -q '^v4l2rtspserver\.service'; then
+    echo "v4l2rtspserver"
+    return 0
+  fi
+  if sudo systemctl list-unit-files --type=service | grep -q '^v4l2rtsp\.service'; then
+    echo "v4l2rtsp"
+    return 0
+  fi
+  echo ""
+  return 1
+}
+
+install_local_v4l2rtspserver_service() {
+  local unit_path="/etc/systemd/system/pitimelapse-v4l2rtspserver.service"
+  local video_device="/dev/video0"
+
+  if [[ ! -e "$video_device" ]]; then
+    # Keep default /dev/video0 in unit; this warning helps users tune if needed.
+    echo "  Warning: ${video_device} not found right now; service may need device tuning later."
+  fi
+
+  sudo tee "$unit_path" >/dev/null << 'EOF'
+[Unit]
+Description=PiTimeLapse camera daemon (v4l2rtspserver)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/v4l2rtspserver -W 640 -H 480 -F 15 /dev/video0
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo systemctl daemon-reload
+  CAMERA_DAEMON_SERVICE="pitimelapse-v4l2rtspserver"
+  echo "  Installed local service unit: ${unit_path}"
+}
+
+verify_rtsp_endpoint() {
+  python3 - << 'PY'
+import socket
+
+host = "127.0.0.1"
+port = 8554
+try:
+    with socket.create_connection((host, port), timeout=1.5):
+        print("  RTSP endpoint reachable at rtsp://127.0.0.1:8554/unicast ✓")
+except Exception:
+    print("  RTSP endpoint not reachable yet (expected if service is disabled or still starting)")
+PY
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -105,15 +165,29 @@ if [[ $CAMERA_DAEMON -eq 1 ]]; then
   echo
   echo "Camera daemon prerequisites installed."
   echo "  RTSP URL default: rtsp://127.0.0.1:8554/unicast"
+  if CAMERA_DAEMON_SERVICE="$(detect_camera_daemon_service)"; then
+    echo "  Detected system service unit: ${CAMERA_DAEMON_SERVICE}.service"
+  else
+    echo "  No distro-provided service unit detected; can create local service when autostart is requested."
+  fi
+
   if [[ $CAMERA_DAEMON_AUTOSTART -eq 1 ]]; then
-    echo "Enabling v4l2rtspserver autostart..."
-    sudo systemctl enable --now v4l2rtspserver || true
-    if sudo systemctl is-active --quiet v4l2rtspserver; then
-      echo "  v4l2rtspserver is active ✓"
+    if [[ -z "$CAMERA_DAEMON_SERVICE" ]]; then
+      echo "No packaged daemon service found; creating local service unit..."
+      install_local_v4l2rtspserver_service
+    fi
+
+    echo "Enabling ${CAMERA_DAEMON_SERVICE} autostart..."
+    sudo systemctl enable --now "${CAMERA_DAEMON_SERVICE}" || true
+    if sudo systemctl is-active --quiet "${CAMERA_DAEMON_SERVICE}"; then
+      echo "  ${CAMERA_DAEMON_SERVICE} is active ✓"
     else
-      echo "  v4l2rtspserver is not active (check: sudo systemctl status v4l2rtspserver)"
+      echo "  ${CAMERA_DAEMON_SERVICE} is not active"
+      echo "  Check: sudo systemctl status ${CAMERA_DAEMON_SERVICE}"
     fi
   fi
+
+  verify_rtsp_endpoint
 fi
 
 # ------------------------------------------------------------------

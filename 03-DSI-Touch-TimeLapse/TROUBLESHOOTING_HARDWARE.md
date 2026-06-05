@@ -64,6 +64,38 @@ When debugging, disable optional hardware first so capture can still run:
 
 Then re-enable one module at a time.
 
+## 6) Camera daemon (RTSP) issues
+
+### Symptom: app stuck on `ON HOLD` when using daemon mode
+
+Check:
+
+1. `config.yaml` camera source mode:
+   - `camera.source_mode: daemon_primary` (Option A), or
+   - `camera.source_mode: direct_primary` (Option B).
+2. Daemon URL is reachable:
+   - `camera.daemon.rtsp_url: rtsp://127.0.0.1:8554/unicast`
+3. Service status:
+   - `sudo systemctl status v4l2rtspserver`
+   - or `sudo systemctl status pitimelapse-v4l2rtspserver` (if local fallback unit was created).
+4. RTSP port is listening:
+   - `ss -ltn | grep 8554`
+
+### Symptom: daemon mode fails, direct mode still works
+
+- Keep using Option B (`direct_primary`) while debugging service startup.
+- Verify camera node and ownership:
+  - `v4l2-ctl --list-devices`
+  - `ls -l /dev/video*`
+- If daemon owns `/dev/video0`, direct probing may fail until daemon is stopped.
+
+### Symptom: direct mode fails while daemon is active
+
+- Stop daemon temporarily for diagnostics:
+  - `sudo systemctl stop v4l2rtspserver`
+  - or `sudo systemctl stop pitimelapse-v4l2rtspserver`
+- Test direct camera index in Settings, then restart daemon.
+
 ## Related docs
 
 - [HARDWARE_ASSEMBLY.md](HARDWARE_ASSEMBLY.md)

@@ -242,3 +242,49 @@ def test_enumerate_camera_candidates_keeps_secondary_stream_nodes(monkeypatch):
     assert 0 in candidates
     assert 2 in candidates
     assert candidates.index(0) < candidates.index(2)
+
+
+def test_update_preview_triggers_async_reconnect_when_camera_missing():
+    """Preview loop should request async reconnect instead of blocking init when camera is missing."""
+    from timelapse_touch import TimeLapseApp
+
+    app = TimeLapseApp.__new__(TimeLapseApp)
+    app._preview_updates_enabled = True
+    app.camera = None
+    app._screen_state = "main"
+    app.engine = None
+    app._last_camera_reconnect_attempt = 0.0
+    app._camera_reconnect_interval_s = 0.0
+    app.preview = MagicMock()
+    app._start_async_camera_reconnect = MagicMock()
+
+    TimeLapseApp._update_preview(app)
+
+    app._start_async_camera_reconnect.assert_called_once()
+    app.preview.update.assert_called_once_with(None)
+
+
+def test_update_status_shows_on_hold_message():
+    """Status bar should surface ON HOLD state while camera recovery is in progress."""
+    from timelapse_touch import TimeLapseApp
+
+    app = TimeLapseApp.__new__(TimeLapseApp)
+    app._show_storage_info = False
+    app.engine = None
+    app._capture_start_time = 0.0
+    app.camera = None
+    app._camera_on_hold = True
+    app._camera_on_hold_reason = "Camera reconnect in progress"
+    app._camera_warning = ""
+    app.header = MagicMock()
+    app.status_bar = MagicMock()
+    app.usb_connected = False
+    app._free_gb = 0.0
+    app._remaining_photos = 0
+    app._last_thumbnail_path = ""
+
+    TimeLapseApp._update_status(app)
+
+    app.status_bar.update.assert_called_once()
+    status_text = app.status_bar.update.call_args.args[0]
+    assert status_text.startswith("ON HOLD:")

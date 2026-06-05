@@ -66,6 +66,7 @@ class CaptureEngine:
     def start(self, session: Session, camera: OpenCVCamera,
               storage: StorageManager, config: dict,
               led: Optional["LEDController"] = None,
+              relay_2: Optional["LEDController"] = None,
               camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """
         Begin the capture loop in a background thread.
@@ -75,7 +76,8 @@ class CaptureEngine:
             camera:  Already-opened OpenCVCamera.
             storage: StorageManager pointed at the session base path.
             config:  Merged configuration dictionary.
-            led:     Optional LEDController for illumination before capture.
+            led:     Optional Relay #1 controller for illumination before capture.
+            relay_2: Optional Relay #2 controller for illumination before capture.
             camera_reopen_callback: Optional callable invoked when the camera
                 stops responding. Should reinitialise the device and return a
                 fresh ``OpenCVCamera`` instance, or ``None`` if it is still
@@ -97,7 +99,7 @@ class CaptureEngine:
 
         self._thread = threading.Thread(
             target=self._capture_loop,
-            args=(session, camera, storage, config, led,
+            args=(session, camera, storage, config, led, relay_2,
                   camera_reopen_callback),
             name="capture-engine",
             daemon=True,
@@ -157,6 +159,7 @@ class CaptureEngine:
     def _capture_loop(self, session: Session, camera: OpenCVCamera,
                       storage: StorageManager, config: dict,
                       led: Optional["LEDController"] = None,
+                      relay_2: Optional["LEDController"] = None,
                       camera_reopen_callback: Optional[Callable[[], Optional[OpenCVCamera]]] = None) -> None:  # type: ignore[name-defined]
         """Main loop executed inside the background thread."""
         interval = get_config_value(config, "capture.interval_seconds", 30)
@@ -170,9 +173,32 @@ class CaptureEngine:
         led_pre_lead = get_config_value(config, "led.pre_capture_lead_seconds", 0.0)
         # Total time LED stays on BEFORE the snapshot fires.
         led_pre_total = max(0.0, float(led_warmup) + float(led_pre_lead))
-        use_led = led_enabled and led is not None and led.is_available()
-        if use_led:
-            logger.info("LED illumination enabled — warmup %.1fs", led_warmup)
+        relay_2_enabled = get_config_value(config, "grove_relay_2.enabled", True)
+
+        active_relays: list[tuple[str, "LEDController"]] = []  # type: ignore[name-defined]
+        if led_enabled and led is not None and led.is_available():
+            active_relays.append(("relay_1", led))
+        if relay_2_enabled and relay_2 is not None and relay_2.is_available():
+            active_relays.append(("relay_2", relay_2))
+
+        if active_relays:
+            logger.info(
+                "Relay illumination enabled (%d relay%s) — warmup %.1fs",
+                len(active_relays),
+                "s" if len(active_relays) > 1 else "",
+                led_warmup,
+            )
+
+        def _set_relays(on: bool) -> None:
+            action = "on" if on else "off"
+            for name, controller in active_relays:
+                try:
+                    if on:
+                        controller.turn_on()
+                    else:
+                        controller.turn_off()
+                except Exception as exc:
+                    logger.warning("Failed turning %s %s: %s", name, action, exc)
 
         logger.info("Capture loop running — interval=%ss, quality=%d",
                      interval, quality)
@@ -191,9 +217,10 @@ class CaptureEngine:
                 # -- LED ON before capture --
                 # Relay/illumination turns ON before the snapshot, then OFF
                 # immediately after frame capture.
-                if use_led:
-                    led.turn_on()  # type: ignore[union-attr]
-                if use_led:
+                if active_relays:
+                    _set_relays(on=True)
+
+                if active_relays:
                     # Wait pre-capture lead time (warmup + extra lead, interruptible)
                     warmup_end = time.monotonic() + led_pre_total
                     while not self._stop_event.is_set():
@@ -202,8 +229,7 @@ class CaptureEngine:
                             break
                         self._stop_event.wait(timeout=min(remaining, 0.25))
                     if self._stop_event.is_set():
-                        if use_led:
-                            led.turn_off()  # type: ignore[union-attr]
+                        _set_relays(on=False)
                         break
 
                 # -- attempt to capture a frame --
@@ -218,8 +244,8 @@ class CaptureEngine:
                     time.sleep(retry_delay)
 
                 # Turn relay/LED off immediately after the frame attempt.
-                if use_led:
-                    led.turn_off()  # type: ignore[union-attr]
+                if active_relays:
+                    _set_relays(on=False)
 
                 if frame is None:
                     consecutive_failures += 1

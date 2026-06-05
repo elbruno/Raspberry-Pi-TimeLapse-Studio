@@ -16,7 +16,8 @@ Use it when your question is: **"Where do I plug the shield and sensors?"**
 
 - Grove Base Hat for Raspberry Pi (stacked on GPIO header)
 - Grove Dual Button
-- Grove Relay module (Seeed)
+- Grove Relay module #1 (Seeed)
+- Grove Relay module #2 (Seeed)
 
 > Scenario 03 works without Grove modules. Grove is optional.
 
@@ -27,14 +28,16 @@ Use it when your question is: **"Where do I plug the shield and sensors?"**
 3. Stack the Grove Base Hat on the Pi GPIO header.
 4. Connect optional Grove modules:
    - Dual Button → D5 socket
-   - Grove Relay → D26 socket (recommended)
+   - Grove Relay #1 → D26 socket (recommended)
+   - Grove Relay #2 → D24 socket (recommended)
 5. Connect camera.
 6. Power on and boot into Raspberry Pi OS Desktop.
 
 ## Exact Grove connections
 
 - **Dual Button**: plug into the socket labeled **D5** (uses BCM 5 and BCM 6)
-- **Grove Relay**: plug into socket **D26** (uses BCM 26)
+- **Grove Relay #1**: plug into socket **D26** (uses BCM 26)
+- **Grove Relay #2**: plug into socket **D24** (uses BCM 24)
 
 ### Quick socket diagram (top view)
 
@@ -49,8 +52,8 @@ TOP VIEW (Grove Base Hat)
 │        BUTTON                               │
 │                                             │
 │ [UART] [D22] [D24] [D26] [ A4 ] [A6]       │
-│                    ↑                        │
-│                  RELAY                      │
+│              ↑      ↑                       │
+│           RELAY2  RELAY1                    │
 │                                             │
 │ [I2C] [I2C] [I2C] [ SWD / GPIO ]            │
 └─────────────────────────────────────────────┘
@@ -66,6 +69,8 @@ In `config.yaml`:
 - `grove_button.pin_button2: 6`
 - `grove_relay.pin: 26`
 - `grove_relay.active_high: true`
+- `grove_relay_2.pin: 24`
+- `grove_relay_2.active_high: true`
 
 If your board revision differs, trust the socket labels (`D5`, `PWM`) and keep these BCM values aligned.
 
@@ -74,7 +79,7 @@ If your board revision differs, trust the socket labels (`D5`, `PWM`) and keep t
 - DSI screen shows Raspberry Pi desktop after boot
 - App launches on screen with `python3 timelapse_touch.py --fullscreen`
 - Button press toggles capture (depending on your button mapping in config)
-- Relay toggles ON before capture and OFF right after capture
+- Relay #1 and Relay #2 toggle ON before capture and OFF right after capture
 
 ## If something does not work
 

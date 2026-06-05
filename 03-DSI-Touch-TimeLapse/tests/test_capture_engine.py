@@ -239,3 +239,77 @@ class TestCaptureEngineCapture:
         assert "capture" in order
         assert "led_off" in order
         assert order.index("led_on") < order.index("capture") < order.index("led_off") < order.index("save")
+
+    def test_dual_relays_turn_on_before_capture_and_off_after(
+        self, mock_session, mock_camera, mock_storage, capture_config
+    ):
+        """Both relays should switch ON before capture and OFF after frame attempt."""
+        from capture_engine import CaptureEngine
+
+        order = []
+        relay_1 = MagicMock()
+        relay_1.is_available.return_value = True
+        relay_1.turn_on.side_effect = lambda: order.append("r1_on") or True
+        relay_1.turn_off.side_effect = lambda: order.append("r1_off") or True
+
+        relay_2 = MagicMock()
+        relay_2.is_available.return_value = True
+        relay_2.turn_on.side_effect = lambda: order.append("r2_on") or True
+        relay_2.turn_off.side_effect = lambda: order.append("r2_off") or True
+
+        mock_camera.capture.side_effect = lambda: order.append("capture") or np.zeros((480, 640, 3), dtype=np.uint8)
+
+        engine = CaptureEngine()
+        engine.start(
+            mock_session,
+            mock_camera,
+            mock_storage,
+            capture_config,
+            led=relay_1,
+            relay_2=relay_2,
+        )
+
+        try:
+            time.sleep(0.35)
+        finally:
+            engine.stop()
+
+        assert "r1_on" in order and "r2_on" in order
+        assert "r1_off" in order and "r2_off" in order
+        assert order.index("r1_on") < order.index("capture")
+        assert order.index("r2_on") < order.index("capture")
+        assert order.index("capture") < order.index("r1_off")
+        assert order.index("capture") < order.index("r2_off")
+
+    def test_relay_2_turn_on_failure_does_not_block_capture(
+        self, mock_session, mock_camera, mock_storage, capture_config
+    ):
+        """Relay #2 turn_on errors should be tolerated and capture should continue."""
+        from capture_engine import CaptureEngine
+
+        relay_1 = MagicMock()
+        relay_1.is_available.return_value = True
+        relay_1.turn_on.return_value = True
+        relay_1.turn_off.return_value = True
+
+        relay_2 = MagicMock()
+        relay_2.is_available.return_value = True
+        relay_2.turn_on.side_effect = RuntimeError("GPIO 24 busy")
+        relay_2.turn_off.return_value = True
+
+        engine = CaptureEngine()
+        engine.start(
+            mock_session,
+            mock_camera,
+            mock_storage,
+            capture_config,
+            led=relay_1,
+            relay_2=relay_2,
+        )
+
+        try:
+            time.sleep(0.3)
+        finally:
+            engine.stop()
+
+        assert mock_camera.capture.call_count >= 1

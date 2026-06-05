@@ -31,6 +31,8 @@ def test_handle_settings_tap_routes_detect_actions():
     app._run_led_test = MagicMock()
     app._run_camera_detect = MagicMock()
     app._run_led_detect = MagicMock()
+    app._run_relay_2_detect = MagicMock()
+    app._run_relay_2_test = MagicMock()
     app._set_preview_updates_enabled = MagicMock()
     app._screen_state = "settings"
 
@@ -41,6 +43,14 @@ def test_handle_settings_tap_routes_detect_actions():
     app._settings_screen.handle_tap.return_value = "detect_led"
     TimeLapseApp._handle_settings_tap(app, (0, 0))
     app._run_led_detect.assert_called_once()
+
+    app._settings_screen.handle_tap.return_value = "detect_relay_2"
+    TimeLapseApp._handle_settings_tap(app, (0, 0))
+    app._run_relay_2_detect.assert_called_once()
+
+    app._settings_screen.handle_tap.return_value = "test_relay_2"
+    TimeLapseApp._handle_settings_tap(app, (0, 0))
+    app._run_relay_2_test.assert_called_once()
 
 
 def test_set_preview_updates_enabled_disables_and_joins_worker():
@@ -120,6 +130,36 @@ def test_run_led_detect_initializes_controller_when_missing(monkeypatch):
     assert app.led_controller is controller
     assert app.led is controller
     app._settings_screen.set_hardware_message.assert_any_call("Relay ✓ Detected!", True)
+
+
+def test_run_relay_2_detect_initializes_controller_when_missing(monkeypatch):
+    """Relay #2 detect should self-initialize and update status when found."""
+    from timelapse_touch import TimeLapseApp
+    import timelapse_touch as mod
+
+    _run_thread_target_immediately(monkeypatch)
+
+    app = TimeLapseApp.__new__(TimeLapseApp)
+    app.config = {
+        "grove_relay_2": {"pin": 24, "active_high": True},
+        "led": {"enabled": True},
+    }
+    app.relay_2_detected = False
+    app.relay_2 = None
+    app.header = MagicMock()
+    app._settings_screen = MagicMock()
+
+    controller = MagicMock()
+    controller.detect.return_value = True
+    controller.port_name = "GPIO24"
+    monkeypatch.setattr(mod, "LEDController", lambda pin, active_high: controller)
+    app.relay_2_controller = None
+
+    TimeLapseApp._run_relay_2_detect(app)
+
+    assert app.relay_2_controller is controller
+    assert app.relay_2 is controller
+    app._settings_screen.set_hardware_message.assert_any_call("Relay #2 ✓ Detected!", True)
 
 
 def test_set_preview_updates_enabled_resets_timer_when_reenabled():

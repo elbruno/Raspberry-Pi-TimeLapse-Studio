@@ -32,15 +32,21 @@ Check:
 
 ## 3) Grove relay issues
 
-### Symptom: relay does not switch
+### Symptom: one or both relays do not switch
 
 Check:
 
-1. Module is connected to socket **D26** on Grove Base Hat.
+1. Relay modules are connected to expected sockets:
+   - Relay #1 → **D26**
+   - Relay #2 → **D24**
 2. `config.yaml` has:
    - `grove_relay.enabled: true`
    - `grove_relay.pin: 26`
    - `grove_relay.active_high: true` (or `false` for inverted relay boards)
+   - `grove_relay_2.enabled: true`
+   - `grove_relay_2.pin: 24`
+   - `grove_relay_2.active_high: true` (or `false` for inverted relay boards)
+3. Ensure both relays do **not** share the same BCM pin in config.
 
 ### Symptom: permission/runtime relay errors
 
@@ -54,6 +60,7 @@ When debugging, disable optional hardware first so capture can still run:
 
 - `grove_button.enabled: false`
 - `grove_relay.enabled: false`
+- `grove_relay_2.enabled: false`
 
 Then re-enable one module at a time.
 

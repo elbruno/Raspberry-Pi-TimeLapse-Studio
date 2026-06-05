@@ -21,6 +21,10 @@ grove_relay:
   enabled: true
   pin: 26
   active_high: true
+grove_relay_2:
+  enabled: true
+  pin: 24
+  active_high: true
 display:
   show_countdown: true
   show_storage_info: true

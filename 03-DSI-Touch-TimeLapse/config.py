@@ -67,6 +67,11 @@ DEFAULTS: dict = {
         "pin": 26,
         "active_high": True,
     },
+    "grove_relay_2": {
+        "enabled": True,
+        "pin": 24,
+        "active_high": True,
+    },
 }
 
 
@@ -255,6 +260,35 @@ def validate_config(config: dict) -> list[str]:
     if not isinstance(relay_active_high, bool):
         errors.append(
             f"grove_relay.active_high must be true or false, got {relay_active_high}"
+        )
+
+    # Grove relay #2 checks
+    relay2_enabled = get_config_value(config, "grove_relay_2.enabled", True)
+    if not isinstance(relay2_enabled, bool):
+        errors.append(f"grove_relay_2.enabled must be true or false, got {relay2_enabled}")
+
+    relay2_pin = get_config_value(config, "grove_relay_2.pin", 24)
+    if not isinstance(relay2_pin, int) or relay2_pin < 0:
+        errors.append(f"grove_relay_2.pin must be a non-negative integer, got {relay2_pin}")
+
+    relay2_active_high = get_config_value(config, "grove_relay_2.active_high", True)
+    if not isinstance(relay2_active_high, bool):
+        errors.append(
+            f"grove_relay_2.active_high must be true or false, got {relay2_active_high}"
+        )
+
+    # Pin conflict check for enabled relays
+    if (
+        isinstance(relay_enabled, bool)
+        and isinstance(relay2_enabled, bool)
+        and relay_enabled
+        and relay2_enabled
+        and isinstance(relay_pin, int)
+        and isinstance(relay2_pin, int)
+        and relay_pin == relay2_pin
+    ):
+        errors.append(
+            f"grove_relay and grove_relay_2 cannot share the same pin ({relay_pin})"
         )
 
     return errors

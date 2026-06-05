@@ -142,6 +142,7 @@ class Header:
         self._font_info: Optional[pygame.font.Font] = None
         self.usb_connected = False
         self.led_detected = False
+        self.relay_2_detected = False
         self.photo_count = 0
         self.free_gb: float = 0.0
         self.remaining_photos: int = 0
@@ -213,10 +214,13 @@ class Header:
         x -= usb_surf.get_width()
         surface.blit(usb_surf, (x, 12))
 
-        # LED indicator (always shown next to title)
+        # Relay indicators (always shown next to title)
         led_color = COLOR_USB_OK if self.led_detected else COLOR_TEXT_DIM
-        led_surf = self.font_info.render(" LED", True, led_color)
+        led_surf = self.font_info.render(" R1", True, led_color)
         surface.blit(led_surf, (10 + title.get_width(), 12))
+        relay2_color = COLOR_USB_OK if self.relay_2_detected else COLOR_TEXT_DIM
+        relay2_surf = self.font_info.render(" R2", True, relay2_color)
+        surface.blit(relay2_surf, (10 + title.get_width() + led_surf.get_width(), 12))
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +540,7 @@ class SettingsScreen:
 
     def __init__(self, screen_w: int, screen_h: int, config: dict,
                  led_detected: bool = False, led_port_name: str = "",
+                 relay_2_detected: bool = False, relay_2_port_name: str = "",
                  camera_options: Optional[list[tuple[int, str]]] = None,
                  grove_buttons_detected: bool = False,
                  max_display_size: Optional[Tuple[int, int]] = None) -> None:
@@ -546,6 +551,8 @@ class SettingsScreen:
         self.active_tab: int = 0  # 0=Camera, 1=Display, 2=LED, 3=Buttons
         self.led_detected = led_detected
         self.led_port_name = led_port_name
+        self.relay_2_detected = relay_2_detected
+        self.relay_2_port_name = relay_2_port_name
         self.grove_buttons_detected = grove_buttons_detected
         self.button_test_active = False
         self.button_test_counts = {"button1": 0, "button2": 0}
@@ -555,8 +562,11 @@ class SettingsScreen:
         self.hardware_message_color = COLOR_TEXT_DIM
         self.led_test_running = False
         self.led_test_flash_until = 0.0
+        self.relay_2_test_running = False
+        self.relay_2_test_flash_until = 0.0
         self.camera_detect_running = False
         self.led_detect_running = False
+        self.relay_2_detect_running = False
         self.camera_preview_frame: Optional[pygame.Surface] = None
         self.camera_preview_timestamp: float = 0.0
 
@@ -610,6 +620,7 @@ class SettingsScreen:
 
         grove_button = config.get("grove_button", {})
         relay = config.get("grove_relay", {})
+        relay_2 = config.get("grove_relay_2", {})
         self._start_stop_options: list[tuple[str, str]] = [
             ("button1", "Btn1"),
             ("button2", "Btn2"),
@@ -677,15 +688,27 @@ class SettingsScreen:
         # ── LED tab rows (full width, will be drawn on left) ──
         self.led_rows = [
             _SettingRow(start_y, screen_w, btn_size,
-                        "Relay Pin", "grove_relay.pin",
+                        "Relay 1 Pin", "grove_relay.pin",
                         int(relay.get("pin", 26)), 0, 27, 1),
             _SettingRow(start_y + row_h, screen_w, btn_size,
-                        "Active High", "grove_relay.active_high",
+                        "R1 Active High", "grove_relay.active_high",
                         1 if relay.get("active_high", True) else 0, 0, 1, 1),
             _SettingRow(start_y + row_h * 2, screen_w, btn_size,
-                        "Enable Relay", "led.enabled",
-                        1 if led.get("enabled", True) else 0, 0, 1, 1),
+                        "Enable Relay 1", "grove_relay.enabled",
+                        1 if relay.get("enabled", True) else 0, 0, 1, 1),
             _SettingRow(start_y + row_h * 3, screen_w, btn_size,
+                        "Relay 2 Pin", "grove_relay_2.pin",
+                        int(relay_2.get("pin", 24)), 0, 27, 1),
+            _SettingRow(start_y + row_h * 4, screen_w, btn_size,
+                        "R2 Active High", "grove_relay_2.active_high",
+                        1 if relay_2.get("active_high", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 5, screen_w, btn_size,
+                        "Enable Relay 2", "grove_relay_2.enabled",
+                        1 if relay_2.get("enabled", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 6, screen_w, btn_size,
+                        "Enable Relays", "led.enabled",
+                        1 if led.get("enabled", True) else 0, 0, 1, 1),
+            _SettingRow(start_y + row_h * 7, screen_w, btn_size,
                         "Warmup (s)", "led.warmup_seconds",
                         int(led.get("warmup_seconds", 1)), 0, 30, 1),
         ]
@@ -697,6 +720,8 @@ class SettingsScreen:
         self.btn_camera_detect = pygame.Rect(20, start_y + row_h * 3 + 2, 160, 36)
         self.btn_led_test = pygame.Rect(20, start_y + row_h * 2, 105, 36)
         self.btn_led_detect = pygame.Rect(135, start_y + row_h * 2, 105, 36)
+        self.btn_relay_2_test = pygame.Rect(20, start_y + row_h * 3, 105, 36)
+        self.btn_relay_2_detect = pygame.Rect(135, start_y + row_h * 3, 105, 36)
         self.btn_button_test = pygame.Rect(20, start_y + row_h * 2 + 8, screen_w - 40, 40)
         self._led_status_y = start_y + row_h * 4 + 10
         self._button_status_y = start_y + row_h * 3 + 10
@@ -758,6 +783,11 @@ class SettingsScreen:
                 return "test_led"
             if self.btn_led_detect.collidepoint(pos):
                 return "detect_led"
+            if self.btn_relay_2_test.collidepoint(pos):
+                self.relay_2_test_flash_until = time.time() + 0.18
+                return "test_relay_2"
+            if self.btn_relay_2_detect.collidepoint(pos):
+                return "detect_relay_2"
             rows = self.led_rows
         else:
             if self.start_stop_btn_prev.collidepoint(pos):
@@ -812,6 +842,14 @@ class SettingsScreen:
     def set_led_detect_running(self, running: bool) -> None:
         """Update visual state for the LED detect action button."""
         self.led_detect_running = running
+
+    def set_relay_2_test_running(self, running: bool) -> None:
+        """Update visual state for Relay #2 test button."""
+        self.relay_2_test_running = running
+
+    def set_relay_2_detect_running(self, running: bool) -> None:
+        """Update visual state for Relay #2 detect button."""
+        self.relay_2_detect_running = running
 
     def set_camera_preview_frame(self, frame: Optional[pygame.Surface]) -> None:
         """Update the camera preview frame displayed on the Camera tab."""
@@ -878,6 +916,7 @@ class SettingsScreen:
         config.setdefault("display", {})
         config.setdefault("grove_button", config.get("grove_button", {}))
         config.setdefault("grove_relay", config.get("grove_relay", {}))
+        config.setdefault("grove_relay_2", config.get("grove_relay_2", {}))
 
         selected_camera_idx = flat.get("camera.index", 0)
 
@@ -909,9 +948,14 @@ class SettingsScreen:
             "start_stop_button": self._start_stop_options[self._start_stop_selected][0],
         })
         config["grove_relay"].update({
-            "enabled": bool(config["grove_relay"].get("enabled", True)),
+            "enabled": bool(flat.get("grove_relay.enabled", 1)),
             "pin": int(flat.get("grove_relay.pin", 26)),
             "active_high": bool(flat.get("grove_relay.active_high", 1)),
+        })
+        config["grove_relay_2"].update({
+            "enabled": bool(flat.get("grove_relay_2.enabled", 1)),
+            "pin": int(flat.get("grove_relay_2.pin", 24)),
+            "active_high": bool(flat.get("grove_relay_2.active_high", 1)),
         })
 
         return config
@@ -1111,26 +1155,31 @@ class SettingsScreen:
                 led_detect_color = COLOR_STOP
             self._draw_action_button(surface, self.btn_led_detect, "DETECT", led_detect_color)
 
+            relay_2_test_color = COLOR_TEST
+            if self.relay_2_test_running:
+                relay_2_test_color = COLOR_STOP
+            elif time.time() < self.relay_2_test_flash_until:
+                relay_2_test_color = _lighten(COLOR_TEST, 35)
+            self._draw_action_button(surface, self.btn_relay_2_test, "TEST R2", relay_2_test_color)
+
+            relay_2_detect_color = COLOR_TEST
+            if self.relay_2_detect_running:
+                relay_2_detect_color = COLOR_STOP
+            self._draw_action_button(surface, self.btn_relay_2_detect, "DETECT R2", relay_2_detect_color)
+
             # Status display on right side (below palette)
             status_x = screen_w - 220
             status_y = start_y + row_h * 4
             
-            if self.led_detected:
-                short_port = self.led_port_name or "GPIO"
-                if len(short_port) > 10:
-                    short_port = f"{short_port[:7]}…"
-                status_text = f"Relay {short_port}"
-                status_detail = "✓ Ready"
-                status_color = COLOR_USB_OK
-            else:
-                status_text = "Relay"
-                status_detail = "✗ Not detected"
-                status_color = COLOR_TEXT_DIM
-            
-            status_surf = self.font.render(status_text, True, status_color)
-            surface.blit(status_surf, (status_x, status_y))
-            detail_surf = self.font_small.render(status_detail, True, status_color)
-            surface.blit(detail_surf, (status_x, status_y + 22))
+            r1_status = "✓" if self.led_detected else "✗"
+            r2_status = "✓" if self.relay_2_detected else "✗"
+            r1_color = COLOR_USB_OK if self.led_detected else COLOR_TEXT_DIM
+            r2_color = COLOR_USB_OK if self.relay_2_detected else COLOR_TEXT_DIM
+
+            r1_surf = self.font_small.render(f"R1 {r1_status} {self.led_port_name or 'GPIO'}", True, r1_color)
+            r2_surf = self.font_small.render(f"R2 {r2_status} {self.relay_2_port_name or 'GPIO'}", True, r2_color)
+            surface.blit(r1_surf, (status_x, status_y))
+            surface.blit(r2_surf, (status_x, status_y + 18))
 
             if self.hardware_message:
                 msg_surf = self.font_small.render(self.hardware_message[:46], True, self.hardware_message_color)

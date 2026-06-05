@@ -15,8 +15,8 @@ Scenario 03 includes the same touchscreen feature set:
 - camera preview
 - time-lapse capture
 - USB storage fallback
-- optional LED relay support
-- optional Grove button / Grove status light support
+- optional dual-relay support
+- optional Grove button support
 
 But it is tuned for **DSI touchscreens** that already work with Raspberry Pi OS Desktop.
 
@@ -155,7 +155,7 @@ bash install.sh --all
 What `--all` does here:
 
 - installs SDL2 and Python dependencies
-- optionally includes LED tooling support
+- includes relay tooling support
 - creates the desktop shortcut
 - **does not install any LCD driver**
 

@@ -193,6 +193,11 @@ def _load_app_config() -> dict:
             "pin": 26,
             "active_high": True,
         },
+        "grove_relay_2": {
+            "enabled": True,
+            "pin": 24,
+            "active_high": True,
+        },
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
@@ -271,9 +276,16 @@ class TimeLapseApp:
         self.led_controller = None
         self.led_detected: bool = False
         self.led_port_name: str = ""
+        self.relay_2 = None
+        self.relay_2_controller = None
+        self.relay_2_detected: bool = False
+        self.relay_2_port_name: str = ""
         self._led_test_lock = threading.Lock()
         self._led_test_active = False
+        self._relay_2_test_lock = threading.Lock()
+        self._relay_2_test_active = False
         self._init_led()
+        self._init_relay_2()
 
         # ── Grove dual button ──
         self.grove_buttons = None
@@ -357,6 +369,7 @@ class TimeLapseApp:
         self._show_storage_info: bool = display_cfg.get("show_storage_info", True)
         self.header.show_storage_info = self._show_storage_info
         self.header.led_detected = self.led_detected
+        self.header.relay_2_detected = self.relay_2_detected
 
         # Storage info state (refreshed periodically)
         self._free_gb: float = 0.0
@@ -629,6 +642,46 @@ class TimeLapseApp:
         if hasattr(self, "header"):
             self.header.led_detected = self.led_detected
 
+    def _init_relay_2(self) -> None:
+        """Initialize optional second Grove relay controller and ensure it starts OFF."""
+        if not LED_MODULE_AVAILABLE:
+            logger.info("led_controller not available — relay #2 support disabled")
+            return
+
+        if self.relay_2_controller is not None:
+            self.relay_2_controller.close()
+        self.relay_2_controller = None
+        self.relay_2 = None
+        self.relay_2_detected = False
+        self.relay_2_port_name = ""
+
+        relay_cfg = self.config.get("grove_relay_2", {})
+        if not relay_cfg.get("enabled", True):
+            logger.info("Grove relay #2 disabled in config")
+            if hasattr(self, "header"):
+                self.header.relay_2_detected = False
+            return
+
+        led_cfg = self.config.get("led", {})
+        pin = int(relay_cfg.get("pin", 24))
+        active_high = bool(relay_cfg.get("active_high", True))
+        controller = LEDController(pin=pin, active_high=active_high)
+        if controller.detect():
+            controller.turn_off()
+            self.relay_2_controller = controller
+            self.relay_2_detected = True
+            self.relay_2_port_name = controller.port_name
+            logger.info("Grove relay #2 detected on %s", controller.port_name)
+            if led_cfg.get("enabled", True):
+                self.relay_2 = controller
+                logger.info("Relay #2 enabled for capture")
+            else:
+                logger.info("Relay #2 disabled by led.enabled — kept OFF")
+        else:
+            logger.info("No Grove relay #2 found")
+        if hasattr(self, "header"):
+            self.header.relay_2_detected = self.relay_2_detected
+
     def _init_grove_buttons(self) -> None:
         """Initialize optional Grove dual button input."""
         if not GROVE_BUTTON_AVAILABLE:
@@ -855,6 +908,10 @@ class TimeLapseApp:
             self._run_camera_detect()
         elif action == "detect_led":
             self._run_led_detect()
+        elif action == "test_relay_2":
+            self._run_relay_2_test()
+        elif action == "detect_relay_2":
+            self._run_relay_2_detect()
         elif action == "back":
             self._set_preview_updates_enabled(True)
             self._settings_screen = None
@@ -888,6 +945,7 @@ class TimeLapseApp:
 
         self.engine.start(self.session, self.camera, self.storage,
                           self.config, self.led,
+                          relay_2=self.relay_2,
                           camera_reopen_callback=self._reopen_camera_for_engine)
         self._capture_start_time = time.time()
         # Swap buttons — only STOP visible while capturing
@@ -922,6 +980,8 @@ class TimeLapseApp:
             self.screen_w, self.screen_h, self.config,
             led_detected=self.led_detected,
             led_port_name=self.led_port_name,
+            relay_2_detected=self.relay_2_detected,
+            relay_2_port_name=self.relay_2_port_name,
             camera_options=camera_options,
             grove_buttons_detected=self.grove_buttons_detected,
             max_display_size=self.display_max_size,
@@ -951,6 +1011,7 @@ class TimeLapseApp:
         self._set_preview_updates_enabled(False, wait_for_thread=True)
         self._init_camera()
         self._init_led()
+        self._init_relay_2()
         self._init_grove_buttons()
         self._set_preview_updates_enabled(True)
 
@@ -1004,6 +1065,45 @@ class TimeLapseApp:
                     self._led_test_active = False
 
         threading.Thread(target=_worker, name="led-test", daemon=True).start()
+
+    def _run_relay_2_test(self) -> None:
+        """Blink relay #2 briefly from the settings screen."""
+        if self._settings_screen is None:
+            return
+
+        controller = self.relay_2_controller
+        if controller is None or not controller.is_available():
+            self._settings_screen.set_hardware_message("Relay #2 not available", False)
+            return
+
+        with self._relay_2_test_lock:
+            if self._relay_2_test_active:
+                self._settings_screen.set_hardware_message("Relay #2 test already running", False)
+                return
+            self._relay_2_test_active = True
+
+        self._settings_screen.set_hardware_message("Testing relay #2…", True)
+        self._settings_screen.set_relay_2_test_running(True)
+
+        def _worker() -> None:
+            success = False
+            test_duration_s = 2.0
+            try:
+                if controller.turn_on():  # type: ignore[union-attr]
+                    time.sleep(test_duration_s)
+                    success = controller.turn_off()  # type: ignore[union-attr]
+                if self._settings_screen is not None:
+                    if success:
+                        self._settings_screen.set_hardware_message("Relay #2 test complete", True)
+                    else:
+                        self._settings_screen.set_hardware_message("Relay #2 test failed", False)
+            finally:
+                if self._settings_screen is not None:
+                    self._settings_screen.set_relay_2_test_running(False)
+                with self._relay_2_test_lock:
+                    self._relay_2_test_active = False
+
+        threading.Thread(target=_worker, name="relay2-test", daemon=True).start()
 
     def _run_camera_detect(self) -> None:
         """Scan for available cameras and update the camera options list.
@@ -1269,6 +1369,52 @@ class TimeLapseApp:
 
         threading.Thread(target=_worker, name="led-detect", daemon=True).start()
 
+    def _run_relay_2_detect(self) -> None:
+        """Attempt to detect/reinitialize relay #2 from the settings screen."""
+        if self._settings_screen is None:
+            return
+
+        self._settings_screen.set_hardware_message("Detecting relay #2…", True)
+        self._settings_screen.set_relay_2_detect_running(True)
+
+        def _worker() -> None:
+            try:
+                relay_cfg = self.config.get("grove_relay_2", {})
+                if self.relay_2_controller is None:
+                    pin = int(relay_cfg.get("pin", 24))
+                    active_high = bool(relay_cfg.get("active_high", True))
+                    self.relay_2_controller = LEDController(pin=pin, active_high=active_high)
+
+                controller = self.relay_2_controller
+                available = bool(controller and controller.detect())
+                self.relay_2_detected = available
+                if available and controller is not None:
+                    self.relay_2_port_name = controller.port_name
+                    if self.config.get("led", {}).get("enabled", True):
+                        self.relay_2 = controller
+                if hasattr(self, "header"):
+                    self.header.relay_2_detected = self.relay_2_detected
+
+                if self._settings_screen is not None:
+                    self._settings_screen.relay_2_detected = available
+                    if available:
+                        self._settings_screen.set_hardware_message("Relay #2 ✓ Detected!", True)
+                    else:
+                        self._settings_screen.set_hardware_message("Relay #2 not detected (check wiring/sudo)", False)
+            except PermissionError as e:
+                logger.error("Permission denied accessing relay #2: %s", e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message("Permission denied - try with sudo", False)
+            except Exception as e:
+                logger.error("Relay #2 detection error: %s", e)
+                if self._settings_screen is not None:
+                    self._settings_screen.set_hardware_message(f"Error: {str(e)[:35]}", False)
+            finally:
+                if self._settings_screen is not None:
+                    self._settings_screen.set_relay_2_detect_running(False)
+
+        threading.Thread(target=_worker, name="relay2-detect", daemon=True).start()
+
     # ── Preview & status ───────────────────────────────────────────────────
 
     def _clear_preview_capture_state(self) -> None:
@@ -1476,6 +1622,8 @@ class TimeLapseApp:
             self.engine.stop()
         if self.led_controller is not None:
             self.led_controller.close()
+        if self.relay_2_controller is not None:
+            self.relay_2_controller.close()
         if self.grove_buttons is not None:
             self.grove_buttons.close()
         if self.camera is not None:

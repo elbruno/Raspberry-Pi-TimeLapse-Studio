@@ -4,13 +4,10 @@ import pytest
 pygame = pytest.importorskip("pygame")
 
 
-def test_settings_screen_preserves_existing_nested_config_values():
-    """Saving from the settings screen should not drop unrelated config keys."""
-    from ui_components import SettingsScreen
-
-    pygame.font.init()
-    config = {
-        "camera": {"index": 1, "width": 640, "height": 480},
+def _base_config(width: int = 640, height: int = 360) -> dict:
+    """Return a representative settings config used by UI tests."""
+    return {
+        "camera": {"index": 0, "width": 640, "height": 480},
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
@@ -18,18 +15,25 @@ def test_settings_screen_preserves_existing_nested_config_values():
         "display": {
             "show_countdown": True,
             "show_storage_info": True,
-            "window_width": 480,
-            "window_height": 320,
+            "window_width": width,
+            "window_height": height,
             "center_window": True,
             "fullscreen": False,
         },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6, "start_stop_button": "button2"},
-        "grove_relay": {
-            "enabled": True,
-            "pin": 26,
-            "active_high": True,
-        },
+        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
+        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
+        "grove_relay_2": {"enabled": True, "pin": 24, "active_high": True},
     }
+
+
+def test_settings_screen_preserves_existing_nested_config_values():
+    """Saving from the settings screen should not drop unrelated config keys."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    config = _base_config(width=480, height=320)
+    config["camera"]["index"] = 1
+    config["grove_button"]["start_stop_button"] = "button2"
 
     screen = SettingsScreen(480, 320, config, camera_options=[(1, "USB Cam")])
     values = screen.get_values(base_config=config)
@@ -40,6 +44,8 @@ def test_settings_screen_preserves_existing_nested_config_values():
     assert values["grove_button"]["pin_button1"] == 5
     assert values["grove_relay"]["pin"] == 26
     assert values["grove_relay"]["active_high"] is True
+    assert values["grove_relay_2"]["pin"] == 24
+    assert values["grove_relay_2"]["active_high"] is True
 
 
 def test_window_size_options_are_16_by_9_and_capped_to_display():
@@ -59,23 +65,7 @@ def test_settings_screen_saves_selected_window_size_preset():
     from ui_components import SettingsScreen
 
     pygame.font.init()
-    config = {
-        "camera": {"index": 0, "width": 640, "height": 480},
-        "capture": {"interval_seconds": 30, "quality": 90},
-        "preview": {"fps": 6},
-        "storage": {"fallback_path": "./data"},
-        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
-        "display": {
-            "show_countdown": True,
-            "show_storage_info": True,
-            "window_width": 560,
-            "window_height": 400,
-            "center_window": True,
-            "fullscreen": False,
-        },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
-    }
+    config = _base_config(width=560, height=400)
 
     screen = SettingsScreen(
         560,
@@ -108,23 +98,7 @@ def test_display_tab_app_size_next_cycles_option():
     from ui_components import SettingsScreen
 
     pygame.font.init()
-    config = {
-        "camera": {"index": 0, "width": 640, "height": 480},
-        "capture": {"interval_seconds": 30, "quality": 90},
-        "preview": {"fps": 6},
-        "storage": {"fallback_path": "./data"},
-        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
-        "display": {
-            "show_countdown": True,
-            "show_storage_info": True,
-            "window_width": 640,
-            "window_height": 360,
-            "center_window": True,
-            "fullscreen": False,
-        },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
-    }
+    config = _base_config(width=640, height=360)
 
     screen = SettingsScreen(640, 360, config, max_display_size=(640, 360))
     screen.active_tab = 1
@@ -141,23 +115,7 @@ def test_camera_selector_is_below_quality_row():
     from ui_components import SettingsScreen
 
     pygame.font.init()
-    config = {
-        "camera": {"index": 0, "width": 640, "height": 480},
-        "capture": {"interval_seconds": 30, "quality": 90},
-        "preview": {"fps": 6},
-        "storage": {"fallback_path": "./data"},
-        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
-        "display": {
-            "show_countdown": True,
-            "show_storage_info": True,
-            "window_width": 640,
-            "window_height": 360,
-            "center_window": True,
-            "fullscreen": False,
-        },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
-    }
+    config = _base_config(width=640, height=360)
 
     screen = SettingsScreen(640, 360, config, camera_options=[(0, "USB Cam")])
     quality_bottom = screen.camera_rows[1].btn_plus.bottom
@@ -173,23 +131,7 @@ def test_led_tab_draws_hardware_message_without_crashing():
     pygame.display.init()
     surface = pygame.Surface((640, 360))
 
-    config = {
-        "camera": {"index": 0, "width": 640, "height": 480},
-        "capture": {"interval_seconds": 30, "quality": 90},
-        "preview": {"fps": 6},
-        "storage": {"fallback_path": "./data"},
-        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
-        "display": {
-            "show_countdown": True,
-            "show_storage_info": True,
-            "window_width": 640,
-            "window_height": 360,
-            "center_window": True,
-            "fullscreen": False,
-        },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
-    }
+    config = _base_config(width=640, height=360)
 
     screen = SettingsScreen(640, 360, config)
     screen.active_tab = 2
@@ -207,23 +149,7 @@ def test_camera_tab_draws_rows_after_panels(monkeypatch):
     pygame.font.init()
     surface = pygame.Surface((800, 450))
 
-    config = {
-        "camera": {"index": 0, "width": 640, "height": 480},
-        "capture": {"interval_seconds": 30, "quality": 90},
-        "preview": {"fps": 6},
-        "storage": {"fallback_path": "./data"},
-        "led": {"enabled": True, "warmup_seconds": 1, "pre_capture_lead_seconds": 0.0},
-        "display": {
-            "show_countdown": True,
-            "show_storage_info": True,
-            "window_width": 800,
-            "window_height": 450,
-            "center_window": True,
-            "fullscreen": False,
-        },
-        "grove_button": {"enabled": True, "pin_button1": 5, "pin_button2": 6},
-        "grove_relay": {"enabled": True, "pin": 26, "active_high": True},
-    }
+    config = _base_config(width=800, height=450)
 
     screen = SettingsScreen(800, 450, config, camera_options=[(0, "Manual idx")])
     screen.active_tab = 0
@@ -250,3 +176,17 @@ def test_camera_tab_draws_rows_after_panels(monkeypatch):
     assert "panel" in draw_order
     assert "row" in draw_order
     assert draw_order.index("panel") < draw_order.index("row")
+
+
+def test_led_tab_routes_relay_2_actions():
+    """LED tab should return dedicated actions for Relay #2 detect/test buttons."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    config = _base_config(width=640, height=360)
+
+    screen = SettingsScreen(640, 360, config)
+    screen.active_tab = 2
+
+    assert screen.handle_tap(screen.btn_relay_2_detect.center) == "detect_relay_2"
+    assert screen.handle_tap(screen.btn_relay_2_test.center) == "test_relay_2"

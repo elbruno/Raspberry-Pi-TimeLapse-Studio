@@ -171,9 +171,12 @@ class TestGroveConfigSections:
         cfg = load_config("/nonexistent/config.yaml")
         assert "grove_button" in cfg
         assert "grove_relay" in cfg
+        assert "grove_relay_2" in cfg
         assert cfg["grove_button"]["pin_button1"] == 5
         assert isinstance(cfg["grove_relay"]["pin"], int)
         assert cfg["grove_relay"]["active_high"] is True
+        assert isinstance(cfg["grove_relay_2"]["pin"], int)
+        assert cfg["grove_relay_2"]["active_high"] is True
 
     def test_validate_config_rejects_invalid_grove_values(self, sample_config):
         """validate_config() returns errors for malformed Grove settings."""
@@ -191,6 +194,11 @@ class TestGroveConfigSections:
             "pin": -1,
             "active_high": "yes",
         }
+        sample_config["grove_relay_2"] = {
+            "enabled": True,
+            "pin": -2,
+            "active_high": "no",
+        }
 
         errors = validate_config(sample_config)
         assert any("grove_button.pin_button1" in e for e in errors)
@@ -198,6 +206,26 @@ class TestGroveConfigSections:
         assert any("grove_button.start_stop_button" in e for e in errors)
         assert any("grove_relay.pin" in e for e in errors)
         assert any("grove_relay.active_high" in e for e in errors)
+        assert any("grove_relay_2.pin" in e for e in errors)
+        assert any("grove_relay_2.active_high" in e for e in errors)
+
+    def test_validate_config_rejects_relay_pin_conflict(self, sample_config):
+        """When both relays are enabled they cannot share the same BCM pin."""
+        from config import validate_config
+
+        sample_config["grove_relay"] = {
+            "enabled": True,
+            "pin": 26,
+            "active_high": True,
+        }
+        sample_config["grove_relay_2"] = {
+            "enabled": True,
+            "pin": 26,
+            "active_high": True,
+        }
+
+        errors = validate_config(sample_config)
+        assert any("cannot share the same pin" in e for e in errors)
 
 
 class TestDisplayConfigSections:

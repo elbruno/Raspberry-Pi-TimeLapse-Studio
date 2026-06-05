@@ -12,7 +12,7 @@ A Raspberry Pi **DSI touchscreen** scenario that reuses the shared touchscreen a
 ## What is different in Scenario 03?
 
 - ✅ Same UI, same capture engine, same features
-- ✅ Same camera, USB storage, LED relay, Grove button/light support
+- ✅ Same camera, USB storage, dual-relay support, Grove button support
 - ✅ Same code quality and behavior
 - 🔁 Different scenario folder + config so you can tune it independently
 - 🧩 Install flow adapted for **DSI** displays (no SPI LCD driver step)
@@ -109,7 +109,8 @@ normal user launch with a warning that GPIO relay access may be limited.
 Scenario 03 supports optional Grove hardware for physical controls/status:
 
 - Grove Dual Button
-- Grove Relay module
+- Grove Relay module #1
+- Grove Relay module #2
 
 Use these docs for exact connections:
 

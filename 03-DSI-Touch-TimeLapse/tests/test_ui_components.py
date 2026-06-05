@@ -7,7 +7,21 @@ pygame = pytest.importorskip("pygame")
 def _base_config(width: int = 640, height: int = 360) -> dict:
     """Return a representative settings config used by UI tests."""
     return {
-        "camera": {"index": 0, "width": 640, "height": 480},
+        "camera": {
+            "source_mode": "daemon_primary",
+            "index": 0,
+            "width": 640,
+            "height": 480,
+            "daemon": {
+                "enabled": True,
+                "rtsp_url": "rtsp://127.0.0.1:8554/unicast",
+                "open_timeout_s": 5.0,
+                "read_timeout_s": 3.0,
+                "healthcheck_interval_s": 5.0,
+                "healthcheck_timeout_s": 2.0,
+                "connect_transport": "tcp",
+            },
+        },
         "capture": {"interval_seconds": 30, "quality": 90},
         "preview": {"fps": 6},
         "storage": {"fallback_path": "./data"},
@@ -190,3 +204,27 @@ def test_led_tab_routes_relay_2_actions():
 
     assert screen.handle_tap(screen.btn_relay_2_detect.center) == "detect_relay_2"
     assert screen.handle_tap(screen.btn_relay_2_test.center) == "test_relay_2"
+
+
+def test_camera_source_mode_selector_cycles_and_saves():
+    """Camera tab source mode selector should cycle and persist to config output."""
+    from ui_components import SettingsScreen
+
+    pygame.font.init()
+    config = _base_config(width=640, height=360)
+
+    screen = SettingsScreen(640, 360, config, camera_options=[(0, "USB Cam")])
+    screen.active_tab = 0
+
+    before = screen._source_mode_selected
+    screen.handle_tap(screen.source_mode_btn_next.center)
+    after = screen._source_mode_selected
+
+    assert after != before
+
+    values = screen.get_values(base_config=config)
+    assert values["camera"]["source_mode"] in {
+        "daemon_primary",
+        "direct_primary",
+        "direct_only",
+    }

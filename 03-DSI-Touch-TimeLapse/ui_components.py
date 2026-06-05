@@ -644,6 +644,24 @@ class SettingsScreen:
         self.window_size_val_rect = pygame.Rect(screen_w - 146, start_y + row_h * 2, 100, btn_size)
         self.window_size_btn_next = pygame.Rect(screen_w - 40, start_y + row_h * 2, btn_size, btn_size)
 
+        self.source_mode_options: list[tuple[str, str]] = [
+            ("daemon_primary", "A"),
+            ("direct_primary", "B"),
+            ("direct_only", "D"),
+        ]
+        configured_source_mode = str(cam.get("source_mode", "daemon_primary"))
+        self._source_mode_selected = 0
+        for idx_opt, (value, _) in enumerate(self.source_mode_options):
+            if value == configured_source_mode:
+                self._source_mode_selected = idx_opt
+                break
+
+        source_mode_y = start_y + row_h * 3
+        self.source_mode_label_y = source_mode_y + btn_size // 2 - 8
+        self.source_mode_btn_prev = pygame.Rect(screen_w - 190, source_mode_y, btn_size, btn_size)
+        self.source_mode_val_rect = pygame.Rect(screen_w - 146, source_mode_y, 100, btn_size)
+        self.source_mode_btn_next = pygame.Rect(screen_w - 40, source_mode_y, btn_size, btn_size)
+
         self.start_stop_label_y = start_y + row_h + btn_size // 2 - 8
         self.start_stop_btn_prev = pygame.Rect(screen_w - 190, start_y + row_h, btn_size, btn_size)
         self.start_stop_val_rect = pygame.Rect(screen_w - 146, start_y + row_h, 100, btn_size)
@@ -773,6 +791,12 @@ class SettingsScreen:
         if self.active_tab == 0:
             if self.btn_camera_detect.collidepoint(pos):
                 return "detect_camera"
+            if self.source_mode_btn_prev.collidepoint(pos):
+                self._source_mode_selected = (self._source_mode_selected - 1) % len(self.source_mode_options)
+                return None
+            if self.source_mode_btn_next.collidepoint(pos):
+                self._source_mode_selected = (self._source_mode_selected + 1) % len(self.source_mode_options)
+                return None
             rows = self.camera_rows
         elif self.active_tab == 1:
             if self.window_size_btn_prev.collidepoint(pos):
@@ -914,6 +938,7 @@ class SettingsScreen:
 
         config = copy.deepcopy(base_config or {})
         config.setdefault("camera", {})
+        config["camera"].setdefault("daemon", config.get("camera", {}).get("daemon", {}))
         config.setdefault("capture", {})
         config.setdefault("preview", {"fps": 6})
         config.setdefault("storage", {"fallback_path": "./data"})
@@ -927,6 +952,7 @@ class SettingsScreen:
 
         config["camera"].update({
             "mode": "opencv",
+            "source_mode": self.source_mode_options[self._source_mode_selected][0],
             "index": int(selected_camera_idx),
             "width": flat.get("camera.width", 640),
             "height": flat.get("camera.height", 480),
@@ -1085,6 +1111,28 @@ class SettingsScreen:
             # Draw camera config rows after panel backgrounds so rows stay visible.
             for row in self.camera_rows:
                 row.draw(surface, self.font)
+
+            source_lbl = self.font.render("Source Mode", True, COLOR_TEXT)
+            surface.blit(source_lbl, (20, self.source_mode_label_y))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.source_mode_btn_prev, border_radius=6)
+            source_prev_txt = self.font.render("<", True, COLOR_TEXT)
+            surface.blit(source_prev_txt, source_prev_txt.get_rect(center=self.source_mode_btn_prev.center))
+
+            pygame.draw.rect(surface, COLOR_FIELD_BG, self.source_mode_val_rect, border_radius=6)
+            source_mode_value = self.source_mode_options[self._source_mode_selected][0]
+            if source_mode_value == "daemon_primary":
+                source_mode_label = "A: Daemon"
+            elif source_mode_value == "direct_primary":
+                source_mode_label = "B: Direct"
+            else:
+                source_mode_label = "Direct only"
+            source_mode_txt = self.font_small.render(source_mode_label, True, COLOR_TEXT)
+            surface.blit(source_mode_txt, source_mode_txt.get_rect(center=self.source_mode_val_rect.center))
+
+            pygame.draw.rect(surface, COLOR_STEPPER, self.source_mode_btn_next, border_radius=6)
+            source_next_txt = self.font.render(">", True, COLOR_TEXT)
+            surface.blit(source_next_txt, source_next_txt.get_rect(center=self.source_mode_btn_next.center))
 
             # Detect camera button
             camera_detect_color = COLOR_TEST

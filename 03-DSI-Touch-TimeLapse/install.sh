@@ -11,23 +11,32 @@
 #   ./install.sh --shortcut     # create desktop shortcut only (no autostart)
 #   ./install.sh --autostart    # create desktop shortcut + autostart
 #   ./install.sh --all          # dependencies + desktop shortcut (no autostart)
+#   ./install.sh --with-camera-daemon
+#   ./install.sh --with-camera-daemon-autostart
 # -----------------------------------------------------------
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SHORTCUT=0
 AUTOSTART=0
+CAMERA_DAEMON=0
+CAMERA_DAEMON_AUTOSTART=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all)        SHORTCUT=1; shift ;;
+    --all)        SHORTCUT=1; CAMERA_DAEMON=1; shift ;;
     --shortcut)   SHORTCUT=1; shift ;;
     --autostart)  SHORTCUT=1; AUTOSTART=1; shift ;;
+    --with-camera-daemon) CAMERA_DAEMON=1; shift ;;
+    --with-camera-daemon-autostart) CAMERA_DAEMON=1; CAMERA_DAEMON_AUTOSTART=1; shift ;;
     -h|--help)
-      echo "Usage: ./install.sh [--all] [--shortcut] [--autostart]"
+      echo "Usage: ./install.sh [--all] [--shortcut] [--autostart] [--with-camera-daemon] [--with-camera-daemon-autostart]"
       echo "  --all         Install dependencies + desktop shortcut (no autostart)"
       echo "  --shortcut    Create desktop shortcut only"
       echo "  --autostart   Create desktop shortcut + autostart on boot"
+      echo "  --with-camera-daemon            Install v4l2rtspserver + diagnostics"
+      echo "  --with-camera-daemon-autostart  Install camera daemon packages and enable"
+      echo "                                  v4l2rtspserver service at boot"
       echo "                and disable the duplicate MATE PolicyKit agent when present"
       exit 0
       ;;
@@ -56,6 +65,13 @@ PKGS=(
   libsdl2-ttf-2.0-0
 )
 
+if [[ $CAMERA_DAEMON -eq 1 ]]; then
+  PKGS+=(
+    v4l2-utils
+    v4l2rtspserver
+  )
+fi
+
 sudo apt install -y "${PKGS[@]}"
 echo
 
@@ -83,6 +99,21 @@ if [[ $FAILED -eq 1 ]]; then
   echo "⚠  Some dependencies failed to install. Check the output above."
 else
   echo "All dependencies installed successfully."
+fi
+
+if [[ $CAMERA_DAEMON -eq 1 ]]; then
+  echo
+  echo "Camera daemon prerequisites installed."
+  echo "  RTSP URL default: rtsp://127.0.0.1:8554/unicast"
+  if [[ $CAMERA_DAEMON_AUTOSTART -eq 1 ]]; then
+    echo "Enabling v4l2rtspserver autostart..."
+    sudo systemctl enable --now v4l2rtspserver || true
+    if sudo systemctl is-active --quiet v4l2rtspserver; then
+      echo "  v4l2rtspserver is active ✓"
+    else
+      echo "  v4l2rtspserver is not active (check: sudo systemctl status v4l2rtspserver)"
+    fi
+  fi
 fi
 
 # ------------------------------------------------------------------
@@ -117,6 +148,9 @@ fi
 echo "Notes for DSI displays:"
 echo "  • No SPI LCD driver script is required for Freenove DSI displays"
 echo "  • Ensure Raspberry Pi OS Desktop is running on the DSI panel"
+if [[ $CAMERA_DAEMON -eq 1 ]]; then
+  echo "  • Camera daemon prerequisites installed (v4l2rtspserver + v4l-utils)"
+fi
 echo
 if [[ $AUTOSTART -eq 1 ]]; then
   echo "Reboot recommended so autostart takes effect:"

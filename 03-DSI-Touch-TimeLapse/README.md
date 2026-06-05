@@ -79,6 +79,16 @@ bash install.sh --all
 enable launch-on-boot. Use `bash install.sh --autostart` only if you explicitly
 want the app to start automatically when the device boots.
 
+For the new daemon-capable camera source mode, installer flags are available:
+
+```bash
+# Install daemon camera prerequisites (v4l2rtspserver + v4l-utils)
+bash install.sh --with-camera-daemon
+
+# Install and enable daemon service on boot
+bash install.sh --with-camera-daemon-autostart
+```
+
 1. Reboot and launch:
 
 ```bash

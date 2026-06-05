@@ -13,9 +13,6 @@ storage:
 led:
   enabled: true
   warmup_seconds: 1
-  # Extra lead time the LED stays on BEFORE each snapshot (in seconds),
-  # added on top of warmup_seconds. Useful to fully light the scene
-  # before the camera fires. Post-capture LED-off delay stays at warmup_seconds.
   pre_capture_lead_seconds: 1.0
 grove_relay:
   enabled: true
